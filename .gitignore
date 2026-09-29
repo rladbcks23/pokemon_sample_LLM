@@ -5,7 +5,7 @@ __pycache__/
 venv/
 .env
 
-# DB (scripts/load_db.py로 재생성)
+# DB (manage.py migrate → load_dex → load_meta로 재생성)
 data/pokemon.db
 *.db-journal
 

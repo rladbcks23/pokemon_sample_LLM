@@ -46,7 +46,7 @@ def img_col(label: str = "", width: str = "small"):
 
 
 if not DB_PATH.exists():
-    st.error(f"DB 파일이 없습니다: {DB_PATH}\n\n`python scripts/load_db.py`로 먼저 만들어 주세요.")
+    st.error(f"DB 파일이 없습니다: {DB_PATH}\n\n`python manage.py migrate`, `load_dex`, `load_meta` 순서로 먼저 만들어 주세요.")
     st.stop()
 
 page = st.sidebar.radio("페이지", ["테이블", "사용률", "파티", "SQL"])
