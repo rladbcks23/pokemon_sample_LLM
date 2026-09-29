@@ -1,10 +1,11 @@
 from datetime import date
 
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from apps.dex.models import Ruleset
 from apps.meta.models import PokemonSet, Team, TeamMember, UsageDetail, UsageStat
+from apps.meta.replay import match_species, parse_replay
 
 
 class ConstraintTests(TestCase):
@@ -50,3 +51,33 @@ class ConstraintTests(TestCase):
         self.assertRejected(lambda: UsageStat.objects.create(**kw))
         UsageDetail.objects.create(usage_stat=u, kind='spread', target_key='2/32/0/0/0/32', pct=24.6)
         self.assertRejected(lambda: UsageDetail.objects.create(usage_stat=u, kind='mega', target_key='x', pct=1))
+
+
+class ReplayParserTests(SimpleTestCase):
+    LOG = '\n'.join([
+        '|player|p1|Alice|1|1500', '|player|p2|Bob|2|1500',
+        '|poke|p1|Garchomp, L50, M|', '|poke|p1|Incineroar, L50, M|', '|poke|p1|Basculegion-F, L50, F|',
+        '|poke|p2|Kingambit, L50, M|', '|poke|p2|Rillaboom, L50, M|',
+        '|showteam|p1|Garchomp||GarchompiteZ|RoughSkin|Earthquake,Protect|Jolly||M|||50|]'
+        'Incineroar||SitrusBerry|Intimidate|FakeOut,Parting Shot|Careful||M|||50|',
+        '|switch|p1a: Chomp|Garchomp, L50, M|100/100', '|switch|p2a: King|Kingambit, L50, M|100/100',
+        '|turn|1',
+        '|detailschange|p1a: Chomp|Garchomp-Mega-Z, L50, M', '|-mega|p1a: Chomp|Garchomp|Garchompite Z',
+        '|switch|p1a: Cat|Incineroar, L50, M|100/100',
+        '|win|Bob',
+    ])
+
+    def test_parse(self):
+        p1, p2 = parse_replay(self.LOG)
+        self.assertEqual((p1.player, p1.result, p2.result), ('Alice', 'lose', 'win'))
+        self.assertEqual(p1.species, ['garchomp', 'incineroar', 'basculegionf'])
+        self.assertEqual(p1.sets['garchomp'], {'item': 'garchompitez', 'ability': 'roughskin',
+                                               'moves': ['earthquake', 'protect'], 'nature': 'jolly'})
+        self.assertEqual(p1.lead, {'garchomp'})                     # 1턴 전 출전
+        self.assertEqual(p1.brought, {'garchomp', 'incineroar'})
+        self.assertEqual(p1.mega, {'garchomp'})
+        self.assertFalse(p2.sets)                                   # 팀시트 없음
+
+    def test_match_species(self):
+        self.assertTrue(match_species('garchomp', {'garchompmegaz'}))   # 메가 후 이름
+        self.assertFalse(match_species('incineroar', {'garchomp'}))
