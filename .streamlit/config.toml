@@ -1,0 +1,7 @@
+[server]
+# DB 확인 페이지를 http://localhost:8501/check 에서 열기
+baseUrlPath = "check"
+headless = true
+
+[browser]
+gatherUsageStats = false
