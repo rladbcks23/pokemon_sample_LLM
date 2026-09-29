@@ -58,7 +58,8 @@ if not icons("pokemon"):
 # 테이블: 아무 테이블이나 골라서 보기 + 검색
 # ---------------------------------------------------------------------------
 if page == "테이블":
-    tables = q("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")["name"].tolist()
+    tables = q("""SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'django_%'
+                  AND name NOT LIKE 'auth_%' AND name != 'sqlite_sequence' ORDER BY name""")["name"].tolist()
     counts = {t: q(f'SELECT COUNT(*) n FROM "{t}"')["n"][0] for t in tables}
     table = st.sidebar.selectbox("테이블", tables, format_func=lambda t: f"{t} ({counts[t]:,})")
     df = q(f'SELECT * FROM "{table}"')
@@ -78,13 +79,13 @@ if page == "테이블":
     config = {}
     if table == "pokemon":
         df = df.copy()
-        df.insert(0, "이미지", df["id"].map(lambda k: icon("pokemon", k)))
+        df.insert(0, "이미지", df["showdown_id"].map(lambda k: icon("pokemon", k)))
         df.insert(df.columns.get_loc("type1") + 1, "타입1", df["type1"].map(lambda k: icon("types", k)))
         df.insert(df.columns.get_loc("type2") + 1, "타입2", df["type2"].map(lambda k: icon("types", k)))
         config = {"이미지": img_col(), "타입1": img_col(), "타입2": img_col()}
     elif table == "item":
         df = df.copy()
-        df.insert(0, "아이콘", df["id"].map(lambda k: icon("items", k)))
+        df.insert(0, "아이콘", df["showdown_id"].map(lambda k: icon("items", k)))
         config = {"아이콘": img_col()}
 
     st.caption(f"{table}: {len(df):,}행")
@@ -96,32 +97,32 @@ if page == "테이블":
 # 사용률: 포켓몬 하나 골라서 기술/도구/특성/성격/SP 사용률을 한글로
 # ---------------------------------------------------------------------------
 elif page == "사용률":
-    groups = q("""SELECT DISTINCT ruleset_id, format_id, source, season FROM usage_stat
-                  ORDER BY ruleset_id DESC, source, format_id""")
-    labels = [f"{r.source} · {r.format_id} · {r.season}" for r in groups.itertuples()]
+    groups = q("""SELECT DISTINCT ruleset_id, format_key, source, season FROM usage_stat
+                  ORDER BY ruleset_id DESC, source, format_key""")
+    labels = [f"{r.source} · {r.format_key} · {r.season}" for r in groups.itertuples()]
     g = groups.iloc[st.sidebar.selectbox("데이터", range(len(labels)), format_func=lambda i: labels[i])]
 
-    ranking = q("""SELECT u.id, u.rank AS 순위, p.name_ko AS 포켓몬, u.usage_pct AS "사용률%", u.pokemon_id
+    ranking = q("""SELECT u.id, u.rank AS 순위, p.name_ko AS 포켓몬, u.usage_pct AS "사용률%", u.pokemon_key
                    FROM usage_stat u
-                   LEFT JOIN pokemon p ON p.ruleset_id = u.ruleset_id AND p.id = u.pokemon_id
-                   WHERE u.ruleset_id=? AND u.format_id=? AND u.source=? AND u.season=?
-                   ORDER BY u.rank""", (g.ruleset_id, g.format_id, g.source, g.season))
+                   LEFT JOIN pokemon p ON p.ruleset_id = u.ruleset_id AND p.showdown_id = u.pokemon_key
+                   WHERE u.ruleset_id=? AND u.format_key=? AND u.source=? AND u.season=?
+                   ORDER BY u.rank""", (g.ruleset_id, g.format_key, g.source, g.season))
 
     left, right = st.columns([1, 2])
     with left:
         st.subheader("순위")
-        view = ranking.drop(columns=["id", "pokemon_id"])
-        view.insert(1, "이미지", ranking["pokemon_id"].map(lambda k: icon("pokemon", k)))
+        view = ranking.drop(columns=["id", "pokemon_key"])
+        view.insert(1, "이미지", ranking["pokemon_key"].map(lambda k: icon("pokemon", k)))
         if view["사용률%"].isna().all():  # OP.GG는 순위만 있음
             view = view.drop(columns=["사용률%"])
         st.dataframe(view, hide_index=True, height=700, use_container_width=True,
                      column_config={"이미지": img_col()}, row_height=40)
     with right:
-        names = ranking["포켓몬"].fillna(ranking["pokemon_id"]).tolist()
+        names = ranking["포켓몬"].fillna(ranking["pokemon_key"]).tolist()
         idx = st.selectbox("포켓몬", range(len(names)), format_func=lambda i: f"{ranking['순위'][i]}위 {names[i]}")
         stat_id = int(ranking["id"][idx])
-        pid = ranking["pokemon_id"][idx]
-        info = q("SELECT type1, type2, hp, atk, def, spa, spd, spe FROM pokemon WHERE ruleset_id=? AND id=?",
+        pid = ranking["pokemon_key"][idx]
+        info = q("SELECT type1, type2, hp, atk, def, spa, spd, spe FROM pokemon WHERE ruleset_id=? AND showdown_id=?",
                  (g.ruleset_id, pid))
         head = st.columns([1, 5])
         if icon("pokemon", pid):
@@ -135,15 +136,15 @@ elif page == "사용률":
                     st.image([icon("types", t) for t in types], width=90)
                 st.caption(f"H{r.hp} / A{r['atk']} / B{r['def']} / C{r.spa} / D{r.spd} / S{r.spe}")
         detail = q("""
-            SELECT d.kind, d.target_id, d.pct,
+            SELECT d.kind, d.target_key, d.pct,
                    COALESCE(m.name_ko, i.name_ko, a.name_ko, n.name_ko, p.name_ko) AS name_ko
             FROM usage_detail d
             JOIN usage_stat u ON u.id = d.usage_stat_id
-            LEFT JOIN move m    ON d.kind='move'     AND m.ruleset_id=u.ruleset_id AND m.id=d.target_id
-            LEFT JOIN item i    ON d.kind='item'     AND i.ruleset_id=u.ruleset_id AND i.id=d.target_id
-            LEFT JOIN ability a ON d.kind='ability'  AND a.ruleset_id=u.ruleset_id AND a.id=d.target_id
-            LEFT JOIN nature n  ON d.kind='nature'   AND n.id=d.target_id
-            LEFT JOIN pokemon p ON d.kind='teammate' AND p.ruleset_id=u.ruleset_id AND p.id=d.target_id
+            LEFT JOIN move m    ON d.kind='move'     AND m.ruleset_id=u.ruleset_id AND m.showdown_id=d.target_key
+            LEFT JOIN item i    ON d.kind='item'     AND i.ruleset_id=u.ruleset_id AND i.showdown_id=d.target_key
+            LEFT JOIN ability a ON d.kind='ability'  AND a.ruleset_id=u.ruleset_id AND a.showdown_id=d.target_key
+            LEFT JOIN nature n  ON d.kind='nature'   AND n.id=d.target_key
+            LEFT JOIN pokemon p ON d.kind='teammate' AND p.ruleset_id=u.ruleset_id AND p.showdown_id=d.target_key
             WHERE d.usage_stat_id=? ORDER BY d.pct DESC""", (stat_id,))
 
         kinds = [("move", "기술"), ("item", "도구"), ("ability", "특성"), ("nature", "성격"),
@@ -156,11 +157,11 @@ elif page == "사용률":
                 continue
             with cols[shown % 2]:
                 st.markdown(f"**{label}**")
-                view = pd.DataFrame({"이름": part["name_ko"].fillna(part["target_id"]), "%": part["pct"]})
+                view = pd.DataFrame({"이름": part["name_ko"].fillna(part["target_key"]), "%": part["pct"]})
                 config, height = {}, None
                 if kind in ("item", "teammate"):
                     folder = "items" if kind == "item" else "pokemon"
-                    view.insert(0, " ", part["target_id"].map(lambda k: icon(folder, k)).values)
+                    view.insert(0, " ", part["target_key"].map(lambda k: icon(folder, k)).values)
                     config, height = {" ": img_col()}, (32 if kind == "teammate" else None)
                 st.dataframe(view, hide_index=True, use_container_width=True, column_config=config,
                              row_height=height)
@@ -173,25 +174,25 @@ elif page == "사용률":
 elif page == "파티":
     sources = q("SELECT DISTINCT source FROM team ORDER BY source")["source"].tolist()
     source = st.sidebar.selectbox("출처", sources)
-    formats = q("SELECT DISTINCT format_id FROM team WHERE source=? ORDER BY 1", (source,))["format_id"].tolist()
+    formats = q("SELECT DISTINCT format_key FROM team WHERE source=? ORDER BY 1", (source,))["format_key"].tolist()
     fmt = st.sidebar.selectbox("포맷", formats)
 
     teams = q("""SELECT t.id, t.name AS 이름, t.player AS 플레이어, t.rating AS 레이팅, t.result AS 결과,
                         t.played_on AS 날짜,
-                        GROUP_CONCAT(COALESCE(p.name_ko, m.pokemon_id), ', ') AS 멤버
+                        GROUP_CONCAT(COALESCE(p.name_ko, m.pokemon_key), ', ') AS 멤버
                  FROM team t
                  JOIN team_member m ON m.team_id = t.id
-                 LEFT JOIN pokemon p ON p.ruleset_id = t.ruleset_id AND p.id = m.pokemon_id
-                 WHERE t.source=? AND t.format_id=?
+                 LEFT JOIN pokemon p ON p.ruleset_id = t.ruleset_id AND p.showdown_id = m.pokemon_key
+                 WHERE t.source=? AND t.format_key=?
                  GROUP BY t.id ORDER BY t.id""", (source, fmt))
     keyword = st.text_input("멤버 검색 (예: 한카리아스)")
     if keyword:
         teams = teams[teams["멤버"].str.contains(keyword, regex=False)]
 
     # 멤버 6마리를 이미지 컬럼 1~6으로
-    slots = q("""SELECT m.team_id, m.slot, m.pokemon_id FROM team_member m JOIN team t ON t.id = m.team_id
-                 WHERE t.source=? AND t.format_id=?""", (source, fmt))
-    grid = slots.pivot(index="team_id", columns="slot", values="pokemon_id")
+    slots = q("""SELECT m.team_id, m.slot, m.pokemon_key FROM team_member m JOIN team t ON t.id = m.team_id
+                 WHERE t.source=? AND t.format_key=?""", (source, fmt))
+    grid = slots.pivot(index="team_id", columns="slot", values="pokemon_key")
     teams = teams.reset_index(drop=True)
     for n in range(1, 7):
         col = grid[n] if n in grid.columns else pd.Series(dtype=object)
@@ -205,23 +206,23 @@ elif page == "파티":
     if rows:
         team_id = int(teams.iloc[rows[0]]["id"])
         members = q("""
-            SELECT m.slot AS 슬롯, m.pokemon_id AS _pid, COALESCE(p.name_ko, m.pokemon_id) AS 포켓몬,
-                   m.item_id AS _iid, COALESCE(i.name_ko, m.item_id) AS 도구, COALESCE(a.name_ko, m.ability_id) AS 특성,
-                   COALESCE(n.name_ko, m.nature_id) AS 성격,
+            SELECT m.slot AS 슬롯, m.pokemon_key AS _pid, COALESCE(p.name_ko, m.pokemon_key) AS 포켓몬,
+                   m.item_key AS _iid, COALESCE(i.name_ko, m.item_key) AS 도구, COALESCE(a.name_ko, m.ability_key) AS 특성,
+                   COALESCE(n.name_ko, m.nature_key) AS 성격,
                    m.sp_hp||'/'||m.sp_atk||'/'||m.sp_def||'/'||m.sp_spa||'/'||m.sp_spd||'/'||m.sp_spe AS SP,
                    COALESCE(m1.name_ko, m.move1) AS 기술1, COALESCE(m2.name_ko, m.move2) AS 기술2,
                    COALESCE(m3.name_ko, m.move3) AS 기술3, COALESCE(m4.name_ko, m.move4) AS 기술4,
                    m.is_gimmick_user AS 메가, m.brought AS 출전, m.lead AS 선봉
             FROM team_member m
             JOIN team t ON t.id = m.team_id
-            LEFT JOIN pokemon p ON p.ruleset_id=t.ruleset_id AND p.id=m.pokemon_id
-            LEFT JOIN item i    ON i.ruleset_id=t.ruleset_id AND i.id=m.item_id
-            LEFT JOIN ability a ON a.ruleset_id=t.ruleset_id AND a.id=m.ability_id
-            LEFT JOIN nature n  ON n.id=m.nature_id
-            LEFT JOIN move m1   ON m1.ruleset_id=t.ruleset_id AND m1.id=m.move1
-            LEFT JOIN move m2   ON m2.ruleset_id=t.ruleset_id AND m2.id=m.move2
-            LEFT JOIN move m3   ON m3.ruleset_id=t.ruleset_id AND m3.id=m.move3
-            LEFT JOIN move m4   ON m4.ruleset_id=t.ruleset_id AND m4.id=m.move4
+            LEFT JOIN pokemon p ON p.ruleset_id=t.ruleset_id AND p.showdown_id=m.pokemon_key
+            LEFT JOIN item i    ON i.ruleset_id=t.ruleset_id AND i.showdown_id=m.item_key
+            LEFT JOIN ability a ON a.ruleset_id=t.ruleset_id AND a.showdown_id=m.ability_key
+            LEFT JOIN nature n  ON n.id=m.nature_key
+            LEFT JOIN move m1   ON m1.ruleset_id=t.ruleset_id AND m1.showdown_id=m.move1
+            LEFT JOIN move m2   ON m2.ruleset_id=t.ruleset_id AND m2.showdown_id=m.move2
+            LEFT JOIN move m3   ON m3.ruleset_id=t.ruleset_id AND m3.showdown_id=m.move3
+            LEFT JOIN move m4   ON m4.ruleset_id=t.ruleset_id AND m4.showdown_id=m.move4
             WHERE m.team_id=? ORDER BY m.slot""", (team_id,))
         members.insert(1, "이미지", members["_pid"].map(lambda k: icon("pokemon", k)))
         members.insert(members.columns.get_loc("도구"), "아이콘", members["_iid"].map(lambda k: icon("items", k)))
