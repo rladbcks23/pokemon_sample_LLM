@@ -26,3 +26,6 @@ Thumbs.db
 
 # 이미지 에셋 (scripts/download_assets.py로 재다운로드, 저작권 문제로 제외)
 assets/
+
+# Django 기본 DB 파일
+db.sqlite3
