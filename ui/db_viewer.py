@@ -60,6 +60,12 @@ def icon(kind: str, key) -> str | None:
     return icons(kind).get(key) if isinstance(key, str) else None
 
 
+def icon_file(kind: str, key) -> str | None:
+    """st.image용 로컬 파일 경로. st.image는 "/"로 시작하는 문자열을 URL이 아닌 파일 경로로 읽음."""
+    path = ASSETS / kind / f"{key}.png"
+    return str(path) if isinstance(key, str) and path.exists() else None
+
+
 def img_col(label: str = "", width: str = "small"):
     return st.column_config.ImageColumn(label, width=width)
 
@@ -144,15 +150,15 @@ elif page == "사용률":
         info = q("SELECT type1, type2, hp, atk, def, spa, spd, spe FROM pokemon WHERE ruleset_id=? AND showdown_id=?",
                  (g.ruleset_id, pid))
         head = st.columns([1, 5])
-        if icon("pokemon", pid):
-            head[0].image(icon("pokemon", pid), width=96)
+        if icon_file("pokemon", pid):
+            head[0].image(icon_file("pokemon", pid), width=96)
         with head[1]:
             st.markdown(f"### {names[idx]}")
             if not info.empty:
                 r = info.iloc[0]
-                types = [t for t in (r.type1, r.type2) if t and icon("types", t)]
+                types = [t for t in (r.type1, r.type2) if t and icon_file("types", t)]
                 if types:
-                    st.image([icon("types", t) for t in types], width=90)
+                    st.image([icon_file("types", t) for t in types], width=90)
                 st.caption(f"H{r.hp} / A{r['atk']} / B{r['def']} / C{r.spa} / D{r.spd} / S{r.spe}")
         detail = q("""
             SELECT d.kind, d.target_key, d.pct,
