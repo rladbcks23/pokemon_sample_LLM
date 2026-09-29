@@ -1,5 +1,4 @@
 django>=5.2,<6.0
-sqlalchemy>=2.0
 streamlit>=1.40
 pandas>=2.0
 pillow>=10.0
