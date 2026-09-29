@@ -16,7 +16,7 @@ from django.db import transaction
 from apps.dex.ids import to_id
 from apps.dex.models import Ability, Item, Learnset, Move, Nature, Pokemon, PokemonAbility, Ruleset, TypeChart
 
-DATA = Path(settings.BASE_DIR) / 'data'
+DATA = Path(settings.DATA_DIR)
 
 RULESETS = [
     # id, 이름, Showdown mod, CSV 폴더, 시작일, 종료일

@@ -23,7 +23,7 @@ from apps.meta.models import (SP_MAX_PER_STAT, SP_MAX_TOTAL, SP_STATS, PokemonSe
                               UsageStat)
 from apps.meta.replay import match_species, parse_replay
 
-RAW = Path(settings.BASE_DIR) / 'data' / 'raw'
+RAW = Path(settings.DATA_DIR) / 'raw'
 
 SMOGON_FORMATS = {  # Showdown 포맷 → (ruleset, format_key, source)
     'gen9championsvgc2026regmb': ('champions_mb', 'champions_mb_doubles', 'smogon'),

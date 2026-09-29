@@ -14,7 +14,10 @@ import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent          # back/
+PROJECT_ROOT = BASE_DIR.parent                              # 저장소 루트 (back, front, llm 공용)
+DATA_DIR = PROJECT_ROOT / 'data'                            # CSV, 수집 원본, DB 파일
+ASSETS_DIR = PROJECT_ROOT / 'assets'                        # 아이콘 (scripts/download_assets.py)
 
 
 # Quick-start development settings - unsuitable for production
@@ -84,7 +87,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         # scripts와 같은 DB 파일 사용. 이후 PostgreSQL로 교체 예정
-        'NAME': BASE_DIR / 'data' / 'pokemon.db',
+        'NAME': DATA_DIR / 'pokemon.db',
     }
 }
 

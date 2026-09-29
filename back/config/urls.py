@@ -26,4 +26,4 @@ urlpatterns = [
 
 if settings.DEBUG:
     # 개발 서버에서 아이콘 제공: /assets/pokemon/garchomp.png (scripts/download_assets.py로 받은 파일)
-    urlpatterns += [path('assets/<path:path>', serve, {'document_root': settings.BASE_DIR / 'assets'})]
+    urlpatterns += [path('assets/<path:path>', serve, {'document_root': settings.ASSETS_DIR})]
