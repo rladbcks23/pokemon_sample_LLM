@@ -1,6 +1,6 @@
 """DB 확인용 임시 페이지 (읽기 전용).
 
-실행: streamlit run ui/db_viewer.py
+실행 (back/ 에서): streamlit run ui/db_viewer.py
 """
 import os
 import sqlite3
@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]  # 저장소 루트
 DB_PATH = ROOT / "data" / "pokemon.db"
 ASSETS = ROOT / "assets"  # scripts/download_assets.py로 받음
 # Streamlit 정적 파일은 페이지 파일 옆 static/ 만 제공 → ui/static 을 assets/ 로 연결
