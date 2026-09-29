@@ -58,7 +58,7 @@ class Pokemon(RulesetEntity):
     type2 = models.CharField(max_length=16, blank=True)
     hp = models.IntegerField()
     atk = models.IntegerField()
-    def_ = models.IntegerField(db_column='def')
+    defense = models.IntegerField(db_column='def')   # def는 파이썬 예약어라 필드명만 변경
     spa = models.IntegerField()
     spd = models.IntegerField()
     spe = models.IntegerField()
