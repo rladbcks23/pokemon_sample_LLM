@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# DB (scripts/load_db.py로 재생성)
+data/pokemon.db
+*.db-journal
+
+# 수집 원본 (scripts/collect_samples.py로 재수집, 54MB)
+data/raw/
+
+# Node
+node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
