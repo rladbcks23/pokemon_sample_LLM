@@ -2,6 +2,8 @@
 # DB 확인 페이지를 http://localhost:8501/check 에서 열기
 baseUrlPath = "check"
 headless = true
+# ui/static/ 파일을 /check/app/static/ 으로 제공 (아이콘)
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

@@ -2,8 +2,9 @@
 
 실행: streamlit run ui/db_viewer.py
 """
-import base64
+import os
 import sqlite3
+import subprocess
 from pathlib import Path
 
 import pandas as pd
@@ -12,6 +13,8 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "pokemon.db"
 ASSETS = ROOT / "assets"  # scripts/download_assets.py로 받음
+# Streamlit 정적 파일은 페이지 파일 옆 static/ 만 제공 → ui/static 을 assets/ 로 연결
+STATIC = Path(__file__).resolve().parent / "static"
 
 st.set_page_config(page_title="Pokémon DB Viewer", layout="wide")
 
@@ -27,14 +30,30 @@ def q(sql: str, params: tuple = ()) -> pd.DataFrame:
     return pd.read_sql_query(sql, conn(), params=params)
 
 
+def link_static() -> None:
+    """ui/static → assets/ 링크 생성 (없을 때만). Windows는 관리자 권한이 필요 없는 디렉터리 정션 사용."""
+    if STATIC.exists() or not ASSETS.exists():
+        return
+    try:
+        os.symlink(ASSETS, STATIC, target_is_directory=True)
+    except OSError:
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(STATIC), str(ASSETS)], check=True, capture_output=True)
+
+
 @st.cache_resource
 def icons(kind: str) -> dict[str, str]:
-    """assets/{kind}/*.png → {파일명(DB ID): data URI}. 폴더가 없으면 빈 dict (아이콘 없이 표시)."""
-    folder = ASSETS / kind
+    """assets/{kind}/*.png → {파일명(DB ID): 정적 파일 URL}. 폴더가 없으면 빈 dict (아이콘 없이 표시).
+
+    이미지를 base64로 표에 넣으면 파티 목록 하나에 70MB가 넘어서, URL만 넘기고 브라우저가 받아서 캐시하게 함.
+    """
+    link_static()
+    folder = STATIC / kind
     if not folder.exists():
         return {}
-    return {f.stem: "data:image/png;base64," + base64.b64encode(f.read_bytes()).decode()
-            for f in folder.glob("*.png")}
+    base = st.get_option("server.baseUrlPath").strip("/")
+    prefix = f"/{base}/app/static/{kind}" if base else f"/app/static/{kind}"
+    return {f.stem: f"{prefix}/{f.name}" for f in folder.glob("*.png")}
 
 
 def icon(kind: str, key) -> str | None:
