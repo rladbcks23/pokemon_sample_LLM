@@ -1,0 +1,2 @@
+# scripts/download_assets.py 타입 배지 생성
+pillow>=10.0
