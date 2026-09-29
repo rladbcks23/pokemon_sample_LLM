@@ -132,7 +132,7 @@ elif page == "사용률":
                 r = info.iloc[0]
                 types = [t for t in (r.type1, r.type2) if t and icon("types", t)]
                 if types:
-                    st.image([icon("types", t) for t in types], width=48)
+                    st.image([icon("types", t) for t in types], width=90)
                 st.caption(f"H{r.hp} / A{r['atk']} / B{r['def']} / C{r.spa} / D{r.spd} / S{r.spe}")
         detail = q("""
             SELECT d.kind, d.target_id, d.pct,

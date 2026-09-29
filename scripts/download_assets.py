@@ -8,12 +8,14 @@
          여기 없는 폼은 play.pokemonshowdown.com/sprites/home-centered (192x192)
 - 도구:   play.pokemonshowdown.com/sprites/itemicons (24x24)
          없으면 smogon/sprites src/minisprites/items (16x16, 신규 메가스톤 등)
-- 타입:   play.pokemonshowdown.com/sprites/types (32x14)
+- 타입:   나무위키 스타일 배지를 직접 생성 (배경색 + 흰색 심볼 + 한글 이름, 120x40)
+         심볼은 PokeAPI 스칼렛바이올렛 타입 배지에서 잘라내고, 색은 나무위키 타입 표 기준
 
 이미 받은 파일은 건너뛴다. 이미지 저작권은 원작자에게 있으므로 assets/는 git에 올리지 않는다.
 """
 import argparse
 import csv
+import io
 import json
 import re
 import time
@@ -29,8 +31,18 @@ DELAY = 0.2
 SPRITES_API = "https://api.github.com/repos/smogon/sprites/contents/src/{}"
 SPRITES_RAW = "https://raw.githubusercontent.com/smogon/sprites/master/src/{}/{}"
 SHOWDOWN = "https://play.pokemonshowdown.com/sprites"
-TYPES = ["Normal", "Fire", "Water", "Electric", "Grass", "Ice", "Fighting", "Poison", "Ground",
-         "Flying", "Psychic", "Bug", "Rock", "Ghost", "Dragon", "Dark", "Steel", "Fairy"]
+# 타입: (PokeAPI 타입 번호, 한글, 나무위키 배경색)
+TYPES = {
+    "Normal": (1, "노말", "#949495"), "Fire": (10, "불꽃", "#CC734A"), "Water": (11, "물", "#6785C0"),
+    "Grass": (12, "풀", "#7AA653"), "Electric": (13, "전기", "#E9BB46"), "Ice": (15, "얼음", "#91C6E7"),
+    "Fighting": (2, "격투", "#CE9E48"), "Poison": (4, "독", "#6D5493"), "Ground": (5, "땅", "#92784B"),
+    "Flying": (3, "비행", "#AEC2E3"), "Psychic": (14, "에스퍼", "#C6727C"), "Bug": (7, "벌레", "#9EA153"),
+    "Rock": (6, "바위", "#BCB88E"), "Ghost": (8, "고스트", "#624A6D"), "Dragon": (16, "드래곤", "#5A5DA3"),
+    "Dark": (17, "악", "#4B4948"), "Steel": (9, "강철", "#81A8C4"), "Fairy": (18, "페어리", "#D1B6D2"),
+}
+SV_TYPE_BADGE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-ix/scarlet-violet/{}.png"
+KO_FONTS = ["C:/Windows/Fonts/malgunbd.ttf", "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+            "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"]
 
 
 def to_id(s: str) -> str:
@@ -117,17 +129,60 @@ def download_items(rows: list[dict]) -> None:
     print(f"[items] {ok}/{len(rows)}  작은 아이콘(16x16)으로 받음: {len(from_mini)}개  없음: {missing}")
 
 
-def download_types() -> None:
+def type_symbol(badge_png: bytes, size: int):
+    """스칼렛바이올렛 배지(200x40, 왼쪽에 흰 심볼)에서 심볼만 흰색+투명 배경으로 추출."""
+    from PIL import Image
+
+    im = Image.open(io.BytesIO(badge_png)).convert("RGBA")
+    left = im.crop((0, 0, im.height + 8, im.height))
+    bg = min(im.getpixel((left.width + 4, 3))[:3])  # 심볼 옆 배경의 가장 어두운 채널
+    alpha = Image.new("L", left.size)
+    for x in range(left.width):
+        for y in range(left.height):
+            r, g, b, a = left.getpixel((x, y))
+            # 흰색에 가까울수록 불투명 (배경색과의 거리로 안티앨리어싱 유지)
+            v = max(0, min(255, int((min(r, g, b) - bg) * 255 / max(1, 255 - bg)))) if a else 0
+            alpha.putpixel((x, y), v)
+    glyph = Image.new("RGBA", left.size, (255, 255, 255, 0))
+    glyph.putalpha(alpha)
+    box = glyph.getbbox() or (0, 0, *glyph.size)
+    glyph = glyph.crop(box)
+    glyph.thumbnail((size, size), Image.LANCZOS)
+    return glyph
+
+
+def build_types(force: bool = False) -> None:
+    """나무위키 스타일 타입 배지 생성: 배경색 + 흰색 심볼 + 한글 이름."""
+    from PIL import Image, ImageDraw, ImageFont
+
     out = ASSETS / "types"
+    font_path = next((f for f in KO_FONTS if Path(f).exists()), None)
+    if not font_path:
+        print("[types] 한글 폰트를 찾지 못해 기본 폰트 사용 (글자가 깨질 수 있음)")
+    W, H = 120, 40
+    font = ImageFont.truetype(font_path, 21) if font_path else ImageFont.load_default()
     ok = 0
-    for t in TYPES:
-        path = out / f"{t}.png"
-        if not path.exists():
-            data = get(f"{SHOWDOWN}/types/{t}.png")
-            if not data:
-                print(f"[types] 없음: {t}")
-                continue
-            save(path, data)
+    for name, (num, ko, color) in TYPES.items():
+        path = out / f"{name}.png"
+        if path.exists() and not force:
+            ok += 1
+            continue
+        badge = get(SV_TYPE_BADGE.format(num))
+        if not badge:
+            print(f"[types] 심볼 없음: {name}")
+            continue
+        img = Image.new("RGBA", (W, H), color)
+        glyph = type_symbol(badge, 28)
+        img.alpha_composite(glyph, (8 + (28 - glyph.width) // 2, (H - glyph.height) // 2))
+        draw = ImageDraw.Draw(img)
+        # 글자는 심볼 오른쪽 영역 가운데
+        l, t, r, b = draw.textbbox((0, 0), ko, font=font)
+        x = 42 + (W - 42 - 6 - (r - l)) // 2 - l
+        y = (H - (b - t)) // 2 - t
+        draw.text((x + 1, y + 1), ko, font=font, fill=(0, 0, 0, 70))  # 살짝 그림자
+        draw.text((x, y), ko, font=font, fill="white")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(path)
         ok += 1
     print(f"[types] {ok}/{len(TYPES)}")
 
@@ -135,11 +190,12 @@ def download_types() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ruleset", default="champions_mc", help="data/ 아래 CSV 폴더")
+    ap.add_argument("--rebuild-types", action="store_true", help="타입 배지를 다시 생성")
     args = ap.parse_args()
     data = ROOT / "data" / args.ruleset
     download_pokemon(read_csv(data / "pokemon.csv"))
     download_items(read_csv(data / "items.csv"))
-    download_types()
+    build_types(force=args.rebuild_types)
 
 
 if __name__ == "__main__":
