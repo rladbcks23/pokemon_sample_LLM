@@ -89,7 +89,7 @@ if page == "테이블":
         config = {"아이콘": img_col()}
 
     st.caption(f"{table}: {len(df):,}행")
-    st.dataframe(df, use_container_width=True, hide_index=True, height=650, column_config=config,
+    st.dataframe(df, width="stretch", hide_index=True, height=650, column_config=config,
                  row_height=40 if table == "pokemon" else None)
 
 
@@ -115,7 +115,7 @@ elif page == "사용률":
         view.insert(1, "이미지", ranking["pokemon_key"].map(lambda k: icon("pokemon", k)))
         if view["사용률%"].isna().all():  # OP.GG는 순위만 있음
             view = view.drop(columns=["사용률%"])
-        st.dataframe(view, hide_index=True, height=700, use_container_width=True,
+        st.dataframe(view, hide_index=True, height=700, width="stretch",
                      column_config={"이미지": img_col()}, row_height=40)
     with right:
         names = ranking["포켓몬"].fillna(ranking["pokemon_key"]).tolist()
@@ -163,7 +163,7 @@ elif page == "사용률":
                     folder = "items" if kind == "item" else "pokemon"
                     view.insert(0, " ", part["target_key"].map(lambda k: icon(folder, k)).values)
                     config, height = {" ": img_col()}, (32 if kind == "teammate" else None)
-                st.dataframe(view, hide_index=True, use_container_width=True, column_config=config,
+                st.dataframe(view, hide_index=True, width="stretch", column_config=config,
                              row_height=height)
             shown += 1
 
@@ -199,7 +199,7 @@ elif page == "파티":
         teams.insert(n, str(n), teams["id"].map(col).map(lambda k: icon("pokemon", k)))
     team_config = {str(n): img_col() for n in range(1, 7)}
     st.caption(f"{len(teams):,}개 파티 — 행을 클릭하면 아래에 상세가 나옵니다")
-    sel = st.dataframe(teams, hide_index=True, use_container_width=True, height=400, row_height=40,
+    sel = st.dataframe(teams, hide_index=True, width="stretch", height=400, row_height=40,
                        column_config=team_config, on_select="rerun", selection_mode="single-row")
 
     rows = sel.selection.rows
@@ -228,7 +228,7 @@ elif page == "파티":
         members.insert(members.columns.get_loc("도구"), "아이콘", members["_iid"].map(lambda k: icon("items", k)))
         members = members.drop(columns=["_pid", "_iid"])
         st.subheader(f"파티 #{team_id}")
-        st.dataframe(members, hide_index=True, use_container_width=True, row_height=56,
+        st.dataframe(members, hide_index=True, width="stretch", row_height=56,
                      column_config={"이미지": img_col(), "아이콘": img_col()})
 
 
@@ -244,6 +244,6 @@ LIMIT 20"""
     sql = st.text_area("SQL (읽기 전용)", default, height=180)
     if st.button("실행", type="primary"):
         try:
-            st.dataframe(pd.read_sql_query(sql, conn()), hide_index=True, use_container_width=True)
+            st.dataframe(pd.read_sql_query(sql, conn()), hide_index=True, width="stretch")
         except Exception as e:  # 잘못된 쿼리는 에러 메시지만 표시
             st.error(str(e))
