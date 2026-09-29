@@ -23,3 +23,6 @@ Thumbs.db
 
 # Claude Code 로컬 설정
 .claude/
+
+# 이미지 에셋 (scripts/download_assets.py로 재다운로드, 저작권 문제로 제외)
+assets/
