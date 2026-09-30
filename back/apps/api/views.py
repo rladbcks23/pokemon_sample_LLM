@@ -6,8 +6,9 @@ from rest_framework.response import Response
 
 from apps.api.common import FORMATS, format_key, get_format, get_ruleset, label, names, pokemon_brief
 from apps.dex.ids import to_id
-from apps.dex.models import Move, Pokemon
-from apps.dex.typechart import TYPES, defense_profile, matchups
+from apps.dex.models import Item, Move, Nature, Pokemon
+from apps.dex.stats import SP_MAX_TOTAL, STATS, calc_stats, sp_problems
+from apps.dex.typechart import TYPE_KO, TYPES, chart, defense_profile, matchups
 from apps.meta.models import SP_STATS, Team, TeamMember, UsageStat
 
 
@@ -216,3 +217,86 @@ def team_detail(request, pk: int):
     ms = list(t.members.all())
     members = [member_detail(t, m) for m in ms]
     return Response({**team_summary(t, ms), 'members': members, 'weakness': weakness_table(members)})
+
+
+@api_view(['GET'])
+def options(request):
+    """샘플 제작·파티 빌딩용 선택지: 도구, 성격, 타입(한글), 타입 상성표. GET /api/options/"""
+    rs = get_ruleset(request)
+    n = names(rs.id)
+    return Response({
+        'ruleset': rs.id,
+        'items': [{'id': i['showdown_id'], 'name': i['name'], 'name_ko': i['name_ko'] or i['name'],
+                   'mega_from': i['mega_from'] or None, 'mega_to': i['mega_to'] or None}
+                  for i in sorted(n['item'].values(), key=lambda x: x['name_ko'] or x['name'])],
+        'natures': [{'id': x['id'], 'name': x['name'], 'name_ko': x['name_ko'],
+                     'plus': x['plus_stat'] or None, 'minus': x['minus_stat'] or None}
+                    for x in n['nature'].values()],
+        'types': [{'id': t, 'name_ko': TYPE_KO[t]} for t in TYPES],
+        'typechart': {a: {d: m for (a2, d), m in chart().items() if a2 == a} for a in TYPES},
+    })
+
+
+@api_view(['POST'])
+def validate_set(request):
+    """샘플(육성형) 적합성 검사 + 실수치. POST /api/validate/
+
+    body: {"pokemon": "garchomp", "item": "lifeorb", "ability": "roughskin", "nature": "jolly",
+           "sp": {"hp": 2, "atk": 32, "spe": 32}, "moves": ["earthquake", "dragonclaw"]}
+    """
+    rs = get_ruleset(request)
+    body = request.data
+    checks = []
+
+    def add(level, msg):
+        checks.append({'level': level, 'message': msg})
+
+    p = Pokemon.objects.filter(ruleset=rs, showdown_id=body.get('pokemon', '')).first()
+    if not p:
+        return Response({'valid': False, 'checks': [{'level': 'error', 'message': '포켓몬을 선택하세요'}],
+                         'stats': None})
+    base_p = Pokemon.objects.get(ruleset=rs, showdown_id=to_id(p.base_species)) if p.is_mega else p
+
+    abilities = {pa.ability.showdown_id: pa.ability for pa in base_p.ability_slots.select_related('ability')}
+    ability = body.get('ability') or ''
+    if not ability:
+        add('warn', '특성이 비어 있음')
+    elif ability not in abilities:
+        add('error', f'{base_p.name_ko}은(는) 이 특성을 가질 수 없음')
+
+    item_key = body.get('item') or ''
+    item = Item.objects.filter(ruleset=rs, showdown_id=item_key).first() if item_key else None
+    if item_key and not item:
+        add('error', '이 레귤레이션에서 쓸 수 없는 도구')
+    elif item and item.mega_from and to_id(item.mega_from) != base_p.showdown_id:
+        add('error', f'{item.name_ko}은(는) {base_p.name_ko}의 메가스톤이 아님')
+    if not ability or ability in abilities:
+        if not checks or all(c['level'] != 'error' for c in checks):
+            add('ok', '특성 · 도구 조합 합법')
+
+    nature = Nature.objects.filter(id=body.get('nature') or '').first()
+    if not nature:
+        add('warn', '성격이 비어 있음 (무보정으로 계산)')
+
+    sp = {s: int((body.get('sp') or {}).get(s, 0) or 0) for s in STATS}
+    problems = sp_problems(sp)
+    for msg in problems:
+        add('error', msg)
+    left = SP_MAX_TOTAL - sum(sp.values())
+    if not problems:
+        add('ok', f'SP {SP_MAX_TOTAL} 모두 배분됨') if left == 0 else add('warn', f'SP {left}포인트 남음')
+
+    moves = [m for m in (body.get('moves') or []) if m]
+    learnable = set(Move.objects.filter(learners__pokemon=base_p).values_list('showdown_id', flat=True))
+    bad = [m for m in moves if m not in learnable]
+    if bad:
+        add('error', f'배울 수 없는 기술: {", ".join(label(rs.id, "move", m)["name_ko"] for m in bad)}')
+    if len(set(moves)) != len(moves):
+        add('error', '같은 기술이 중복됨')
+    if len(moves) < 4:
+        add('error', f'기술 칸 {4 - len(moves)}개가 비어 있음')
+    elif not bad and len(set(moves)) == 4:
+        add('ok', '기술 4개 모두 배울 수 있음')
+
+    stats = calc_stats(stats_of(p), sp, nature and nature.plus_stat or None, nature and nature.minus_stat or None)
+    return Response({'valid': all(c['level'] != 'error' for c in checks), 'checks': checks, 'stats': stats})

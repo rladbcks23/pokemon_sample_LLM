@@ -8,4 +8,6 @@ urlpatterns = [
     path('pokemon/<str:sid>/', views.pokemon_detail),
     path('teams/', views.team_list),
     path('teams/<int:pk>/', views.team_detail),
+    path('options/', views.options),
+    path('validate/', views.validate_set),
 ]
