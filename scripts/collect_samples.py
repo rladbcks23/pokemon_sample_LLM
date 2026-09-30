@@ -7,6 +7,7 @@
     python scripts/collect_samples.py smogon --month 2026-08
     python scripts/collect_samples.py replays --count 200
     python scripts/collect_samples.py opgg --pages 10
+    python scripts/collect_samples.py opgg-history
 """
 import argparse
 import json
@@ -160,10 +161,11 @@ def find_action_id(page_path: str, action_name: str) -> str:
     raise RuntimeError(f"서버 액션 {action_name}을 찾지 못함 (사이트 구조 변경?)")
 
 
-def call_action(page_path: str, action_id: str, arg: dict):
+def call_action(page_path: str, action_id: str, args: list):
+    """서버 액션 호출. args는 액션 함수의 인자 목록."""
     time.sleep(DELAY)
     req = urllib.request.Request(
-        f"{OPGG}/{page_path}", method="POST", data=json.dumps([arg]).encode(),
+        f"{OPGG}/{page_path}", method="POST", data=json.dumps(args).encode(),
         headers={"User-Agent": UA, "Next-Action": action_id, "Accept": "text/x-component",
                  "Content-Type": "text/plain;charset=UTF-8"})
     with urllib.request.urlopen(req, timeout=60) as res:
@@ -194,8 +196,8 @@ def collect_opgg_ranked(limit: int | None) -> None:
                 ok += 1
                 continue
             try:
-                data = call_action(f"pokedex/{key}", action_id, {
-                    "format": fmt, "pokemonKey": key, "fallbackPokemonKey": "$undefined", "locale": "en"})
+                data = call_action(f"pokedex/{key}", action_id, [{
+                    "format": fmt, "pokemonKey": key, "fallbackPokemonKey": "$undefined", "locale": "en"}])
             except urllib.error.HTTPError as e:
                 print(f"[opgg] ranked {fmt} {key}: HTTP {e.code}")
                 continue
@@ -208,9 +210,33 @@ def collect_opgg_ranked(limit: int | None) -> None:
         print(f"[opgg] ranked {fmt}: {ok}마리 저장")
 
 
+HISTORY_ACTION = "getRankingHistory"
+
+
+def collect_opgg_history() -> None:
+    """지난 시즌 순위 이력 (포켓몬별 m-1 ~ 직전 시즌). 순위 변동(▲▼) 계산용. 더블은 티어 페이지에 변동 값이 없음."""
+    seasons = json.loads((RAW / "opgg" / "tier.json").read_text(encoding="utf-8"))
+    season = seasons[0]
+    keys = list(dict.fromkeys(r["key"] for f in season["formats"] for r in f["rankings"]))
+    action_id = find_action_id(f"pokedex/{keys[0]}", HISTORY_ACTION)
+    for fmt in ("single", "double"):
+        path = RAW / "opgg" / "history" / season["id"] / f"{fmt}.json"
+        history = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        for n, key in enumerate(k for k in keys if k not in history):
+            try:
+                history[key] = call_action(f"pokedex/{key}", action_id, [fmt, [key]]) or []
+            except urllib.error.HTTPError as e:
+                print(f"[opgg] history {fmt} {key}: HTTP {e.code}")
+            if n % 50 == 49:
+                save_json(path, history)   # 중간 저장 (끊겨도 이어받기)
+                print(f"[opgg] history {fmt}: {len(history)}/{len(keys)}")
+        save_json(path, history)
+        print(f"[opgg] history {fmt}: {len(history)}마리 저장")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("source", choices=["smogon", "replays", "opgg", "opgg-ranked", "all"])
+    ap.add_argument("source", choices=["smogon", "replays", "opgg", "opgg-ranked", "opgg-history", "all"])
     ap.add_argument("--limit", type=int, default=None, help="opgg-ranked: 포켓몬 수 제한 (테스트용)")
     ap.add_argument("--month", default="2026-08", help="Smogon 통계 월 (YYYY-MM)")
     ap.add_argument("--count", type=int, default=200, help="포맷별 리플레이 수")
@@ -225,6 +251,8 @@ def main() -> None:
         collect_opgg(args.pages)
     if args.source in ("opgg-ranked", "all"):
         collect_opgg_ranked(args.limit)
+    if args.source in ("opgg-history", "all"):
+        collect_opgg_history()
 
 
 if __name__ == "__main__":
