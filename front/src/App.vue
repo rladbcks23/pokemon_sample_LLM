@@ -1,11 +1,17 @@
-<script setup></script>
+<script setup>
+import AppHeader from '@/components/AppHeader.vue'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div class="app">
+    <AppHeader />
+    <main>
+      <RouterView />
+    </main>
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* 디자인 기준 데스크톱 1280px */
+.app { max-width: 1280px; margin: 0 auto; min-height: 100vh; background: #fff; }
+</style>
