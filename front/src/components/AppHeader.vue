@@ -35,7 +35,8 @@ const active = computed(() => (route.name === 'sample' && route.query.slot != nu
 </template>
 
 <style scoped>
-.hd { display: flex; align-items: center; gap: 40px; height: 64px; padding: 0 32px; border-bottom: 1px solid var(--c-line); background: #fff; }
+/* 스크롤해도 상단에 고정 (파티 빌딩의 채팅 패널이 이 아래에 붙음) */
+.hd { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 40px; height: 64px; padding: 0 32px; border-bottom: 1px solid var(--c-line); background: #fff; }
 .logo { display: flex; align-items: center; gap: 10px; }
 .logo:hover { text-decoration: none; }
 .mark { width: 26px; height: 26px; border: 1.5px solid var(--c-text); border-radius: 50%; }
