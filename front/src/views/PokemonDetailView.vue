@@ -94,10 +94,6 @@ function toSample() {
   if (form.value.is_mega) q.item = toId(form.value.required_item)
   router.push({ path: '/sample', query: q })
 }
-const updated = computed(() => {
-  const [, m, day] = String(new Date().toISOString().slice(0, 10)).split('-')
-  return `${m}/${day}`
-})
 </script>
 
 <template>
