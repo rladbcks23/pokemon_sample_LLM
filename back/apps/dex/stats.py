@@ -5,6 +5,7 @@ Showdown champions mod의 statModify와 같은 공식:
 - 그 외   = floor((종족값 + SP + 20) × 성격 보정)   (보정: 상승 1.1 / 하락 0.9, 소수점 버림)
 """
 STATS = ('hp', 'atk', 'def', 'spa', 'spd', 'spe')
+STAT_KO = {'hp': 'HP', 'atk': '공격', 'def': '방어', 'spa': '특공', 'spd': '특방', 'spe': '스피드'}
 SP_MAX_PER_STAT = 32
 SP_MAX_TOTAL = 66
 
@@ -26,7 +27,8 @@ def calc_stats(base: dict, sp: dict, plus: str | None = None, minus: str | None 
 
 def sp_problems(sp: dict) -> list[str]:
     """SP 규칙 위반 목록 (스탯당 0~32, 합계 66 이하)."""
-    out = [f'{s} SP {v}: 스탯당 0~{SP_MAX_PER_STAT}' for s, v in sp.items() if not 0 <= v <= SP_MAX_PER_STAT]
+    out = [f'{STAT_KO.get(s, s)} SP {v}: 스탯당 0~{SP_MAX_PER_STAT}'
+           for s, v in sp.items() if not 0 <= v <= SP_MAX_PER_STAT]
     total = sum(sp.values())
     if total > SP_MAX_TOTAL:
         out.append(f'SP 합계 {total}: 최대 {SP_MAX_TOTAL}')
