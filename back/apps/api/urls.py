@@ -1,3 +1,7 @@
 from django.urls import path
 
-urlpatterns = []
+from apps.api import views
+
+urlpatterns = [
+    path('ranking/', views.ranking),
+]
