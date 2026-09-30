@@ -1,8 +1,8 @@
 // back(Django) API 호출. 개발 중엔 Vite 프록시로 /api → localhost:8000
 const cache = new Map()
 
-function qs(params = {}) {
-  const p = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+function qs(params) {
+  const p = Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
   return p.length ? '?' + new URLSearchParams(p).toString() : ''
 }
 
