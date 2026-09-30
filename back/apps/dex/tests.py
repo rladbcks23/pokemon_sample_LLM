@@ -50,3 +50,19 @@ class IdTests(SimpleTestCase):
         self.assertEqual(self.dex.base_id('garchomp'), 'garchomp')
         self.assertTrue(self.dex.is_mega('garchompmega'))
         self.assertEqual(self.dex.resolve_cosmetic('vivillonhighplains'), 'vivillon')
+
+
+class StatTests(SimpleTestCase):
+    def test_reference_values(self):
+        # 참고 이미지: 종족 75/150/175/70/120/40, SP 32/32/0/0/2/0, 공격↑ 특공↓ → 182/222/195/81/142/60
+        from apps.dex.stats import calc_stats
+        base = {'hp': 75, 'atk': 150, 'def': 175, 'spa': 70, 'spd': 120, 'spe': 40}
+        sp = dict(hp=32, atk=32, spd=2)
+        self.assertEqual(calc_stats(base, sp, plus='atk', minus='spa'),
+                         {'hp': 182, 'atk': 222, 'def': 195, 'spa': 81, 'spd': 142, 'spe': 60})
+
+    def test_sp_problems(self):
+        from apps.dex.stats import sp_problems
+        self.assertEqual(sp_problems({'hp': 32, 'atk': 32, 'spe': 2}), [])
+        self.assertEqual(len(sp_problems({'hp': 33})), 1)
+        self.assertEqual(len(sp_problems({'hp': 32, 'atk': 32, 'spe': 3})), 1)
