@@ -36,12 +36,26 @@ cd back
 ..\.venv\Scripts\python manage.py load_meta   # 사용률, 파티, 육성형
 ```
 
-## 실행 (back/ 에서)
-| 대상 | 명령 | 주소 |
-|---|---|---|
-| API 서버 | `..\.venv\Scripts\python manage.py runserver` | http://localhost:8000/api/ |
-| Admin | (위와 같음, `createsuperuser` 필요) | http://localhost:8000/admin/ |
-| DB 확인 페이지 | `..\.venv\Scripts\python -m streamlit run ui/db_viewer.py` | http://localhost:8501/check |
+## 실행
+| 대상 | 위치 | 명령 | 주소 |
+|---|---|---|---|
+| 화면 (Vue) | `front/` | `npm install` 후 `npm run dev` | http://localhost:5173 |
+| API 서버 | `back/` | `..\.venv\Scripts\python manage.py runserver` | http://localhost:8000/api/ |
+| Admin | `back/` | (위와 같음, `createsuperuser` 필요) | http://localhost:8000/admin/ |
+| DB 확인 페이지 | `back/` | `..\.venv\Scripts\python -m streamlit run ui/db_viewer.py` | http://localhost:8501/check |
+
+화면은 `/api`, `/assets` 요청을 API 서버(8000)로 넘기므로 API 서버를 같이 띄워야 한다.
+
+### API
+| 주소 | 내용 |
+|---|---|
+| `GET /api/ranking/?format=doubles` | 인게임 픽률 순위, 직전 시즌 대비 변동 |
+| `GET /api/pokemon/?format=` | 포켓몬 목록 (메가 폼 제외) |
+| `GET /api/pokemon/{id}/` | 폼별 정보, 싱글·더블 사용률, 배우는 기술 |
+| `GET /api/teams/?format=&source=&q=&page=` | 파티 목록 (8개씩) |
+| `GET /api/teams/{id}/` | 파티 상세 + 약점표 |
+| `GET /api/options/` | 도구·성격·타입·타입 상성표 |
+| `POST /api/validate/` | 샘플 적합성 검사 + 실수치 |
 
 ## 커밋 규칙
 `타입: 내용` — feat / fix / build / chore / ci / docs / style / refactor / test / perf
