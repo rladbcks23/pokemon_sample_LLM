@@ -49,3 +49,6 @@ export const spTotal = (sp) => STATS.reduce((a, s) => a + (sp?.[s] || 0), 0)
 export function mulText(m) {
   return { 4: '×4', 2: '×2', 0.5: '½', 0.25: '¼', 0: '0' }[m] ?? ''
 }
+
+// Showdown ID 규칙: 소문자 영숫자 ("Garchompite Z" → "garchompitez")
+export const toId = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
