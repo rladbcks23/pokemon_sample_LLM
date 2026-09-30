@@ -119,6 +119,11 @@ class Command(BaseCommand):
             season = season_dir.name
             for fmt_dir in sorted(season_dir.glob('*')):
                 fmt = {'single': 'singles', 'double': 'doubles'}[fmt_dir.name]
+                # 시즌별 순위 이력 (collect_samples.py opgg-history). 마지막 항목이 직전 시즌
+                hist_path = RAW / 'opgg' / 'history' / season / f'{fmt_dir.name}.json'
+                history = load_json(hist_path) if hist_path.exists() else {}
+                if not history:
+                    self.skipped[f'opgg 순위 이력 없음 ({season} {fmt_dir.name}) → 순위 변동 비움'] += 1
                 stats, seen = [], set()
                 for f in sorted(fmt_dir.glob('*.json')):
                     d = load_json(f)
@@ -134,7 +139,8 @@ class Command(BaseCommand):
                     u = UsageStat(ruleset_id=OPGG_RULESET, format_key=f'{OPGG_RULESET}_{fmt}', pokemon_key=pid,
                                   source='opgg', season=season,
                                   snapshot_date=datetime.strptime(det['createdAt'][:10], '%Y-%m-%d').date(),
-                                  rank=d['overview']['ranking']['pokemon']['rank'])
+                                  rank=d['overview']['ranking']['pokemon']['rank'],
+                                  prev_rank=(history.get(f.stem) or [{}])[-1].get('rank'))
                     ds = []
                     for kind, src, valid in (('move', 'moves', dex.moves), ('item', 'items', dex.items),
                                              ('ability', 'abilities', dex.abilities)):
