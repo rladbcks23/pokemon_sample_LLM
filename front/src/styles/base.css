@@ -1,0 +1,49 @@
+/* 디자인(Party Builder Wireframes) 색·글꼴 */
+:root {
+  --c-text: #1d1d1b;
+  --c-text-2: #4a4944;
+  --c-text-3: #5a5954;
+  --c-muted: #76746e;
+  --c-faint: #9a978f;
+
+  --c-line: #d6d4ce;
+  --c-line-strong: #bdbab2;
+  --c-line-card: #cfcdc7;
+  --c-line-soft: #e0ded8;
+  --c-line-row: #e4e2dd;
+  --c-line-faint: #eeece7;
+
+  --c-primary: #3d6fe0;
+  --c-primary-soft: #e3eafa;
+  --c-hover: #f4f7fd;
+  --c-head: #f1f0ec;
+  --c-chip: #f3f2ee;
+  --c-bar: #ebe9e4;
+
+  --c-ok: #2f6e46;
+  --c-warn: #8a6a1f;
+  --c-danger: #a3423b;
+  --c-heart: #c2453a;
+
+  /* 약점표 */
+  --c-x4: #d9584a;
+  --c-x2: #f7d3cd;
+  --c-half: #dcefe0;
+  --c-zero: #d3e2f8;
+
+  --font: 'IBM Plex Sans KR', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+
+  /* Element Plus 기본색을 디자인 색으로 */
+  --el-color-primary: #3d6fe0;
+  --el-font-family: var(--font);
+  --el-text-color-primary: #1d1d1b;
+  --el-border-color: #bdbab2;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; font-family: var(--font); color: var(--c-text); }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input { font-family: inherit; }
+.mono { font-family: var(--mono); }
