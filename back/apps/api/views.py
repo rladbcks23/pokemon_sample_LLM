@@ -1,13 +1,14 @@
 """프론트(Vue)용 조회 API."""
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.api.common import FORMATS, format_key, get_format, get_ruleset, label, names, pokemon_brief
 from apps.dex.ids import to_id
 from apps.dex.models import Move, Pokemon
-from apps.dex.typechart import matchups
-from apps.meta.models import SP_STATS, UsageStat
+from apps.dex.typechart import TYPES, defense_profile, matchups
+from apps.meta.models import SP_STATS, Team, TeamMember, UsageStat
 
 
 def latest_usage(ruleset, fmt: str, source: str = 'opgg'):
@@ -136,3 +137,82 @@ def pokemon_detail(request, sid: str):
         'forms': [form_detail(f) for f in (p, *megas)],
         'usage': usage, 'learnset': learnset,
     })
+
+
+SOURCE_LABEL = dict(Team.SOURCES)
+
+
+def team_title(t: Team) -> str:
+    if t.source == 'showdown_replay':
+        return f'{t.player or "익명"}의 리플레이 파티'
+    return t.name or f'{SOURCE_LABEL.get(t.source, t.source)} #{t.pk}'
+
+
+def team_summary(t: Team, members: list[TeamMember]) -> dict:
+    return {
+        'id': t.pk, 'title': team_title(t), 'source': t.source, 'source_label': SOURCE_LABEL.get(t.source, t.source),
+        'format': t.format_key.rsplit('_', 1)[-1], 'player': t.player, 'date': t.played_on,
+        'rating': t.rating, 'result': t.result or None, 'external_id': t.external_id,
+        'members': [pokemon_brief(t.ruleset_id, m.pokemon_key) for m in members],
+    }
+
+
+class TeamPagination(PageNumberPagination):
+    page_size = 8
+    page_size_query_param = 'size'
+    max_page_size = 50
+
+
+@api_view(['GET'])
+def team_list(request):
+    """파티 목록. GET /api/teams/?format=doubles&source=showdown_replay&q=망나뇽&page=2
+
+    format: singles / doubles (생략 시 전체), source: opgg_replica / showdown_replay (생략 시 전체),
+    q: 포함 포켓몬 이름(한글/영문) 일부
+    """
+    rs = get_ruleset(request)
+    qs = Team.objects.filter(ruleset=rs).order_by('-played_on', '-id')
+    fmt = request.query_params.get('format')
+    if fmt:
+        qs = qs.filter(format_key=format_key(rs, get_format(request)))
+    if src := request.query_params.get('source'):
+        qs = qs.filter(source=src)
+    if q := request.query_params.get('q', '').strip():
+        keys = [sid for sid, p in names(rs.id)['pokemon'].items()
+                if q in (p['name_ko'] or '') or q.lower() in p['name'].lower()]
+        qs = qs.filter(members__pokemon_key__in=keys).distinct()
+    pager = TeamPagination()
+    page = pager.paginate_queryset(qs.prefetch_related('members'), request)
+    return pager.get_paginated_response([team_summary(t, list(t.members.all())) for t in page])
+
+
+def member_detail(t: Team, m: TeamMember) -> dict:
+    rid = t.ruleset_id
+    nature = names(rid)['nature'].get(m.nature_key)
+    return {
+        'slot': m.slot, 'pokemon': pokemon_brief(rid, m.pokemon_key),
+        'item': label(rid, 'item', m.item_key), 'ability': label(rid, 'ability', m.ability_key),
+        'nature': nature and {'id': nature['id'], 'name_ko': nature['name_ko'],
+                              'plus': nature['plus_stat'] or None, 'minus': nature['minus_stat'] or None},
+        'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
+        'moves': [label(rid, 'move', k) for k in m.moves],
+        'is_mega': m.is_gimmick_user, 'brought': m.brought, 'lead': m.lead,
+    }
+
+
+def weakness_table(members: list[dict]) -> dict:
+    """파티 약점표: 멤버별 18타입 배율 + 타입별 약점(×2 이상) 마리 수."""
+    rows = [{'pokemon': m['pokemon']['id'], 'cells': defense_profile(m['pokemon']['types'])} for m in members]
+    return {'types': TYPES, 'rows': rows,
+            'weak_count': {t: sum(r['cells'][t] > 1 for r in rows) for t in TYPES}}
+
+
+@api_view(['GET'])
+def team_detail(request, pk: int):
+    """파티 상세: 멤버 육성 정보 + 약점표. GET /api/teams/123/"""
+    t = Team.objects.filter(pk=pk).prefetch_related('members').first()
+    if not t:
+        raise NotFound('없는 파티')
+    ms = list(t.members.all())
+    members = [member_detail(t, m) for m in ms]
+    return Response({**team_summary(t, ms), 'members': members, 'weakness': weakness_table(members)})

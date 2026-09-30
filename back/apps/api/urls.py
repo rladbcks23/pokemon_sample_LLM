@@ -6,4 +6,6 @@ urlpatterns = [
     path('ranking/', views.ranking),
     path('pokemon/', views.pokemon_list),
     path('pokemon/<str:sid>/', views.pokemon_detail),
+    path('teams/', views.team_list),
+    path('teams/<int:pk>/', views.team_detail),
 ]
