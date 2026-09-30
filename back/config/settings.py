@@ -133,6 +133,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'UNAUTHENTICATED_USER': None,
+    # ?format= 은 싱글/더블 선택으로 쓰므로 DRF의 응답 형식 지정 기능은 끔
+    'URL_FORMAT_OVERRIDE': None,
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'] + (
         ['rest_framework.renderers.BrowsableAPIRenderer'] if DEBUG else []),
 }
