@@ -83,7 +83,8 @@ async function ask(text) {
 </template>
 
 <style scoped>
-.chat { border-left: 1px solid var(--c-line); display: flex; flex-direction: column; min-height: 0; background: var(--c-hover); overflow: hidden; }
+/* 상단 메뉴(64px) 아래에 화면 높이만큼 고정. 메시지 목록만 안에서 스크롤 */
+.chat { position: sticky; top: 64px; height: calc(100vh - 64px); border-left: 1px solid var(--c-line); display: flex; flex-direction: column; min-height: 0; background: var(--c-hover); overflow: hidden; }
 .opener { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px 0; font-size: 13px; color: var(--c-text); }
 .opener:hover { background: #efeeea; }
 .vt { writing-mode: vertical-rl; letter-spacing: 2px; font-weight: 600; }

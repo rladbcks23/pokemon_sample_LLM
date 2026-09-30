@@ -121,8 +121,9 @@ function openSample(s) {
 </template>
 
 <style scoped>
-.builder { display: grid; height: calc(100vh - 64px); min-height: 760px; transition: grid-template-columns .2s; }
-.left { padding: 32px; display: flex; flex-direction: column; gap: 24px; overflow: auto; }
+/* 스크롤은 창 하나만: 왼쪽은 창과 같이 스크롤, 채팅 패널은 화면에 고정(CoachChat의 sticky) */
+.builder { display: grid; align-items: start; min-height: calc(100vh - 64px); transition: grid-template-columns .2s; }
+.left { padding: 32px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .bar { display: flex; align-items: center; gap: 10px; }
 .name { flex: 1; height: 40px; border: 1px solid var(--c-line-strong); border-radius: 6px; display: flex; align-items: center; padding: 0 14px; }
 .name input { flex: 1; border: 0; outline: 0; font-size: 15px; font-weight: 600; min-width: 0; }
