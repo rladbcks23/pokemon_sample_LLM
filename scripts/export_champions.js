@@ -199,8 +199,9 @@ function isLegalSpecies(species) {
 		id: i.id,
 		name: i.name,
 		name_ko: koItem.get(i.id) || MANUAL_KO[i.id] || '',
-		mega_from: i.megaEvolves || '',
-		mega_to: i.megaStone || '',
+		// 최신 Showdown은 megaStone이 {기본종: 메가폼} 객체 (예전엔 문자열 + megaEvolves)
+		mega_from: (i.megaStone && typeof i.megaStone === 'object' ? Object.keys(i.megaStone)[0] : i.megaEvolves) || '',
+		mega_to: (i.megaStone && typeof i.megaStone === 'object' ? Object.values(i.megaStone)[0] : i.megaStone) || '',
 		short_desc: i.shortDesc,
 	})));
 
