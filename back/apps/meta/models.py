@@ -131,6 +131,7 @@ class UsageStat(models.Model):
     season = models.CharField(max_length=16, blank=True)        # 인게임 랭크 시즌(m-6), Smogon은 월(2026-08)
     snapshot_date = models.DateField()
     rank = models.IntegerField(null=True, blank=True)
+    prev_rank = models.IntegerField(null=True, blank=True)      # 직전 시즌 순위 (None = 신규 또는 정보 없음)
     usage_pct = models.FloatField(null=True, blank=True)        # OP.GG는 순위만 있고 %는 없음
 
     class Meta:
@@ -143,6 +144,13 @@ class UsageStat(models.Model):
 
     def __str__(self):
         return f'{self.source} {self.format_key} {self.rank}위 {self.pokemon_key}'
+
+    @property
+    def rank_change(self) -> int | None:
+        """순위 변동 (양수 = 상승). 직전 시즌 순위가 없으면 None."""
+        if self.rank is None or self.prev_rank is None:
+            return None
+        return self.prev_rank - self.rank
 
 
 class UsageDetail(models.Model):
