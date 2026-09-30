@@ -18,7 +18,7 @@ defineProps({
     <div class="top">
       <PokemonImg :id="member.pokemon.id" :size="size === 'sm' ? 56 : 64" />
       <div class="who">
-        <div class="nm"><strong>{{ member.pokemon.name_ko }}</strong><span v-if="member.is_mega" class="mega mono">MEGA</span></div>
+        <div class="nm"><strong :title="member.pokemon.name_ko">{{ member.pokemon.name_ko }}</strong><span v-if="member.is_mega" class="mega mono">MEGA</span></div>
         <div class="types"><TypeBadge v-for="t in member.pokemon.types" :key="t" :type="t" :width="52" /></div>
       </div>
       <div class="side">
@@ -47,9 +47,10 @@ defineProps({
 .mcard { border: 1px solid var(--c-line-card); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
 .mcard.sm { padding: 16px; min-height: 236px; }
 .top { display: flex; gap: 12px; align-items: center; }
-.who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.nm { display: flex; align-items: center; gap: 6px; }
-.nm strong { font-size: 16px; }
+.who { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.nm { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.nm strong { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mega { flex: none; }
 .sm .nm strong { font-size: 15px; }
 .mega { font-size: 10px; border: 1px solid var(--c-text); border-radius: 3px; padding: 1px 5px; }
 .types { display: flex; gap: 4px; }
