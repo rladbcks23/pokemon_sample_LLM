@@ -28,6 +28,13 @@ python -m venv .venv
 ```
 게임 데이터 CSV(`data/champions_*`)는 저장소에 포함돼 있다. 새 레귤레이션은 `scripts/export_champions.js`로 다시 만든다.
 
+기술·특성·도구 한글 설명(CSV의 `short_desc`)은 나무위키 기준이다. 다시 받으려면:
+```bash
+.venv\Scripts\python scripts/collect_namuwiki.py all     # data/raw/namuwiki/*.json (15분쯤)
+.venv\Scripts\python scripts/collect_namuwiki.py apply   # CSV에 채움 → load_dex
+```
+나무위키에 설명 칸이 없는 도구는 PokeAPI의 공식 한국어 설명을 쓴다. 나무위키 글은 CC BY-NC-SA 2.0 KR.
+
 ### DB 만들기
 ```bash
 cd back
