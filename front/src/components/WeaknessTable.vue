@@ -37,11 +37,11 @@ const sumStyle = (c) => (c >= 3 ? { background: 'var(--c-x4)', color: '#fbfbf9' 
 </template>
 
 <style scoped>
-.wt { display: grid; grid-template-columns: 96px repeat(18, minmax(0, 1fr)); font-size: 12px; border: 1px solid var(--c-line-soft); border-radius: 6px; overflow: hidden; }
-.wt.compact { grid-template-columns: 96px repeat(18, minmax(0, 1fr)); font-size: 12px; border-radius: 0; }
+.wt { display: grid; grid-template-columns: 96px repeat(18, minmax(0, 1fr)); font-size: 11px; border: 1px solid var(--c-line-soft); border-radius: 6px; overflow: hidden; }
+.wt.compact { grid-template-columns: 96px repeat(18, minmax(0, 1fr)); font-size: 11px; border-radius: 0; }
 .th { text-align: center; padding: 6px 0; color: var(--c-text-3); border-left: 1px solid var(--c-line-faint); white-space: nowrap; overflow: hidden; }
 .name { padding: 6px 8px; border-top: 1px solid var(--c-line-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.compact .name { font-size: 13px; }
-.cell { text-align: center; padding: 8px 0; font-size: 15px; font-weight: 700; border-top: 1px solid var(--c-line-faint); border-left: 1px solid var(--c-line-faint); }
+.compact .name { font-size: 12px; }
+.cell { text-align: center; padding: 7px 0; font-size: 13px; font-weight: 600; border-top: 1px solid var(--c-line-faint); border-left: 1px solid var(--c-line-faint); }
 .sum { font-weight: 600; border-top-color: #9a978f; }
 </style>
