@@ -125,6 +125,11 @@ function toSample() {
       </div>
 
       <div class="info">
+        <div v-if="d.variants.length" class="variants">
+          <span>폼</span>
+          <RouterLink v-for="v in d.variants" :key="v.id" :to="`/pokemon/${v.id}`" :class="{ on: v.id === d.id }"
+                      replace>{{ v.label }}</RouterLink>
+        </div>
         <div class="block">
           <div class="bh"><strong>종족값</strong><span class="mono">합계 <strong>{{ form.bst }}</strong></span></div>
           <div v-for="b in statBars" :key="b.s" class="stat">
@@ -248,6 +253,11 @@ function toSample() {
 .mrow { display: flex; gap: 12px; align-items: flex-start; }
 .ml { width: 40px; flex: none; font-size: 13px; font-weight: 600; padding-top: 5px; }
 .mlist { display: flex; flex-wrap: wrap; gap: 6px; }
+.variants { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: -12px; }
+.variants span { font-size: 12px; color: var(--c-muted); margin-right: 4px; }
+.variants a { height: 34px; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid var(--c-line-strong); border-radius: 17px; font-size: 13px; color: var(--c-text); background: #fff; }
+.variants a:hover { text-decoration: none; border-color: var(--c-primary); color: var(--c-primary); }
+.variants a.on { border-color: var(--c-primary); background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
 .mt { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
 /* 배율: 크게 + 배율별 색 (×4 진한 빨강, ×2 빨강, ×½·×¼ 초록, ×0 파랑) */
 .mul { min-width: 34px; height: 24px; padding: 0 6px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
