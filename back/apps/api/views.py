@@ -209,6 +209,7 @@ def pokemon_detail(request, sid: str):
     learnset = [{
         'id': m.showdown_id, 'name': m.name, 'name_ko': m.name_ko or m.name, 'type': m.type,
         'category': m.category, 'power': m.power or None, 'accuracy': m.accuracy, 'pp': m.pp,
+        'desc': m.short_desc,
     } for m in Move.objects.filter(learners__pokemon=p).order_by('name_ko')]
     return Response({
         'ruleset': rs.id, 'id': p.showdown_id, 'num': p.num, 'name_ko': p.name_ko or p.name,
@@ -362,7 +363,7 @@ def options(request):
     return Response({
         'ruleset': rs.id,
         'items': [{'id': i['showdown_id'], 'name': i['name'], 'name_ko': i['name_ko'] or i['name'],
-                   'mega_from': i['mega_from'] or None, 'mega_to': i['mega_to'] or None}
+                   'mega_from': i['mega_from'] or None, 'mega_to': i['mega_to'] or None, 'desc': i['short_desc']}
                   for i in sorted(n['item'].values(), key=lambda x: x['name_ko'] or x['name'])],
         'natures': [{'id': x['id'], 'name': x['name'], 'name_ko': x['name_ko'],
                      'plus': x['plus_stat'] or None, 'minus': x['minus_stat'] or None}

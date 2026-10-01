@@ -37,7 +37,7 @@ def names(ruleset_id: str) -> dict:
         'move': {m['showdown_id']: m for m in Move.objects.filter(ruleset_id=ruleset_id).values(
             'showdown_id', 'name', 'name_ko', 'type', 'category', 'power', 'accuracy', 'pp')},
         'item': {i['showdown_id']: i for i in Item.objects.filter(ruleset_id=ruleset_id).values(
-            'showdown_id', 'name', 'name_ko', 'mega_from', 'mega_to')},
+            'showdown_id', 'name', 'name_ko', 'mega_from', 'mega_to', 'short_desc')},
         'ability': {a['showdown_id']: a for a in Ability.objects.filter(ruleset_id=ruleset_id).values(
             'showdown_id', 'name', 'name_ko', 'short_desc')},
         'nature': {n['id']: n for n in Nature.objects.values('id', 'name', 'name_ko', 'plus_stat', 'minus_stat')},
