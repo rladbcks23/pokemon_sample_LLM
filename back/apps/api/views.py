@@ -67,6 +67,39 @@ def stats_of(p: Pokemon) -> dict:
     return {k: getattr(p, f) for k, f in STAT_FIELDS}
 
 
+def mega_owner(rs, mega: Pokemon, ids: set[str]) -> str:
+    """메가 폼이 어느 폼에서 메가진화하는지 (메가냐오닉스(암컷) → meowsticf, 메가플라엣테 → floetteeternal)."""
+    base = to_id(mega.base_species)
+    if mega.forme.startswith('F-') and base + 'f' in ids:
+        return base + 'f'
+    stone = Item.objects.filter(ruleset=rs, name=mega.required_item).values_list('mega_from', flat=True).first()
+    return to_id(stone) if stone and to_id(stone) in ids else base
+
+
+# 폼 탭 순서를 따로 정하는 포켓몬 (나머지는 기본 폼 먼저, 그다음 ID 순)
+FORM_ORDER = {'Gourgeist': ['gourgeistsmall', 'gourgeist', 'gourgeistlarge', 'gourgeistsuper']}
+
+
+def form_label(p: Pokemon, base_ko: str) -> str:
+    """폼 탭 이름: 한글 이름에서 포켓몬 이름을 뺀 부분 (펌킨인-소과종 → 소과종, 라이츄-알로라 → 알로라)."""
+    name = p.name_ko or p.name
+    if name.startswith(base_ko + '-'):
+        return name[len(base_ko) + 1:]
+    return '기본' if not p.forme else (p.forme if name == base_ko else name)
+
+
+def form_variants(rs, p: Pokemon) -> list[dict]:
+    """같은 포켓몬의 다른 폼(메가 제외). 폼이 하나뿐이면 빈 목록."""
+    sibs = list(Pokemon.objects.filter(ruleset=rs, base_species=p.base_species, is_mega=False))
+    if len(sibs) < 2:
+        return []
+    order = FORM_ORDER.get(p.base_species)
+    sibs.sort(key=lambda x: (order.index(x.showdown_id) if order and x.showdown_id in order else 99,
+                             bool(x.forme), x.showdown_id))
+    base_ko = min(((s.name_ko or s.name).split('-')[0] for s in sibs), key=len)   # 윈디-히스이 → 윈디
+    return [{'id': s.showdown_id, 'label': form_label(s, base_ko), 'name_ko': s.name_ko or s.name} for s in sibs]
+
+
 
 
 @api_view(['GET'])
@@ -78,10 +111,11 @@ def pokemon_list(request):
     rs, fmt = get_ruleset(request), get_format(request)
     ranks = rank_board(rs, fmt)['rows']
     all_p = list(Pokemon.objects.filter(ruleset=rs).order_by('showdown_id'))
-    megas = {}   # 기본 폼 id → 메가 폼 목록 (메가스톤 id 포함: 샘플은 기본 폼 + 메가스톤으로 저장)
+    ids = {p.showdown_id for p in all_p if not p.is_mega}
+    megas = {}   # 메가진화 전 폼 id → 메가 폼 목록 (메가스톤 id 포함: 샘플은 메가 전 폼 + 메가스톤으로 저장)
     for p in all_p:
         if p.is_mega:
-            megas.setdefault(to_id(p.base_species), []).append({
+            megas.setdefault(mega_owner(rs, p, ids), []).append({
                 'id': p.showdown_id, 'name': p.name, 'name_ko': p.name_ko or p.name,
                 'types': [t for t in (p.type1, p.type2) if t], 'stats': stats_of(p), 'bst': p.bst,
                 'item': to_id(p.required_item),
@@ -148,9 +182,11 @@ def pokemon_detail(request, sid: str):
     p = Pokemon.objects.filter(ruleset=rs, showdown_id=sid).first()
     if not p:
         raise NotFound(f'{sid}: 이 레귤레이션에 없는 포켓몬')
+    ids = set(Pokemon.objects.filter(ruleset=rs, is_mega=False).values_list('showdown_id', flat=True))
     if p.is_mega:
-        p = Pokemon.objects.get(ruleset=rs, showdown_id=to_id(p.base_species))
-    megas = Pokemon.objects.filter(ruleset=rs, base_species=p.base_species, is_mega=True).order_by('showdown_id')
+        p = Pokemon.objects.get(ruleset=rs, showdown_id=mega_owner(rs, p, ids))
+    megas = [m for m in Pokemon.objects.filter(ruleset=rs, base_species=p.base_species, is_mega=True)
+             .order_by('showdown_id') if mega_owner(rs, m, ids) == p.showdown_id]
     usage = {}
     for fmt in FORMATS:
         u = UsageStat.objects.filter(pk__in=latest_usage(rs, fmt)[0].filter(pokemon_key=p.showdown_id)) \
@@ -163,6 +199,7 @@ def pokemon_detail(request, sid: str):
     return Response({
         'ruleset': rs.id, 'id': p.showdown_id, 'num': p.num, 'name_ko': p.name_ko or p.name,
         'forms': [form_detail(f) for f in (p, *megas)],
+        'variants': form_variants(rs, p),
         'usage': usage, 'learnset': learnset,
     })
 
