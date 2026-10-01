@@ -162,12 +162,26 @@ USAGE_TOP = 10    # 기술·도구·특성·성격·SP 배분은 10위까지만
 USAGE_KINDS = ('move', 'item', 'ability', 'nature', 'spread')
 
 
+# 무보정 성격은 하나로: 성실 (노력·온순·수줍음·변덕도 성실로 합침)
+NEUTRAL_NATURE = 'serious'
+NEUTRAL_NATURES = {'hardy', 'docile', 'serious', 'bashful', 'quirky'}
+
+
+def norm_nature(key: str) -> str:
+    return NEUTRAL_NATURE if key in NEUTRAL_NATURES else key
+
+
 def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
     if not u:
         return None
     out = {'rank': u.rank, 'prev_rank': u.prev_rank, 'change': u.rank_change,
            **{k: [] for k in USAGE_KINDS}}
-    for d in u.details.all():
+    details = list(u.details.all())
+    neutral = [d for d in details if d.kind == 'nature' and d.target_key in NEUTRAL_NATURES]
+    if neutral:          # 무보정 성격 사용률을 성실 하나로 더함
+        neutral[0].target_key, neutral[0].pct = NEUTRAL_NATURE, round(sum(d.pct for d in neutral), 1)
+        details = [d for d in details if d not in neutral[1:]]
+    for d in details:
         if d.kind not in out:
             continue
         if d.kind in ('spread', 'nature') and d.pct < MIN_PCT:
@@ -291,7 +305,7 @@ def team_list(request):
 
 def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
     rid = t.ruleset_id
-    nature = names(rid)['nature'].get(m.nature_key)
+    nature = names(rid)['nature'].get(norm_nature(m.nature_key))
     shown = shown_key(rid, m.pokemon_key, m.item_key)
     return {
         # pokemon: 화면 표시용 (메가스톤을 들면 메가 폼), base: 저장된 메가 전 폼 (샘플로 가져갈 때)
@@ -332,7 +346,7 @@ def sample_list(request):
     page = pager.paginate_queryset(qs, request)
     return pager.get_paginated_response([{
         'id': s.pk, 'name': s.name, 'source': s.source,
-        'sample': {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': s.nature_key,
+        'sample': {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': norm_nature(s.nature_key),
                    'sp': {st: getattr(s, f'sp_{st}') for st in SP_STATS},
                    'moves': ([*s.moves, '', '', '', ''])[:4]},
         'member': member_detail(s, s),
