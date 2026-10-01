@@ -112,6 +112,9 @@ const mega = computed(() => megaForm(sample.value))
 const shown = computed(() => mega.value || mon.value)
 const abilities = computed(() => detail.value?.forms[0].abilities || [])
 const nature = computed(() => dex.natures[sample.value.nature])
+// 고른 도구·특성의 설명 (나무위키 기준 최신 게임 설명)
+const itemDesc = computed(() => dex.items[sample.value.item]?.desc || '')
+const abilityDesc = computed(() => abilities.value.find((a) => a.id === sample.value.ability)?.desc || '')
 const natureText = (n) => (n?.plus ? `${STAT_KO[n.plus]}▲ ${STAT_KO[n.minus]}▼` : '무보정')
 
 // 성격: 무보정 5개는 효과가 같아 "노력"만 남기고, 나머지는 올라가는 스탯별로 묶음
@@ -289,11 +292,13 @@ const itemIdOf = (form) => toId(form.required_item)
               <span class="opt"><ItemIcon :id="it.id" :size="20" />{{ it.name_ko }}</span>
             </el-option>
           </el-select>
+          <span v-if="itemDesc" class="desc">{{ itemDesc }}</span>
         </label>
         <label class="fld"><span>특성 · 이 포켓몬이 가진 것만</span>
           <el-select v-model="sample.ability" placeholder="특성 선택" class="sel" :disabled="!abilities.length">
             <el-option v-for="a in abilities" :key="a.id" :value="a.id" :label="a.name_ko + (a.hidden ? ' (숨겨진 특성)' : '')" />
           </el-select>
+          <span v-if="abilityDesc" class="desc">{{ abilityDesc }}</span>
           <span v-if="mega?.ability" class="megaab">메가진화 후 특성: <strong>{{ mega.ability.name_ko }}</strong></span>
         </label>
         <label class="fld"><span>성격</span>
@@ -346,7 +351,7 @@ const itemIdOf = (form) => toId(form.required_item)
           <div class="ltable">
             <div class="lrow head mono"><span>기술</span><span>타입</span><span>분류</span><span>위력</span><span>명중</span><span>PP</span></div>
             <div v-for="m in learnShown" :key="m.id" class="lrow" :class="{ picked: sample.moves.includes(m.id) }" @click="pickMove(m.id)">
-              <span class="ln">{{ m.name_ko }}</span>
+              <span class="ln" :title="m.desc || ''">{{ m.name_ko }}<small v-if="m.desc">{{ m.desc }}</small></span>
               <TypeBadge :type="m.type" :width="56" />
               <span class="cat">{{ CATEGORY_KO[m.category] }}</span>
               <span class="mono">{{ m.power || '—' }}</span>
@@ -424,6 +429,7 @@ const itemIdOf = (form) => toId(form.required_item)
 </template>
 
 <style scoped>
+.desc { font-size: 12px; line-height: 1.5; color: var(--c-text-3); }
 .megaab { font-size: 12px; color: var(--c-text-3); }
 .megaab strong { color: var(--c-primary); }
 .lockhint { font-size: 12px; color: var(--c-muted); margin-top: -6px; }
@@ -486,6 +492,8 @@ const itemIdOf = (form) => toId(form.required_item)
 .hint.on { color: var(--c-primary); }
 .ltable { border: 1px solid var(--c-line); border-radius: 8px; overflow: auto; max-height: 300px; }
 .lrow { display: grid; grid-template-columns: minmax(0, 1fr) 72px 56px 48px 48px 36px; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--c-line-row); align-items: center; font-size: 12px; cursor: pointer; }
+.ln { display: flex; flex-direction: column; min-width: 0; }
+.ln small { font-size: 11px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lrow:hover { background: var(--c-hover); }
 .lrow.picked { background: var(--c-primary-soft); }
 .lrow.head { position: sticky; top: 0; z-index: 1; padding: 8px 14px; background: var(--c-head); font-size: 11px; color: var(--c-muted); border-top: 0; cursor: default; }

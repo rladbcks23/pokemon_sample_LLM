@@ -202,7 +202,7 @@ function toSample() {
           </button>
         </div>
         <div v-for="m in learn" :key="m.id" class="mrow2">
-          <strong>{{ m.name_ko }}</strong>
+          <div class="mname"><strong>{{ m.name_ko }}</strong><small v-if="m.desc" :title="m.desc">{{ m.desc }}</small></div>
           <TypeBadge :type="m.type" :width="60" />
           <span class="cat">{{ CATEGORY_KO[m.category] }}</span>
           <span class="mono">{{ m.power || '—' }}</span>
@@ -297,5 +297,7 @@ function toSample() {
 .mhead button span { opacity: .7; }
 .mrow2 { padding: 9px 24px; border-top: 1px solid var(--c-line-row); font-size: 13px; }
 .mrow2 strong { font-weight: 600; }
+.mname { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mname small { font-size: 12px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cat { color: var(--c-text-3); }
 </style>
