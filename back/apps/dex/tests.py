@@ -87,3 +87,21 @@ class MergedFormTests(SimpleTestCase):
         self.assertEqual(opgg_pokemon_id('sinistcha-masterpiece', dex), 'sinistcha')
         self.assertEqual(dex.resolve_cosmetic('squawkabillywhite'), 'squawkabillyyellow')
         self.assertEqual(dex.resolve_cosmetic('sinistchamasterpiece'), 'sinistcha')
+
+
+class MegaBaseTests(SimpleTestCase):
+    def test_mega_base_form(self):
+        dex = DexIndex(pokemon={
+            'floetteeternal': entry('Floette-Eternal', 'Floette', 'Eternal'),
+            'floettemega': entry('Floette-Mega', 'Floette', 'Mega', True),
+            'meowstic': entry('Meowstic', 'Meowstic', ''),
+            'meowsticf': entry('Meowstic-F', 'Meowstic', 'F'),
+            'meowsticfmega': entry('Meowstic-F-Mega', 'Meowstic', 'F-Mega', True),
+            'garchompmega': entry('Garchomp-Mega', 'Garchomp', 'Mega', True),
+            'garchomp': entry('Garchomp', 'Garchomp', ''),
+        })
+        self.assertEqual(dex.base_id('floettemega'), 'floetteeternal')   # 기본 폼이 없는 포켓몬
+        self.assertEqual(dex.base_id('meowsticfmega'), 'meowsticf')
+        self.assertEqual(dex.base_id('garchompmega'), 'garchomp')
+        self.assertEqual(dex.base_id('garchomp'), 'garchomp')
+
