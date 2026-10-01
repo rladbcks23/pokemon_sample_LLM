@@ -204,8 +204,8 @@ const count = (k) => (k === 'all' ? library.myTeams.length + library.favTeams.le
 .sec strong { font-size: 18px; }
 .sec .mono { font-size: 13px; color: var(--c-faint); }
 .divider { border: 0; border-top: 1px solid var(--c-line-strong); margin: 8px 0; width: 100%; }
-.more { align-self: center; height: 38px; padding: 0 24px; border: 1px solid var(--c-line-strong); border-radius: 19px; background: #fff; font-size: 13px; color: var(--c-text-3); }
-.more:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.more { align-self: center; height: 38px; padding: 0 28px; border: 1px solid var(--c-primary); border-radius: 19px; background: var(--c-primary-soft); font-size: 13px; font-weight: 600; color: var(--c-primary); }
+.more:hover { background: var(--c-primary); color: #fbfbf9; }
 .none { margin: 0; font-size: 13px; color: var(--c-muted); }
 .kind { align-self: center; font-size: 11px; color: var(--c-muted); margin-right: auto; }
 .empty { padding: 56px; text-align: center; border: 1.5px dashed var(--c-line-strong); border-radius: 12px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
