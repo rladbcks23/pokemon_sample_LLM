@@ -8,6 +8,7 @@ import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import RankChange from '@/components/RankChange.vue'
 import PagerNav from '@/components/PagerNav.vue'
+import FormatToggle from '@/components/FormatToggle.vue'
 
 const settings = useSettings()
 const router = useRouter()
@@ -71,6 +72,7 @@ const statClass = (s, v) => ({ hi: v >= 120 })
     <div class="title"><h2>포켓몬</h2><span>{{ rows.length }}마리 · {{ settings.rulesetLabel }} 기준</span></div>
 
     <div class="controls">
+      <FormatToggle />
       <input v-model="q" class="search" placeholder="⌕ 이름 검색 (한글/영문)">
       <button class="toggle" :class="{ on: megaOnly }" @click="megaOnly = !megaOnly">메가 가능만</button>
       <div class="sort">
