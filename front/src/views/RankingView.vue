@@ -5,6 +5,7 @@ import { useSettings } from '@/stores/settings'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import RankChange from '@/components/RankChange.vue'
+import FormatToggle from '@/components/FormatToggle.vue'
 
 const settings = useSettings()
 const data = ref(null)
@@ -44,10 +45,7 @@ const prevText = (it) => {
 <template>
   <section class="page">
     <div class="bar">
-      <div class="tabs">
-        <button :class="{ on: settings.format === 'singles' }" @click="settings.format = 'singles'">싱글</button>
-        <button :class="{ on: settings.format === 'doubles' }" @click="settings.format = 'doubles'">더블</button>
-      </div>
+      <FormatToggle />
       <span v-if="updated" class="pill mono">{{ updated }}</span>
     </div>
 
@@ -92,9 +90,6 @@ const prevText = (it) => {
 <style scoped>
 .page { padding: 40px 64px 56px; display: flex; flex-direction: column; gap: 28px; }
 .bar { display: flex; align-items: center; justify-content: space-between; }
-.tabs { display: flex; gap: 8px; background: var(--c-primary-soft); padding: 4px; border-radius: 8px; }
-.tabs button { border: 0; height: 36px; padding: 0 20px; border-radius: 6px; font-size: 14px; font-weight: 600; background: transparent; }
-.tabs button.on { background: #fff; }
 .pill { font-size: 12px; color: var(--c-muted); border: 1px solid var(--c-line); border-radius: 12px; padding: 5px 12px; }
 .msg { color: var(--c-muted); font-size: 14px; }
 .err { color: var(--c-danger); }

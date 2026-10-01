@@ -26,10 +26,6 @@ const active = computed(() => (route.name === 'sample' && route.query.slot != nu
     </nav>
     <div class="right">
       <div class="reg"><span>레귤레이션</span><strong>{{ settings.rulesetLabel }}</strong><span>▾</span></div>
-      <div class="seg">
-        <button :class="{ on: settings.format === 'singles' }" @click="settings.format = 'singles'">싱글</button>
-        <button :class="{ on: settings.format === 'doubles' }" @click="settings.format = 'doubles'">더블</button>
-      </div>
     </div>
   </header>
 </template>
@@ -48,7 +44,4 @@ const active = computed(() => (route.name === 'sample' && route.query.slot != nu
 .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
 .reg { height: 34px; padding: 0 12px; border: 1px solid var(--c-line-strong); border-radius: 6px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .reg span:first-child { color: var(--c-muted); }
-.seg { display: flex; border: 1px solid var(--c-primary); border-radius: 6px; overflow: hidden; }
-.seg button { border: 0; padding: 0 14px; height: 32px; font-size: 13px; background: transparent; color: var(--c-text); }
-.seg button.on { background: var(--c-primary); color: #fbfbf9; }
 </style>
