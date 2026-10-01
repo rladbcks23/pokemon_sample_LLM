@@ -194,6 +194,12 @@ function saveAdd() {
   builder.setSlot(slot.value, JSON.parse(JSON.stringify(saved)))
   router.push('/builder')
 }
+// 내 샘플에는 저장하지 않고 파티 슬롯에만 넣기 (비슷한 샘플이 계속 쌓이지 않게)
+function addOnly() {
+  if (!sample.value.pokemon) { msg.value = '포켓몬을 먼저 선택하세요'; return }
+  builder.setSlot(slot.value, JSON.parse(JSON.stringify(sample.value)))
+  router.push('/builder')
+}
 const itemIdOf = (form) => toId(form.required_item)
 </script>
 
@@ -327,7 +333,8 @@ const itemIdOf = (form) => toId(form.required_item)
         <div class="save">
           <span v-if="msg" class="msg">{{ msg }}</span>
           <template v-if="fromBuilder">
-            <button class="btn fill" @click="saveAdd">{{ editingSlot ? '저장 후 돌아가기' : '샘플 저장 + 파티에 추가' }}</button>
+            <button class="btn fill" @click="addOnly">{{ editingSlot ? '파티에 반영하고 돌아가기' : '파티에 추가' }}</button>
+            <button class="btn line" @click="saveAdd">{{ editingSlot ? '내 샘플에도 저장하고 돌아가기' : '내 샘플에도 저장 + 파티에 추가' }}</button>
             <button class="btn line" @click="router.push('/builder')">취소하고 파티 빌딩으로</button>
           </template>
           <button v-else class="btn fill" @click="saveOnly">샘플 저장</button>
