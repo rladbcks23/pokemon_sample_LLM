@@ -261,6 +261,7 @@ def team_summary(t: Team, members: list[TeamMember]) -> dict:
         'id': t.pk, 'title': team_title(t), 'source': t.source, 'source_label': SOURCE_LABEL.get(t.source, t.source),
         'format': t.format_key.rsplit('_', 1)[-1], 'player': t.player, 'date': t.played_on,
         'rating': t.rating, 'result': t.result or None, 'external_id': t.external_id,
+        'event': t.event, 'placement': t.placement,
         'members': [pokemon_brief(t.ruleset_id, shown_key(t.ruleset_id, m.pokemon_key, m.item_key)) for m in members],
     }
 
@@ -286,7 +287,7 @@ class TeamPagination(PageNumberPagination):
 def team_list(request):
     """파티 목록. GET /api/teams/?format=doubles&source=showdown_replay&q=망나뇽&page=2
 
-    format: singles / doubles (생략 시 전체), source: opgg_replica / showdown_replay (생략 시 전체),
+    format: singles / doubles (생략 시 전체), source: opgg_replica / showdown_replay / vgcpastes (생략 시 전체),
     q: 포함 포켓몬 이름(한글/영문) 일부
     """
     rs = get_ruleset(request)
@@ -321,6 +322,7 @@ def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
         'moves': [label(rid, 'move', k) for k in m.moves],
         'is_mega': shown != m.pokemon_key or getattr(m, 'is_gimmick_user', False),
         'brought': getattr(m, 'brought', None), 'lead': getattr(m, 'lead', None),
+        'sp_from': getattr(m, 'sp_from', ''),     # SP를 가져온 다른 파티 (리플레이는 SP 비공개)
     }
 
 
