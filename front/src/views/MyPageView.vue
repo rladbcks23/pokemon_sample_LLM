@@ -62,7 +62,7 @@ async function editTeam(card) {
     // 찜한 파티는 서버에서 멤버 육성 정보를 받아 샘플로 변환
     const t = await api.team(card.id)
     builder.load6(t.members.map((m) => ({
-      id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.ability?.id || '', nature: m.nature?.id || '',
+      id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.base_ability || m.ability?.id || '', nature: m.nature?.id || '',
       sp: { ...m.sp }, moves: [...m.moves.map((x) => x.id), '', '', '', ''].slice(0, 4),
     })), { title: t.title })
   }

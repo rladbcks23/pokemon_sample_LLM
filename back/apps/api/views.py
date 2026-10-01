@@ -299,6 +299,7 @@ def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
         # 메가 폼으로 보여 줄 때는 특성도 메가 폼 특성
         'ability': (shown != m.pokemon_key and mega_ability(Pokemon.objects.get(ruleset_id=rid, showdown_id=shown)))
         or label(rid, 'ability', m.ability_key),
+        'base_ability': m.ability_key,      # 저장된 특성 (메가 전 폼의 특성. 샘플로 가져갈 때)
         'nature': nature and {'id': nature['id'], 'name_ko': nature['name_ko'],
                               'plus': nature['plus_stat'] or None, 'minus': nature['minus_stat'] or None},
         'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
