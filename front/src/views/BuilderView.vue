@@ -119,7 +119,7 @@ function openSample(s) {
       </div>
 
       <div class="summary">
-        <div class="sh"><strong>파티 요약 · 약점표</strong><span class="mono">×4 ■  ×2 ▦  ½ □  0 ·</span></div>
+        <div class="sh"><strong>파티 요약 · 약점표</strong></div>
         <WeaknessTable v-if="weakRows.length" :rows="weakRows" compact :show-sum="false" />
         <p v-else class="muted">포켓몬을 추가하면 약점표가 나옵니다</p>
       </div>
@@ -157,6 +157,5 @@ function openSample(s) {
 .summary { border-top: 1px solid var(--c-line); padding-top: 20px; display: flex; flex-direction: column; gap: 14px; }
 .sh { display: flex; align-items: center; justify-content: space-between; }
 .sh strong { font-size: 15px; }
-.sh span { font-size: 12px; color: var(--c-muted); }
 .muted { color: var(--c-muted); font-size: 13px; margin: 0; }
 </style>
