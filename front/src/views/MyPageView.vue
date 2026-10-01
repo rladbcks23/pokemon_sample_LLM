@@ -17,15 +17,20 @@ const builder = useBuilder()
 const ready = ref(false)
 
 const TABS = [
-  ['favTeams', '찜한 파티'], ['favSamples', '찜한 샘플'], ['myTeams', '내가 만든 파티'], ['mySamples', '내가 만든 샘플'],
+  ['all', '전체'], ['favTeams', '찜한 파티'], ['favSamples', '찜한 샘플'], ['myTeams', '내가 만든 파티'], ['mySamples', '내가 만든 샘플'],
 ]
-const tab = computed(() => (TABS.some(([k]) => k === route.query.tab) ? route.query.tab : 'favTeams'))
+const tab = computed(() => (TABS.some(([k]) => k === route.query.tab) ? route.query.tab : 'all'))
 const setTab = (k) => router.replace({ query: { tab: k } })
 const isTeamTab = computed(() => tab.value === 'favTeams' || tab.value === 'myTeams')
+const isAll = computed(() => tab.value === 'all')
 
 onMounted(async () => { await loadDex(); ready.value = true })
-const samples = computed(() => (tab.value === 'favSamples' ? library.favSamples : library.mySamples))
-watch(samples, (list) => list.forEach((s) => loadDetail(s.pokemon)), { immediate: true })
+// 샘플 목록: { s, fav } (전체 탭은 내가 만든 것 → 찜한 것 순)
+const sampleRows = computed(() => [
+  ...(tab.value === 'all' || tab.value === 'mySamples' ? library.mySamples.map((s) => ({ s, fav: false })) : []),
+  ...(tab.value === 'all' || tab.value === 'favSamples' ? library.favSamples.map((s) => ({ s, fav: true })) : []),
+])
+watch(sampleRows, (list) => list.forEach(({ s }) => loadDetail(s.pokemon)), { immediate: true })
 
 // 내가 만든 파티 → 카드용 요약 (메가스톤을 든 멤버는 메가 폼으로)
 const myTeamCards = computed(() => library.myTeams.map((t) => ({
@@ -34,7 +39,20 @@ const myTeamCards = computed(() => library.myTeams.map((t) => ({
   members: t.slots.filter(Boolean).map((s) => megaForm(s) || { id: s.pokemon, name_ko: dex.pokemon[s.pokemon]?.name_ko || s.pokemon }),
   raw: t,
 })))
-const teamCards = computed(() => (tab.value === 'favTeams' ? library.favTeams : myTeamCards.value))
+// 파티 목록: { c, fav }
+const teamRows = computed(() => [
+  ...(tab.value === 'all' || tab.value === 'myTeams' ? myTeamCards.value.map((c) => ({ c, fav: false })) : []),
+  ...(tab.value === 'all' || tab.value === 'favTeams' ? library.favTeams.map((c) => ({ c, fav: true })) : []),
+])
+
+// 전체 탭: 처음엔 2줄씩(파티 2개×2줄, 샘플 3개×2줄), 더보기마다 2줄씩 추가
+const TEAM_STEP = 4
+const SAMPLE_STEP = 6
+const teamLimit = ref(TEAM_STEP)
+const sampleLimit = ref(SAMPLE_STEP)
+watch(tab, () => { teamLimit.value = TEAM_STEP; sampleLimit.value = SAMPLE_STEP })
+const teamsShown = computed(() => (isAll.value ? teamRows.value.slice(0, teamLimit.value) : teamRows.value))
+const samplesShown = computed(() => (isAll.value ? sampleRows.value.slice(0, sampleLimit.value) : sampleRows.value))
 
 // ---------------------------------------------------------------- 파티
 async function editTeam(card) {
@@ -50,8 +68,7 @@ async function editTeam(card) {
   }
   router.push('/builder')
 }
-async function removeTeam(card) {
-  const fav = tab.value === 'favTeams'
+async function removeTeam(card, fav) {
   await ElMessageBox.confirm(fav ? '찜을 해제할까요?' : `"${card.title}"을(를) 삭제할까요?`, fav ? '찜 해제' : '파티 삭제',
     { confirmButtonText: fav ? '해제' : '삭제', cancelButtonText: '취소' })
   if (fav) library.toggleFavTeam(card)
@@ -76,8 +93,7 @@ function addToBuilder(s) {
   addSample.value = copy            // 가득 찼으면 뺄 포켓몬 고르기
   addOpen.value = true
 }
-async function removeSample(s) {
-  const fav = tab.value === 'favSamples'
+async function removeSample(s, fav) {
   await ElMessageBox.confirm(fav ? '찜을 해제할까요?' : '이 샘플을 삭제할까요?', fav ? '찜 해제' : '샘플 삭제',
     { confirmButtonText: fav ? '해제' : '삭제', cancelButtonText: '취소' })
   if (fav) library.removeFavSample(s.id)
@@ -90,7 +106,8 @@ const EMPTY_HINT = {
   myTeams: '파티 빌딩에서 저장하면 여기에 모입니다.',
   mySamples: '샘플 제작에서 저장하면 여기에 모입니다.',
 }
-const count = (k) => library[k].length
+const count = (k) => (k === 'all' ? library.myTeams.length + library.favTeams.length + library.mySamples.length
+  + library.favSamples.length : library[k].length)
 </script>
 
 <template>
@@ -113,30 +130,44 @@ const count = (k) => library[k].length
       </button>
     </div>
 
-    <template v-if="isTeamTab">
-      <div v-if="teamCards.length" class="teams">
-        <TeamCard v-for="c in teamCards" :key="c.id" :team="c" :heart="false" @click="openCard(c)">
+    <template v-if="isAll || isTeamTab">
+      <div v-if="isAll" class="sec"><strong>파티</strong><span class="mono">{{ teamRows.length }}</span></div>
+      <div v-if="teamRows.length" class="teams">
+        <TeamCard v-for="{ c, fav } in teamsShown" :key="c.id" :team="c" :heart="false" @click="openCard(c)">
           <div class="acts">
+            <span v-if="isAll" class="kind">{{ fav ? '찜한 파티' : '내가 만든 파티' }}</span>
             <button class="fill sm" @click.stop="editTeam(c)">파티 수정하기</button>
-            <button class="danger sm" @click.stop="removeTeam(c)">{{ tab === 'favTeams' ? '찜 해제' : '파티 삭제하기' }}</button>
+            <button class="danger sm" @click.stop="removeTeam(c, fav)">{{ fav ? '찜 해제' : '파티 삭제하기' }}</button>
           </div>
         </TeamCard>
       </div>
+      <button v-if="isAll && teamRows.length > teamLimit" class="more" @click="teamLimit += TEAM_STEP">
+        더보기 ({{ teamRows.length - teamLimit }}개 남음) ▾
+      </button>
+      <p v-if="isAll && !teamRows.length" class="none">저장하거나 찜한 파티가 없습니다</p>
     </template>
-    <template v-else>
-      <div v-if="samples.length" class="samples">
-        <div v-for="s in samples" :key="s.id" class="scard">
+
+    <hr v-if="isAll" class="divider">
+
+    <template v-if="isAll || !isTeamTab">
+      <div v-if="isAll" class="sec"><strong>포켓몬 샘플</strong><span class="mono">{{ sampleRows.length }}</span></div>
+      <div v-if="sampleRows.length" class="samples">
+        <div v-for="{ s, fav } in samplesShown" :key="s.id" class="scard">
           <MemberCard v-if="ready && describe(s)" :member="describe(s)" />
           <div class="acts">
             <button class="fill sm" @click="router.push({ path: '/sample', query: { sample: s.id } })">샘플 제작에서 열기</button>
             <button class="line sm" @click="addToBuilder(s)">파티 빌딩에 추가</button>
-            <button class="danger sm push" @click="removeSample(s)">삭제</button>
+            <button class="danger sm push" @click="removeSample(s, fav)">{{ fav ? '찜 해제' : '삭제' }}</button>
           </div>
         </div>
       </div>
+      <button v-if="isAll && sampleRows.length > sampleLimit" class="more" @click="sampleLimit += SAMPLE_STEP">
+        더보기 ({{ sampleRows.length - sampleLimit }}개 남음) ▾
+      </button>
+      <p v-if="isAll && !sampleRows.length" class="none">저장하거나 찜한 샘플이 없습니다</p>
     </template>
 
-    <div v-if="(isTeamTab ? teamCards : samples).length === 0" class="empty">
+    <div v-if="!isAll && (isTeamTab ? teamRows : sampleRows).length === 0" class="empty">
       <strong>아직 비어 있습니다</strong><span>{{ EMPTY_HINT[tab] }}</span>
     </div>
 
@@ -169,6 +200,14 @@ const count = (k) => library[k].length
 .scard :deep(.mcard) { border: 0; border-radius: 0; }
 .scard .acts { padding: 12px 18px 18px; gap: 6px; }
 .scard .sm { padding: 0 10px; }
+.sec { display: flex; align-items: baseline; gap: 8px; margin-bottom: -8px; }
+.sec strong { font-size: 18px; }
+.sec .mono { font-size: 13px; color: var(--c-faint); }
+.divider { border: 0; border-top: 1px solid var(--c-line-strong); margin: 8px 0; width: 100%; }
+.more { align-self: center; height: 38px; padding: 0 24px; border: 1px solid var(--c-line-strong); border-radius: 19px; background: #fff; font-size: 13px; color: var(--c-text-3); }
+.more:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.none { margin: 0; font-size: 13px; color: var(--c-muted); }
+.kind { align-self: center; font-size: 11px; color: var(--c-muted); margin-right: auto; }
 .empty { padding: 56px; text-align: center; border: 1.5px dashed var(--c-line-strong); border-radius: 12px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .empty strong { font-size: 15px; }
 .empty span { font-size: 13px; color: var(--c-muted); }
