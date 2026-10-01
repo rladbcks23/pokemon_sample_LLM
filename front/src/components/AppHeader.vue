@@ -9,9 +9,10 @@ const route = useRoute()
 const MENU = [
   // { key: 'ranking', label: '랭킹', to: '/ranking' },   // 숨김 (포켓몬 탭과 겹침)
   { key: 'pokemon', label: '포켓몬', to: '/pokemon' },
-  { key: 'teams', label: '파티', to: '/teams' },
+  { key: 'samples', label: '샘플', to: '/samples' },
   { key: 'builder', label: '파티 빌딩', to: '/builder' },
   { key: 'sample', label: '샘플 제작', to: '/sample' },
+  { key: 'speed', label: '스피드표', to: '/speed' },
   { key: 'mypage', label: '마이페이지', to: '/mypage' },
 ]
 // 샘플 제작을 파티 빌딩 슬롯 편집으로 열었으면 "파티 빌딩"에 표시

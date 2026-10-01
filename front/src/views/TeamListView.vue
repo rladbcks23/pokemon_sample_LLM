@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import TeamCard from '@/components/TeamCard.vue'
 import PagerNav from '@/components/PagerNav.vue'
+import SampleTabs from '@/components/SampleTabs.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -49,7 +50,8 @@ const pages = computed(() => Math.max(1, Math.ceil((data.value?.count || 0) / PA
 
 <template>
   <section class="page">
-    <div class="title"><h2>파티</h2><span v-if="data">{{ data.count.toLocaleString() }}개</span></div>
+    <div class="title"><h2>샘플</h2></div>
+    <SampleTabs />
 
     <div class="controls">
       <div class="seg">
@@ -59,6 +61,7 @@ const pages = computed(() => Math.max(1, Math.ceil((data.value?.count || 0) / PA
         <span>출처</span>
         <button v-for="[k, label] in SOURCES" :key="k" :class="{ on: src === k }" @click="setQuery({ source: k })">{{ label }}</button>
       </div>
+      <span v-if="data" class="count">{{ data.count.toLocaleString() }}개</span>
       <input v-model="q" class="search" placeholder="⌕ 포함 포켓몬 (예: 망나뇽)">
     </div>
 
@@ -80,6 +83,7 @@ const pages = computed(() => Math.max(1, Math.ceil((data.value?.count || 0) / PA
 .title { display: flex; align-items: baseline; gap: 12px; }
 .title h2 { margin: 0; font-size: 28px; font-weight: 700; }
 .title span { font-size: 14px; color: var(--c-muted); }
+.count { font-size: 13px; color: var(--c-muted); }
 .muted { color: var(--c-muted); }
 .controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .seg { display: flex; border: 1px solid var(--c-primary); border-radius: 6px; overflow: hidden; }

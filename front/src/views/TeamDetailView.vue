@@ -57,7 +57,7 @@ function toBuilder() {
   <section v-if="error" class="page"><p class="err">{{ error }}</p></section>
   <section v-else-if="!t" class="page"><p class="muted">불러오는 중…</p></section>
   <section v-else class="page">
-    <div class="crumb"><RouterLink to="/teams">파티</RouterLink> / {{ t.title }}</div>
+    <div class="crumb"><RouterLink to="/teams">파티 샘플</RouterLink> / {{ t.title }}</div>
     <div class="head">
       <div class="hl">
         <h2>{{ t.title }}</h2>
