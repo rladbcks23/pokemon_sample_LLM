@@ -104,7 +104,7 @@ boomburst,Boomburst,폭음파,Normal,Special,140,100,10,0,allAdjacent,protect|mi
 bounce,Bounce,뛰어오르기,Flying,Physical,85,85,5,0,any,contact|charge|protect|mirror|gravity|distance|metronome|nosleeptalk|noassist|failinstruct,30,하늘 높이 뛰어올라 2턴째에 상대를 공격한다. 30% 확률로 상대를 마비 상태로 만든다.
 bravebird,Brave Bird,브레이브버드,Flying,Physical,120,100,15,0,any,contact|protect|mirror|distance|metronome,,날개를 접어 저공비행으로 돌격한다. 자신도 대상에게 준 피해의 ⅓만큼 반동 피해를 받는다.
 breakingswipe,Breaking Swipe,와이드브레이커,Dragon,Physical,60,100,15,0,allAdjacentFoes,contact|protect|mirror,100,강인한 꼬리를 세차게 휘둘러서 상대를 공격한다. 상대의 공격을 1랭크 떨어뜨린다.
-brickbreak,Brick Break,깨뜨리다,Fighting,Physical,75,100,15,0,normal,contact|protect|mirror|metronome,,수도로 기세 좋게 내려쳐서 상대를 공격한다. 빛의장막이나 리플렉터 등도 파괴할 수 있다.
+brickbreak,Brick Break,깨트리기,Fighting,Physical,75,100,15,0,normal,contact|protect|mirror|metronome,,수도로 기세 좋게 내려쳐서 상대를 공격한다. 빛의장막이나 리플렉터 등도 파괴할 수 있다.
 brutalswing,Brutal Swing,세차게휘두르기,Dark,Physical,60,100,20,0,allAdjacent,contact|protect|mirror|metronome,,자신의 몸을 세차게 휘둘러서 상대에게 데미지를 준다.
 bugbite,Bug Bite,벌레먹기,Bug,Physical,60,100,20,0,normal,contact|protect|mirror|metronome,,물어서 공격한다. 상대가 나무열매를 지니고 있을 때 먹어서 나무열매의 효과를 받을 수 있다.
 bugbuzz,Bug Buzz,벌레의야단법석,Bug,Special,90,100,10,0,normal,protect|mirror|sound|bypasssub|metronome,10,진동으로 음파를 일으켜서 공격한다. 10% 확률로 상대의 특수방어를 1랭크 떨어뜨린다.
@@ -134,7 +134,7 @@ cottonguard,Cotton Guard,코튼가드,Grass,Status,0,,10,0,self,snatch|metronome
 cottonspore,Cotton Spore,목화포자,Grass,Status,0,100,20,0,allAdjacentFoes,protect|reflectable|mirror|metronome|powder,,솜처럼 폭신폭신한 포자를 착 달라붙게 해서 상대의 스피드를 2랭크 떨어뜨린다.
 counter,Counter,카운터,Fighting,Physical,0,100,20,-5,scripted,contact|protect|failmefirst|noassist|failcopycat,,상대로부터 받은 물리공격의 데미지를 2배로 만들어 그 상대에게 돌려준다. (우선도-5)
 courtchange,Court Change,코트체인지,Normal,Status,0,100,10,0,all,mirror|metronome,,이상한 힘으로 서로의 필드 효과를 교체한다.
-covet,Covet,탐내다,Normal,Physical,60,100,20,0,normal,contact|protect|mirror|failmefirst|noassist|failcopycat,,귀엽게 애교부리며 상대에게 다가가 지니고 있는 도구를 뺏는다.
+covet,Covet,탐내기,Normal,Physical,60,100,20,0,normal,contact|protect|mirror|failmefirst|noassist|failcopycat,,귀엽게 애교부리며 상대에게 다가가 지니고 있는 도구를 뺏는다.
 crosschop,Cross Chop,크로스촙,Fighting,Physical,100,80,5,0,normal,contact|protect|mirror|metronome,,양손으로 당수를 상대에게 힘껏 쳐서 공격한다. 급소에 맞기 쉽다.
 crosspoison,Cross Poison,크로스포이즌,Poison,Physical,70,100,20,0,normal,contact|protect|mirror|metronome|slicing,10,"상대를 베어 가른다. 10% 확률로 상대를 독 상태로 만들고, 급소에 맞을 확률이 높다."
 crunch,Crunch,깨물어부수기,Dark,Physical,80,100,15,0,normal,contact|protect|mirror|metronome|bite,20,날카로운 이빨로 상대를 깨물어 부숴서 공격한다. 20% 확률로 상대의 방어를 1랭크 떨어뜨린다.
