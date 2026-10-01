@@ -26,13 +26,19 @@ watch(() => settings.format, async (fmt) => {
 const items = computed(() => data.value?.items || [])
 const top3 = computed(() => items.value.slice(0, 3))
 const rest = computed(() => items.value.slice(3, showAll.value ? undefined : FIRST))
+// 순위는 OP.GG 갱신 때마다 저장한 스냅샷. 변동은 직전 스냅샷(보통 전날) 대비
+const md = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()}` }
+const hm = (iso) => new Date(iso).toTimeString().slice(0, 5)
 const updated = computed(() => {
   const d = data.value
-  if (!d?.season) return ''
-  const [, m, day] = String(d.snapshot_date).split('-')
-  return `${d.season.toUpperCase()} · ${+m}/${+day} 갱신`
+  if (!d?.captured_at) return ''
+  const base = `${d.season.toUpperCase()} · ${md(d.captured_at)} ${hm(d.captured_at)} 갱신`
+  return d.compared_to ? `${base} · ${md(d.compared_to)} 대비` : base
 })
-const prevText = (it) => (it.prev_rank ? `지난 시즌 ${it.prev_rank}위` : '신규')
+const prevText = (it) => {
+  if (!data.value?.compared_to) return ''
+  return it.prev_rank ? `${md(data.value.compared_to)} ${it.prev_rank}위` : '신규 진입'
+}
 </script>
 
 <template>
