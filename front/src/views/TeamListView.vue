@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import TeamCard from '@/components/TeamCard.vue'
+import PagerNav from '@/components/PagerNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +16,7 @@ const q = ref(route.query.q || '')
 
 const data = ref(null)
 const error = ref('')
-const PAGE_SIZE = 8
+const PAGE_SIZE = 10    // back TeamPagination.page_size와 같음
 
 const FORMATS = [['', '전체'], ['singles', '싱글'], ['doubles', '더블']]
 const SOURCES = [['', '전체'], ['opgg_replica', 'OP.GG 레플리카'], ['showdown_replay', '리플레이']]
@@ -44,21 +45,6 @@ watch(() => route.query, async () => {
 }, { immediate: true, deep: true })
 
 const pages = computed(() => Math.max(1, Math.ceil((data.value?.count || 0) / PAGE_SIZE)))
-// 1 … 4 5 [6] 7 8 … 175 형태
-const pageButtons = computed(() => {
-  const n = pages.value
-  const p = page.value
-  const set = new Set([1, n, p - 2, p - 1, p, p + 1, p + 2].filter((x) => x >= 1 && x <= n))
-  const out = []
-  let prev = 0
-  for (const x of [...set].sort((a, b) => a - b)) {
-    if (x - prev > 1) out.push('…')
-    out.push(x)
-    prev = x
-  }
-  return out
-})
-const go = (p) => { if (p >= 1 && p <= pages.value && p !== page.value) setQuery({ page: p }) }
 </script>
 
 <template>
@@ -84,12 +70,7 @@ const go = (p) => { if (p >= 1 && p <= pages.value && p !== page.value) setQuery
       </div>
       <div v-else class="empty">조건에 맞는 파티가 없습니다</div>
 
-      <div v-if="pages > 1" class="pager">
-        <button class="mono" :disabled="page === 1" @click="go(page - 1)">‹</button>
-        <button v-for="(p, i) in pageButtons" :key="i" class="mono" :class="{ on: p === page, gap: p === '…' }"
-                :disabled="p === '…'" @click="go(p)">{{ p }}</button>
-        <button class="mono" :disabled="page === pages" @click="go(page + 1)">›</button>
-      </div>
+      <PagerNav :page="page" :pages="pages" @go="(p) => setQuery({ page: p })" />
     </template>
   </section>
 </template>
@@ -112,9 +93,4 @@ const go = (p) => { if (p >= 1 && p <= pages.value && p !== page.value) setQuery
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .empty { padding: 48px; text-align: center; color: var(--c-muted); font-size: 14px; border: 1.5px dashed var(--c-line-strong); border-radius: 12px; margin: 0; }
 .err { color: var(--c-danger); }
-.pager { display: flex; justify-content: center; align-items: center; gap: 6px; }
-.pager button { min-width: 36px; height: 36px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--c-line); background: #fff; font-size: 13px; }
-.pager button.on { border-color: var(--c-primary); background: var(--c-primary); color: #fbfbf9; }
-.pager button:disabled:not(.on) { color: var(--c-faint); cursor: default; }
-.pager button.gap { border-color: transparent; }
 </style>
