@@ -34,9 +34,11 @@ class DexIndex:
         return idx
 
     def resolve_cosmetic(self, pokemon_id: str) -> str:
-        """외형만 다른 폼(vivillonhighplains 등)은 DB에 없으므로 기본 폼으로."""
+        """외형만 다른 폼(vivillonhighplains 등)은 DB에 없으므로 기본 폼으로. 합친 폼은 남긴 폼으로."""
         if pokemon_id in self.pokemon:
             return pokemon_id
+        if MERGED_POKEMON.get(pokemon_id) in self.pokemon:
+            return MERGED_POKEMON[pokemon_id]
         bases = [p for p, r in self.pokemon.items() if not r['forme'] and pokemon_id.startswith(p)]
         return max(bases, key=len) if bases else pokemon_id
 
@@ -55,12 +57,15 @@ class DexIndex:
 
 OPGG_POKEMON_OVERRIDES = {
     'floette-eternal-flower': 'floetteeternal',
-    'maushold-family-of-three': 'maushold',
-    'maushold-family-of-four': 'maushold',      # 네식구·세식구는 성능이 같아 하나로 합침
+    'maushold-family-of-three': 'mausholdfour',  # 네식구·세식구는 성능이 같아 네식구 하나로 합침
+    'maushold-family-of-four': 'mausholdfour',
     'mega-meowstic': 'meowsticmmega',
     'mega-meowstic-male': 'meowsticmmega',
     'mega-meowstic-female': 'meowsticfmega',
 }
+# 성능이 같아 하나로 합친 폼: 제외한 폼 → 남긴 폼 (scripts/export_champions.js의 MERGED_FORMES)
+MERGED_POKEMON = {'maushold': 'mausholdfour'}
+
 OPGG_REGION = {'alolan': 'alola', 'galarian': 'galar', 'hisuian': 'hisui', 'paldean': 'paldea'}
 # 메가스톤 이름이 Showdown과 다른 것
 OPGG_ITEM_OVERRIDES = {
