@@ -315,7 +315,7 @@ const itemIdOf = (form) => toId(form.required_item)
           <div v-for="(m, i) in sample.moves" :key="i" class="mslot" :class="{ sel: moveSel === i, empty: !m }"
                @click="moveSel = moveSel === i ? null : i">
             <span class="mono idx">{{ i + 1 }}</span>
-            <span>{{ m ? (moveMap[m]?.name_ko || m) : '⌕ 기술 검색' }}</span>
+            <span class="mnm" :title="moveMap[m]?.desc || ''">{{ m ? (moveMap[m]?.name_ko || m) : '⌕ 기술 검색' }}<small v-if="moveMap[m]?.desc">{{ moveMap[m].desc }}</small></span>
             <span v-if="m" class="mtype">{{ moveMap[m] ? CATEGORY_KO[moveMap[m].category] : '' }}</span>
             <button v-if="m" class="mx" title="비우기" @click.stop="clearMove(i)">✕</button>
           </div>
@@ -454,9 +454,11 @@ const itemIdOf = (form) => toId(form.required_item)
 .types { display: flex; gap: 6px; }
 .fld { display: flex; flex-direction: column; gap: 6px; }
 .fld > span { font-size: 12px; color: var(--c-muted); }
-.mslot { height: 38px; border: 1px solid var(--c-line-strong); border-radius: 6px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 13px; background: #fff; cursor: pointer; }
+.mslot { min-height: 38px; border: 1px solid var(--c-line-strong); border-radius: 6px; display: flex; align-items: center; gap: 8px; padding: 5px 12px; font-size: 13px; background: #fff; cursor: pointer; }
 .mslot.empty { border: 1px dashed var(--c-danger); color: var(--c-muted); }
 .mslot.sel { border: 2px solid var(--c-primary); background: var(--c-primary-soft); }
+.mnm { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.mnm small { font-size: 11px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .idx { font-size: 11px; color: var(--c-faint); }
 .mtype { margin-left: auto; font-size: 11px; color: var(--c-muted); }
 .mx { border: 0; background: none; color: var(--c-faint); font-size: 11px; padding: 0 2px; }
