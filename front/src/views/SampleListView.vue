@@ -24,6 +24,8 @@ const data = ref(null)
 const error = ref('')
 const PAGE_SIZE = 12
 const FORMATS = [['', '전체'], ['singles', '싱글'], ['doubles', '더블']]
+const SOURCES = [['', '전체'], ['opgg_sample', 'OP.GG 샘플'], ['vgcpastes_team', '대회 팀'], ['opgg_team', 'OP.GG 팀']]
+const src = computed(() => route.query.source || '')
 
 function setQuery(patch) {
   const next = { ...route.query, ...patch }
@@ -40,7 +42,7 @@ watch(() => route.query, async () => {
   if (route.name !== 'samples') return
   error.value = ''
   try {
-    data.value = await api.samples({ format: fmt.value, q: route.query.q, page: page.value, size: PAGE_SIZE })
+    data.value = await api.samples({ format: fmt.value, source: src.value, q: route.query.q, page: page.value, size: PAGE_SIZE })
   } catch (e) {
     error.value = e.message
   }
@@ -76,6 +78,10 @@ function addToParty(x) {
       <div class="seg">
         <button v-for="[k, label] in FORMATS" :key="k" :class="{ on: fmt === k }" @click="setQuery({ format: k })">{{ label }}</button>
       </div>
+      <div class="srcs">
+        <span>출처</span>
+        <button v-for="[k, label] in SOURCES" :key="k" :class="{ on: src === k }" @click="setQuery({ source: k })">{{ label }}</button>
+      </div>
       <span v-if="data" class="count">{{ data.count.toLocaleString() }}개</span>
       <input v-model="q" class="search" placeholder="⌕ 포켓몬 (예: 한카리아스)">
     </div>
@@ -87,6 +93,7 @@ function addToParty(x) {
         <div v-for="x in data.results" :key="x.id" class="scard">
           <MemberCard :member="x.member" class="clickable" title="눌러서 상세보기" @click="openDetail(x)" />
           <div class="acts">
+            <span class="from" :title="x.name">{{ x.source_label }}<template v-if="x.name"> · {{ x.name }}</template></span>
             <button class="fill sm" @click="addToParty(x)">파티에 추가</button>
             <button class="line sm" :class="{ on: isFav(x) }" @click="toggleFav(x)">{{ isFav(x) ? '♥ 찜함' : '♡ 찜하기' }}</button>
           </div>
@@ -117,6 +124,11 @@ function addToParty(x) {
 .seg { display: flex; border: 1px solid var(--c-primary); border-radius: 6px; overflow: hidden; }
 .seg button { border: 0; height: 38px; padding: 0 16px; font-size: 13px; background: #fff; color: var(--c-primary); }
 .seg button.on { background: var(--c-primary); color: #fbfbf9; }
+.srcs { display: flex; gap: 6px; align-items: center; }
+.srcs span { font-size: 12px; color: var(--c-muted); margin-right: 4px; }
+.srcs button { height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--c-line-strong); background: #fff; font-size: 12px; }
+.srcs button.on { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
+.from { margin-right: auto; align-self: center; font-size: 11px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .count { font-size: 13px; color: var(--c-muted); }
 .search { margin-left: auto; width: 280px; height: 38px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
