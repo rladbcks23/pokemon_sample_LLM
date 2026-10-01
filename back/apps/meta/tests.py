@@ -86,21 +86,9 @@ class ReplayParserTests(SimpleTestCase):
 
 class PokepasteTests(SimpleTestCase):
     PASTE = (
-        "Aang (Staraptor) @ Staraptite  
-Ability: Intimidate  
-Level: 50  
-"
-        "EVs: 32 HP / 30 SpA / 4 Spe  
-Modest Nature  
-- Weather Ball  
-- Protect  
-
-"
-        "Indeedee-F (F) @ Rocky Helmet
-Ability: Psychic Surge
-Calm Nature
-- Follow Me
-"
+        'Aang (Staraptor) @ Staraptite  \r\nAbility: Intimidate  \r\nLevel: 50  \r\n'
+        'EVs: 32 HP / 30 SpA / 4 Spe  \r\nModest Nature  \r\n- Weather Ball  \r\n- Protect  \r\n\r\n'
+        'Indeedee-F (F) @ Rocky Helmet\nAbility: Psychic Surge\nCalm Nature\n- Follow Me\n'
     )
 
     def test_parse(self):
