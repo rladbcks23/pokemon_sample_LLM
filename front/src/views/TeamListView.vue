@@ -20,7 +20,7 @@ const error = ref('')
 const PAGE_SIZE = 10    // back TeamPagination.page_size와 같음
 
 const FORMATS = [['', '전체'], ['singles', '싱글'], ['doubles', '더블']]
-const SOURCES = [['', '전체'], ['opgg_replica', 'OP.GG 레플리카'], ['showdown_replay', '리플레이']]
+const SOURCES = [['', '전체'], ['opgg_replica', 'OP.GG 레플리카'], ['vgcpastes', 'VGCPastes 대회 팀'], ['showdown_replay', '리플레이']]
 
 function setQuery(patch) {
   const next = { ...route.query, ...patch }

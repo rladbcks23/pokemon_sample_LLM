@@ -31,9 +31,12 @@ const fav = computed(() => t.value && library.isFavTeam(t.value.id))
 const RESULT = { win: '승', lose: '패' }
 const tags = computed(() => {
   const x = t.value
-  return [x.source_label, x.format === 'singles' ? '싱글' : '더블', x.player, (x.date || '').replaceAll('-', '.'),
+  const place = x.placement === 1 ? '우승' : x.placement === 2 ? '준우승' : x.placement ? `${x.placement}위` : ''
+  return [x.source_label, x.format === 'singles' ? '싱글' : '더블', x.event, place, x.player, (x.date || '').replaceAll('-', '.'),
     x.rating ? `R ${x.rating}${x.result ? ' · ' + RESULT[x.result] : ''}` : null].filter(Boolean)
 })
+// 리플레이 멤버 SP를 같은 VGCPastes 팀에서 가져왔으면 그 팀 ID
+const spFrom = computed(() => t.value.members.find((m) => m.sp_from)?.sp_from.replace('vgcpastes:', '') || '')
 const weakRows = computed(() => t.value.members.map((m, i) => ({
   name: m.pokemon.name_ko, cells: t.value.weakness.rows[i].cells,
 })))
@@ -79,6 +82,10 @@ function toBuilder() {
       </div>
     </div>
 
+    <p v-if="spFrom" class="spnote">
+      리플레이에는 SP가 공개되지 않아, 6마리 육성이 모두 같은 VGCPastes 대회 팀({{ spFrom }})의 SP를 넣었습니다.
+    </p>
+    <p v-else-if="t.source === 'showdown_replay'" class="spnote">리플레이에는 SP가 공개되지 않아 SP가 비어 있습니다.</p>
     <div class="members">
       <MemberCard v-for="m in t.members" :key="m.slot" :member="m" class="clickable" title="눌러서 상세보기"
                   @click="detailSample = toSample(m); detailOpen = true" />
@@ -96,6 +103,7 @@ function toBuilder() {
 .page { padding: 32px 64px 56px; display: flex; flex-direction: column; gap: 28px; }
 .muted { color: var(--c-muted); }
 .err { color: var(--c-danger); }
+.spnote { margin: -8px 0 0; font-size: 13px; color: var(--c-text-3); background: var(--c-primary-soft); border-radius: 6px; padding: 8px 12px; }
 .crumbbar { display: flex; align-items: center; gap: 16px; }
 .crumb { font-size: 13px; color: var(--c-muted); }
 .crumb a { color: var(--c-primary); }

@@ -12,6 +12,7 @@ const library = useLibrary()
 const fav = computed(() => library.isFavTeam(props.team.id))
 const date = computed(() => (props.team.date || '').replaceAll('-', '.'))
 const RESULT = { win: '승', lose: '패' }
+const placeText = (p) => (p === 1 ? '우승' : p === 2 ? '준우승' : `${p}위`)
 </script>
 
 <template>
@@ -31,6 +32,7 @@ const RESULT = { win: '승', lose: '패' }
     </div>
     <div class="tf">
       <span>{{ team.player || '—' }}</span><span>{{ date }}</span>
+      <span v-if="team.event" class="ev">{{ team.event }}<template v-if="team.placement"> · {{ placeText(team.placement) }}</template></span>
       <span v-if="team.rating" class="rep mono">R {{ team.rating }}<template v-if="team.result"> · {{ RESULT[team.result] }}</template></span>
     </div>
     <slot />
@@ -49,5 +51,6 @@ const RESULT = { win: '승', lose: '패' }
 .mon { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
 .mon span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tf { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--c-muted); }
+.ev { color: var(--c-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rep { margin-left: auto; color: var(--c-text); }
 </style>
