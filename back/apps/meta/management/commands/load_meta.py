@@ -269,6 +269,12 @@ class Command(BaseCommand):
                 if not builds:
                     self.skipped['opgg 레플리카 팀 (빈 팀)'] += 1
                     continue
+                # 비어 있는 칸이 있는 팀은 뺌: 6마리 모두 SP·도구·성격·기술 4개가 있어야 함
+                if len(builds) < 6 or not all(
+                        any(b[f'sp_{s}'] for s in SP_STATS) and b['item_key'] and b['nature_key']
+                        and all(b[f'move{i}'] for i in range(1, 5)) for b in builds):
+                    self.skipped['opgg 레플리카 팀 (비어 있는 칸)'] += 1
+                    continue
                 team = Team(ruleset_id=OPGG_RULESET, format_key=f'{OPGG_RULESET}_{fmt}s', source='opgg_replica',
                             external_id=str(t['id']), name=t.get('title') or '',
                             player=(t.get('author') or {}).get('nickname') or '',
