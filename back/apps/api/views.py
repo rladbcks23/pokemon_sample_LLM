@@ -71,7 +71,8 @@ def stats_of(p: Pokemon) -> dict:
 def mega_ability(p: Pokemon) -> dict | None:
     """메가 폼의 특성 (메가 폼은 특성이 하나)."""
     pa = p.ability_slots.select_related('ability').order_by('slot').first()
-    return pa and {'id': pa.ability.showdown_id, 'name': pa.ability.name, 'name_ko': pa.ability.name_ko or pa.ability.name}
+    return pa and {'id': pa.ability.showdown_id, 'name': pa.ability.name, 'name_ko': pa.ability.name_ko or pa.ability.name,
+                   'desc': pa.ability.short_desc}
 
 
 def mega_owner(rs, mega: Pokemon, ids: set[str]) -> str:
