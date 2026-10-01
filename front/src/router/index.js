@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  { path: '/', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { nav: 'ranking' } },
+  // 랭킹은 포켓몬 탭(사용률 순)과 겹쳐서 메뉴에서 숨김. 첫 화면은 포켓몬, /ranking 주소로는 아직 열림
+  { path: '/', redirect: '/pokemon' },
+  { path: '/ranking', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { nav: 'ranking' } },
   { path: '/pokemon', name: 'pokemon', component: () => import('@/views/PokemonListView.vue'), meta: { nav: 'pokemon' } },
   { path: '/pokemon/:id', name: 'pokemon-detail', component: () => import('@/views/PokemonDetailView.vue'), meta: { nav: 'pokemon' } },
   { path: '/teams', name: 'teams', component: () => import('@/views/TeamListView.vue'), meta: { nav: 'teams' } },

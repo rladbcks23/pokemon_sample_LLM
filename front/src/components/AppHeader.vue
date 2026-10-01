@@ -7,7 +7,7 @@ const settings = useSettings()
 const route = useRoute()
 
 const MENU = [
-  { key: 'ranking', label: '랭킹', to: '/' },
+  // { key: 'ranking', label: '랭킹', to: '/ranking' },   // 숨김 (포켓몬 탭과 겹침)
   { key: 'pokemon', label: '포켓몬', to: '/pokemon' },
   { key: 'teams', label: '파티', to: '/teams' },
   { key: 'builder', label: '파티 빌딩', to: '/builder' },
