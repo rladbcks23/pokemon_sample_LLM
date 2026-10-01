@@ -24,8 +24,8 @@ const q = ref('')
 const tab = ref('pokemon')
 watch(() => props.open, (v) => { if (v) { q.value = ''; tab.value = 'pokemon' } })
 
-// 공개 샘플: 검색·페이지는 서버에서 (창 하나에 다 보이게 10개씩)
-const PUB_SIZE = 10
+// 공개 샘플: 검색·페이지는 서버에서 (창 안에서 스크롤 없이 보이게 8개씩)
+const PUB_SIZE = 8
 const pub = ref(null)
 const pubPage = ref(1)
 const pubError = ref('')
