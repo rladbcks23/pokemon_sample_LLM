@@ -71,6 +71,8 @@ class ApiTests(APITestCase):
         d = self.client.get('/api/pokemon/?format=doubles').json()
         self.assertEqual([p['id'] for p in d['items']], ['garchomp'])
         self.assertTrue(d['items'][0]['has_mega'])
+        mega = d['items'][0]['megas'][0]
+        self.assertEqual((mega['id'], mega['item'], mega['types']), ('garchompmegaz', 'garchompitez', ['Dragon']))
         self.assertEqual(d['items'][0]['rank'], 9)
 
     def test_pokemon_detail(self):
