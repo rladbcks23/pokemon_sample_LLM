@@ -114,6 +114,10 @@ const MANUAL_KO = {
 	leek: '대파', // 도구
 };
 
+// 메가 폼 한글 이름: 메가 + 포켓몬 + X/Y/Z (메가망나뇽, 메가리자몽Y, 메가냐오닉스(수컷))
+const MEGA_SUFFIX = { 'Mega': '', 'Mega-X': 'X', 'Mega-Y': 'Y', 'Mega-Z': 'Z', 'M-Mega': '(수컷)', 'F-Mega': '(암컷)' };
+const megaKo = (baseKo, forme) => `메가${baseKo}${MEGA_SUFFIX[forme] ?? ''}`;
+
 // 성능이 같아 하나로 합치는 폼: 제외할 폼 → 남길 폼. 남긴 폼은 이름에 폼 이름을 붙이지 않음
 // 파밀리쥐: 세식구(기본 폼)를 빼고 네식구만 "파밀리쥐"로
 const MERGED_FORMES = new Map([['Maushold', 'Maushold-Four']]);
@@ -124,7 +128,11 @@ function isLegalSpecies(species) {
 	// 배틀 중에만 바뀌는 폼(메가 제외)과 외형만 다른 폼은 제외
 	if (species.battleOnly && !species.isMega) return false;
 	if (dex.species.get(species.baseSpecies).cosmeticFormes?.includes(species.name)) return false;
-	// 성능이 같아 하나로 합치는 폼 (파밀리쥐 네식구 = 세식구)
+	// 메가 폼 한글 이름: 메가 + 포켓몬 + X/Y/Z (메가망나뇽, 메가리자몽Y, 메가냐오닉스(수컷))
+const MEGA_SUFFIX = { 'Mega': '', 'Mega-X': 'X', 'Mega-Y': 'Y', 'Mega-Z': 'Z', 'M-Mega': '(수컷)', 'F-Mega': '(암컷)' };
+const megaKo = (baseKo, forme) => `메가${baseKo}${MEGA_SUFFIX[forme] ?? ''}`;
+
+// 성능이 같아 하나로 합치는 폼 (파밀리쥐 네식구 = 세식구)
 	if (MERGED_FORMES.has(species.name)) return false;
 	const set = {species: species.name, name: species.baseSpecies, moves: [], ability: '', item: ''};
 	return !validator.checkSpecies(set, species, species, {});
@@ -148,7 +156,8 @@ function isLegalSpecies(species) {
 		pokemon.push({
 			id: s.id,
 			name: s.name,
-			name_ko: baseKo ? (forme ? `${baseKo}-${FORME_KO[forme] || forme}` : baseKo) : '',
+			name_ko: !baseKo ? '' : s.isMega ? megaKo(baseKo, s.forme)
+				: forme ? `${baseKo}-${FORME_KO[forme] || forme}` : baseKo,
 			num: s.num,
 			base_species: s.baseSpecies,
 			forme: s.forme,
