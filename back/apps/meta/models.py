@@ -58,6 +58,7 @@ class Team(models.Model):
     SOURCES = [
         ('tournament', '대회'), ('user', '사용자'), ('synthetic', '합성'),
         ('opgg_replica', 'OP.GG 레플리카 팀'), ('showdown_replay', 'Showdown 리플레이'),
+        ('vgcpastes', 'VGCPastes 대회 팀'),
     ]
     RESULTS = [('', '-'), ('win', '승'), ('lose', '패')]
 
@@ -90,6 +91,9 @@ class TeamMember(Build):
     is_gimmick_user = models.BooleanField(default=False)            # 이 멤버에게 기믹(메가 등)을 쓰는지
     brought = models.BooleanField(null=True, blank=True)            # 리플레이: 배틀에 나왔는지 (None=정보 없음)
     lead = models.BooleanField(null=True, blank=True)               # 리플레이: 선봉이었는지
+    # SP를 다른 파티에서 가져왔으면 그 출처 (예: vgcpastes:MC408). 리플레이는 SP가 공개되지 않아서
+    # 같은 파티(6마리 육성이 모두 같은)의 공개 팀에서만 채움
+    sp_from = models.CharField(max_length=64, blank=True)
 
     class Meta:
         db_table = 'team_member'
