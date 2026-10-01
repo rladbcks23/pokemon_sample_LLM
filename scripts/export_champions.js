@@ -114,8 +114,10 @@ const MANUAL_KO = {
 	leek: '대파', // 도구
 };
 
-// 성능이 같아 기본 폼 하나로 합치는 폼. 기본 폼 이름에도 폼 이름을 붙이지 않음 (파밀리쥐-세식구 → 파밀리쥐)
-const MERGED_FORMES = new Set(['Maushold-Four']);
+// 성능이 같아 하나로 합치는 폼: 제외할 폼 → 남길 폼. 남긴 폼은 이름에 폼 이름을 붙이지 않음
+// 파밀리쥐: 세식구(기본 폼)를 빼고 네식구만 "파밀리쥐"로
+const MERGED_FORMES = new Map([['Maushold', 'Maushold-Four']]);
+const KEPT_FORMES = new Set(MERGED_FORMES.values());
 
 function isLegalSpecies(species) {
 	if (species.isNonstandard || species.tier === 'Illegal') return false;
@@ -142,7 +144,7 @@ function isLegalSpecies(species) {
 		if (!s.exists || !isLegalSpecies(s)) continue;
 		const baseKo = koSpecies.get(dex.species.get(s.baseSpecies).id);
 		// 기본 폼도 다른 폼이 있으면 폼 이름을 붙임 (예: 루가루암-한낮의 모습)
-		const forme = s.forme || (FORME_KO[s.baseForme] ? s.baseForme : '');
+		const forme = KEPT_FORMES.has(s.name) ? '' : s.forme || (FORME_KO[s.baseForme] ? s.baseForme : '');
 		pokemon.push({
 			id: s.id,
 			name: s.name,
