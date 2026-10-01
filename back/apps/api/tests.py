@@ -5,7 +5,9 @@ from rest_framework.test import APITestCase
 from apps.api.common import names
 from apps.dex.models import Ability, Item, Learnset, Move, Nature, Pokemon, PokemonAbility, Ruleset, TypeChart
 from apps.dex.typechart import chart
-from apps.meta.models import Team, TeamMember, UsageDetail, UsageStat
+from datetime import datetime, timezone
+
+from apps.meta.models import RankSnapshot, Team, TeamMember, UsageDetail, UsageStat
 
 
 def mon(rs, sid, name, name_ko, types, stats, **kw):
@@ -44,16 +46,25 @@ class ApiTests(APITestCase):
                                      source='opgg', season='m-6', snapshot_date=date(2026, 9, 29), rank=9, prev_rank=2)
         UsageDetail.objects.create(usage_stat=u, kind='item', target_key='garchompitez', pct=46.3)
         UsageDetail.objects.create(usage_stat=u, kind='spread', target_key='2/32/0/0/0/32', pct=24.6)
+        # 순위 스냅샷 2벌: 9/29 2위 → 10/1 9위, 10/1에만 있는 신규 포켓몬
+        snap = dict(ruleset=rs, format_key='champions_mc_doubles', source='opgg', season='m-6')
+        t1, t2 = datetime(2026, 9, 29, tzinfo=timezone.utc), datetime(2026, 10, 1, tzinfo=timezone.utc)
+        RankSnapshot.objects.create(captured_at=t1, pokemon_key='garchomp', rank=2, **snap)
+        RankSnapshot.objects.create(captured_at=t2, pokemon_key='garchomp', rank=9, season_change=-7, **snap)
+        RankSnapshot.objects.create(captured_at=t2, pokemon_key='garchompmegaz', rank=10, **snap)
         cls.team = Team.objects.create(ruleset=rs, format_key='champions_mc_doubles', source='showdown_replay',
                                        player='Alice', result='win', played_on=date(2026, 9, 29))
         TeamMember.objects.create(team=cls.team, slot=1, pokemon_key='garchomp', item_key='garchompitez',
                                   ability_key='roughskin', nature_key='jolly', move1='earthquake', sp_atk=32)
 
-    def test_ranking(self):
+    def test_ranking_daily_change(self):
         d = self.client.get('/api/ranking/?format=doubles').json()
-        item = d['items'][0]
-        self.assertEqual((item['rank'], item['change'], item['is_new']), (9, -7, False))
-        self.assertEqual(item['pokemon']['name_ko'], '한카리아스')
+        self.assertTrue(d['captured_at'].startswith('2026-10-01'))
+        self.assertTrue(d['compared_to'].startswith('2026-09-29'))
+        g, new = d['items']
+        self.assertEqual((g['rank'], g['prev_rank'], g['change'], g['is_new'], g['season_change']), (9, 2, -7, False, -7))
+        self.assertEqual(g['pokemon']['name_ko'], '한카리아스')
+        self.assertTrue(new['is_new'])
         self.assertEqual(self.client.get('/api/ranking/?format=xx').status_code, 400)
 
     def test_pokemon_list_excludes_mega(self):
