@@ -1,4 +1,5 @@
 """프론트(Vue)용 조회 API."""
+from django.db.models import Case, IntegerField, Value, When
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
@@ -9,7 +10,7 @@ from apps.dex.ids import to_id
 from apps.dex.models import Item, Move, Nature, Pokemon
 from apps.dex.stats import SP_MAX_TOTAL, STATS, calc_stats, sp_problems
 from apps.dex.typechart import TYPE_KO, TYPES, chart, defense_profile, matchups
-from apps.meta.models import SP_STATS, RankSnapshot, Team, TeamMember, UsageStat
+from apps.meta.models import SP_STATS, PokemonSet, RankSnapshot, Team, TeamMember, UsageStat
 
 
 def latest_usage(ruleset, fmt: str, source: str = 'opgg'):
@@ -222,6 +223,17 @@ def team_summary(t: Team, members: list[TeamMember]) -> dict:
     }
 
 
+def opgg_first(source: str):
+    """정렬용: OP.GG 출처면 0, 나머지 1."""
+    return Case(When(source=source, then=Value(0)), default=Value(1), output_field=IntegerField())
+
+
+def pokemon_keys(rs, q: str) -> list[str]:
+    """이름(한글/영문) 일부로 포켓몬 ID 찾기."""
+    return [sid for sid, p in names(rs.id)['pokemon'].items()
+            if q in (p['name_ko'] or '') or q.lower() in p['name'].lower()]
+
+
 class TeamPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'size'
@@ -236,33 +248,61 @@ def team_list(request):
     q: 포함 포켓몬 이름(한글/영문) 일부
     """
     rs = get_ruleset(request)
-    qs = Team.objects.filter(ruleset=rs).order_by('-played_on', '-id')
+    qs = Team.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_replica'))         .order_by('opgg_first', '-played_on', '-id')
     fmt = request.query_params.get('format')
     if fmt:
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
     if src := request.query_params.get('source'):
         qs = qs.filter(source=src)
     if q := request.query_params.get('q', '').strip():
-        keys = [sid for sid, p in names(rs.id)['pokemon'].items()
-                if q in (p['name_ko'] or '') or q.lower() in p['name'].lower()]
-        qs = qs.filter(members__pokemon_key__in=keys).distinct()
+        qs = qs.filter(members__pokemon_key__in=pokemon_keys(rs, q)).distinct()
     pager = TeamPagination()
     page = pager.paginate_queryset(qs.prefetch_related('members'), request)
     return pager.get_paginated_response([team_summary(t, list(t.members.all())) for t in page])
 
 
-def member_detail(t: Team, m: TeamMember) -> dict:
+def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
     rid = t.ruleset_id
     nature = names(rid)['nature'].get(m.nature_key)
     return {
-        'slot': m.slot, 'pokemon': pokemon_brief(rid, m.pokemon_key),
+        'slot': getattr(m, 'slot', None), 'pokemon': pokemon_brief(rid, m.pokemon_key),
         'item': label(rid, 'item', m.item_key), 'ability': label(rid, 'ability', m.ability_key),
         'nature': nature and {'id': nature['id'], 'name_ko': nature['name_ko'],
                               'plus': nature['plus_stat'] or None, 'minus': nature['minus_stat'] or None},
         'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
         'moves': [label(rid, 'move', k) for k in m.moves],
-        'is_mega': m.is_gimmick_user, 'brought': m.brought, 'lead': m.lead,
+        'is_mega': getattr(m, 'is_gimmick_user', False),
+        'brought': getattr(m, 'brought', None), 'lead': getattr(m, 'lead', None),
     }
+
+
+class SamplePagination(PageNumberPagination):
+    page_size = 30
+    page_size_query_param = 'size'
+    max_page_size = 100
+
+
+@api_view(['GET'])
+def sample_list(request):
+    """공개 샘플(흔한 육성형) 목록. OP.GG 샘플이 먼저. GET /api/samples/?format=doubles&q=망나뇽&page=1
+
+    sample: 샘플 제작·파티 빌딩에 바로 넣는 모양, member: 화면 표시용 (파티 상세의 멤버와 같은 모양)
+    """
+    rs = get_ruleset(request)
+    qs = PokemonSet.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_sample'))         .order_by('opgg_first', 'usage_pct', '-id')
+    if request.query_params.get('format'):
+        qs = qs.filter(format_key=format_key(rs, get_format(request)))
+    if q := request.query_params.get('q', '').strip():
+        qs = qs.filter(pokemon_key__in=pokemon_keys(rs, q))
+    pager = SamplePagination()
+    page = pager.paginate_queryset(qs, request)
+    return pager.get_paginated_response([{
+        'id': s.pk, 'name': s.name, 'source': s.source,
+        'sample': {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': s.nature_key,
+                   'sp': {st: getattr(s, f'sp_{st}') for st in SP_STATS},
+                   'moves': ([*s.moves, '', '', '', ''])[:4]},
+        'member': member_detail(s, s),
+    } for s in page])
 
 
 def weakness_table(members: list[dict]) -> dict:
