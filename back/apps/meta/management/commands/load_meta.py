@@ -187,11 +187,18 @@ class Command(BaseCommand):
             snapshot = date(y + (m == 12), m % 12 + 1, 1)  # 통계가 집계된 달의 다음 달 1일
             ranked = sorted(load_json(f)['data'].items(), key=lambda kv: -kv[1]['usage'])
             stats = []
+            seen = set()
             for rank, (name, v) in enumerate(ranked, 1):
+                # 합친 폼(파밀리쥐 세식구 → 네식구)은 남긴 폼으로, 둘 다 있으면 사용률 높은 쪽만
+                pid = dex.resolve_cosmetic(to_id(name))
+                if pid in seen:
+                    self.skipped[f'smogon 합친 폼 중복 ({name})'] += 1
+                    continue
+                seen.add(pid)
                 total = sum(v['Abilities'].values()) or 1
                 pct = lambda w: round(w / total * 100, 3)  # noqa: E731
                 u = UsageStat(ruleset_id=ruleset_id, format_key=format_key, source=source, season=month,
-                              pokemon_key=self.verify('pokemon(smogon)', to_id(name), dex.pokemon),
+                              pokemon_key=self.verify('pokemon(smogon)', pid, dex.pokemon),
                               snapshot_date=snapshot, rank=rank, usage_pct=round(v['usage'] * 100, 3))
                 ds = []
                 for kind, key, valid in (('move', 'Moves', dex.moves), ('item', 'Items', dex.items),
@@ -208,7 +215,7 @@ class Command(BaseCommand):
                     spreads[sp] += w
                 for kind, c in (('nature', natures), ('spread', spreads)):
                     ds += [UsageDetail(kind=kind, target_key=tid, pct=pct(w)) for tid, w in top(c)]
-                ds += [UsageDetail(kind='teammate', target_key=to_id(mate), pct=pct(w))
+                ds += [UsageDetail(kind='teammate', target_key=dex.resolve_cosmetic(to_id(mate)), pct=pct(w))
                        for mate, w in top(v['Teammates'], 12)]
                 stats.append((u, ds))
             self.save_usage(stats)
