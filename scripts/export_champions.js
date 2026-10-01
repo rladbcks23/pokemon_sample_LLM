@@ -118,9 +118,17 @@ const MANUAL_KO = {
 const MEGA_SUFFIX = { 'Mega': '', 'Mega-X': 'X', 'Mega-Y': 'Y', 'Mega-Z': 'Z', 'M-Mega': '(수컷)', 'F-Mega': '(암컷)' };
 const megaKo = (baseKo, forme) => `메가${baseKo}${MEGA_SUFFIX[forme] ?? ''}`;
 
-// 성능이 같아 하나로 합치는 폼: 제외할 폼 → 남길 폼. 남긴 폼은 이름에 폼 이름을 붙이지 않음
+// 성능(타입·종족값·특성·배우는 기술)이 같아 하나로 합치는 폼: 제외할 폼 → 남길 폼
 // 파밀리쥐: 세식구(기본 폼)를 빼고 네식구만 "파밀리쥐"로
-const MERGED_FORMES = new Map([['Maushold', 'Maushold-Four']]);
+const MERGED_FORMES = new Map([
+	['Maushold', 'Maushold-Four'],
+	['Vivillon-Fancy', 'Vivillon'], ['Vivillon-Pokeball', 'Vivillon'],
+	['Polteageist-Antique', 'Polteageist'],
+	['Sinistcha-Masterpiece', 'Sinistcha'],
+	['Squawkabilly-Blue', 'Squawkabilly'], ['Squawkabilly-White', 'Squawkabilly-Yellow'],
+]);
+// 남긴 폼의 한글 이름: 없으면 폼 이름 없이 포켓몬 이름만 (특성이 다른 시비꼬는 두 묶음으로)
+const KEPT_FORME_KO = new Map([['Squawkabilly', '그린·블루 페더'], ['Squawkabilly-Yellow', '옐로·화이트 페더']]);
 const KEPT_FORMES = new Set(MERGED_FORMES.values());
 
 function isLegalSpecies(species) {
@@ -128,11 +136,7 @@ function isLegalSpecies(species) {
 	// 배틀 중에만 바뀌는 폼(메가 제외)과 외형만 다른 폼은 제외
 	if (species.battleOnly && !species.isMega) return false;
 	if (dex.species.get(species.baseSpecies).cosmeticFormes?.includes(species.name)) return false;
-	// 메가 폼 한글 이름: 메가 + 포켓몬 + X/Y/Z (메가망나뇽, 메가리자몽Y, 메가냐오닉스(수컷))
-const MEGA_SUFFIX = { 'Mega': '', 'Mega-X': 'X', 'Mega-Y': 'Y', 'Mega-Z': 'Z', 'M-Mega': '(수컷)', 'F-Mega': '(암컷)' };
-const megaKo = (baseKo, forme) => `메가${baseKo}${MEGA_SUFFIX[forme] ?? ''}`;
-
-// 성능이 같아 하나로 합치는 폼 (파밀리쥐 네식구 = 세식구)
+	// 성능이 같아 하나로 합치는 폼은 남길 폼만
 	if (MERGED_FORMES.has(species.name)) return false;
 	const set = {species: species.name, name: species.baseSpecies, moves: [], ability: '', item: ''};
 	return !validator.checkSpecies(set, species, species, {});
@@ -153,11 +157,11 @@ const megaKo = (baseKo, forme) => `메가${baseKo}${MEGA_SUFFIX[forme] ?? ''}`;
 		const baseKo = koSpecies.get(dex.species.get(s.baseSpecies).id);
 		// 기본 폼도 다른 폼이 있으면 폼 이름을 붙임 (예: 루가루암-한낮의 모습)
 		const forme = KEPT_FORMES.has(s.name) ? '' : s.forme || (FORME_KO[s.baseForme] ? s.baseForme : '');
+		const formeKo = KEPT_FORME_KO.get(s.name) || (forme && (FORME_KO[forme] || forme));
 		pokemon.push({
 			id: s.id,
 			name: s.name,
-			name_ko: !baseKo ? '' : s.isMega ? megaKo(baseKo, s.forme)
-				: forme ? `${baseKo}-${FORME_KO[forme] || forme}` : baseKo,
+			name_ko: !baseKo ? '' : s.isMega ? megaKo(baseKo, s.forme) : formeKo ? `${baseKo}-${formeKo}` : baseKo,
 			num: s.num,
 			base_species: s.baseSpecies,
 			forme: s.forme,
