@@ -237,10 +237,10 @@ const itemIdOf = (form) => toId(form.required_item)
             <span><span class="muted">{{ SP_MAX_TOTAL }} 중 </span><strong class="mono big">{{ left }}</strong><span class="muted"> 남음</span></span>
           </div>
           <div class="usedbar"><div :style="{ width: (used / SP_MAX_TOTAL * 100) + '%' }" /></div>
-          <div class="sprow head mono"><span>스탯</span><span class="r">종족</span><span /><span /><span>SP · 최대 32</span><span /><span /><span class="c">SP</span><span class="r">실수치</span></div>
+          <div class="sprow head mono"><span>스탯</span><span>종족</span><span /><span /><span>SP · 최대 32</span><span /><span /><span class="c">SP</span><span class="r">실수치</span></div>
           <div v-for="s in STATS" :key="s" class="sprow">
             <span class="lbl">{{ STAT_KO[s] }} <small>{{ nature?.plus === s ? '▲' : nature?.minus === s ? '▼' : '' }}</small></span>
-            <span class="mono base r">{{ mon?.stats[s] ?? '—' }}</span>
+            <span class="mono base">{{ mon?.stats[s] ?? '—' }}</span>
             <button class="pill mono" title="0으로" @click="setSp(s, 0)">0</button>
             <button class="pm" @click="setSp(s, sample.sp[s] - 1)">−</button>
             <input type="range" min="0" :max="SP_MAX_PER_STAT" :value="sample.sp[s]" @input="setSp(s, +$event.target.value)">
@@ -362,7 +362,8 @@ const itemIdOf = (form) => toId(form.required_item)
 .big { font-size: 18px; }
 .usedbar { height: 6px; background: var(--c-bar); border-radius: 3px; overflow: hidden; }
 .usedbar div { height: 100%; background: var(--c-primary); }
-.sprow { display: grid; grid-template-columns: 64px 44px 36px 32px minmax(0, 1fr) 32px 44px 52px 64px; gap: 10px; align-items: center; }
+/* 스탯 이름과 종족값은 붙여서 (이름 칸을 줄이고 종족값 왼쪽 정렬) */
+.sprow { display: grid; grid-template-columns: 50px 32px 36px 32px minmax(0, 1fr) 32px 44px 52px 64px; gap: 10px; align-items: center; }
 .sprow.head { font-size: 11px; color: var(--c-faint); }
 .r { text-align: right; }
 .c { text-align: center; }
