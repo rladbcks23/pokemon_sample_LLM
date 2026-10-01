@@ -7,6 +7,7 @@ import { STATS, TYPES, TYPE_KO } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import RankChange from '@/components/RankChange.vue'
+import PagerNav from '@/components/PagerNav.vue'
 
 const settings = useSettings()
 const router = useRouter()
@@ -18,7 +19,10 @@ const q = ref('')
 const megaOnly = ref(false)
 const types = ref([])
 const sort = ref('use')
-const SORTS = [['no', '도감번호'], ['use', '사용률'], ['total', '종족값 합계'], ['spe', '스피드']]
+// 스피드 순은 따로 만들 스피드 표에서
+const SORTS = [['use', '사용률'], ['total', '종족값 합계']]
+const PAGE_SIZE = 30
+const page = ref(1)
 
 watch(() => settings.format, async (fmt) => {
   loading.value = true
@@ -34,10 +38,8 @@ watch(() => settings.format, async (fmt) => {
 
 const byRank = (a, b) => (a.rank ?? 9999) - (b.rank ?? 9999) || a.num - b.num
 const SORT_FN = {
-  no: (a, b) => a.num - b.num || a.id.localeCompare(b.id),
   use: byRank,
   total: (a, b) => b.bst - a.bst || byRank(a, b),
-  spe: (a, b) => b.stats.spe - a.stats.spe || byRank(a, b),
 }
 
 const rows = computed(() => {
@@ -49,10 +51,19 @@ const rows = computed(() => {
     .sort(SORT_FN[sort.value])
 })
 
+const pages = computed(() => Math.max(1, Math.ceil(rows.value.length / PAGE_SIZE)))
+const pageRows = computed(() => rows.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 검색·필터·정렬·포맷이 바뀌면 1페이지로
+watch([q, megaOnly, types, sort, () => settings.format], () => { page.value = 1 })
+function goPage(p) {
+  page.value = p
+  window.scrollTo({ top: 0 })
+}
+
 function toggleType(t) {
   types.value = types.value.includes(t) ? types.value.filter((x) => x !== t) : [...types.value, t]
 }
-const statClass = (s, v) => ({ hi: v >= 120 || (sort.value === 'spe' && s === 'spe'), sel: sort.value === 'spe' && s === 'spe' })
+const statClass = (s, v) => ({ hi: v >= 120 })
 </script>
 
 <template>
@@ -85,7 +96,7 @@ const statClass = (s, v) => ({ hi: v >= 120 || (sort.value === 'spe' && s === 's
       <p v-if="loading" class="empty">불러오는 중…</p>
       <p v-else-if="error" class="empty err">{{ error }}</p>
       <template v-else>
-        <div v-for="p in rows" :key="p.id" class="trow" @click="router.push(`/pokemon/${p.id}`)">
+        <div v-for="p in pageRows" :key="p.id" class="trow" @click="router.push(`/pokemon/${p.id}`)">
           <span class="rank mono">{{ p.rank ?? '—' }}</span>
           <div class="who">
             <PokemonImg :id="p.id" :size="44" />
@@ -100,6 +111,7 @@ const statClass = (s, v) => ({ hi: v >= 120 || (sort.value === 'spe' && s === 's
         <p v-if="!rows.length" class="empty">조건에 맞는 포켓몬이 없습니다</p>
       </template>
     </div>
+    <PagerNav :page="page" :pages="pages" @go="goPage" />
   </section>
 </template>
 
@@ -137,7 +149,6 @@ const statClass = (s, v) => ({ hi: v >= 120 || (sort.value === 'spe' && s === 's
 .types { display: flex; gap: 4px; }
 .stat { color: var(--c-muted); }
 .stat.hi { color: var(--c-text); font-weight: 600; }
-.stat.sel { color: var(--c-primary); }
 .r { text-align: right; }
 .empty { padding: 40px; text-align: center; color: var(--c-muted); font-size: 14px; border-top: 1px solid var(--c-line-row); margin: 0; }
 .err { color: var(--c-danger); }
