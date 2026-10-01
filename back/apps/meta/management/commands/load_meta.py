@@ -355,6 +355,7 @@ class Command(BaseCommand):
                         if i.mega_from}
             teams = []
             for t in load_json(path):
+                t = {k: ('' if v == '-' else v) for k, v in t.items()}     # 시트의 빈칸 표시 '-'
                 sets = parse_paste(t.get('paste', ''))
                 if not sets or any(s['sp'] and not sp_valid(s['sp']) for s in sets):
                     self.skipped['VGCPastes 팀 (빈 팀/SP 규칙 위반)'] += 1
