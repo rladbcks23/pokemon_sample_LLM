@@ -57,6 +57,20 @@ const abilities = computed(() => detail.value?.forms[0].abilities || [])
 const nature = computed(() => dex.natures[sample.value.nature])
 const natureText = (n) => (n?.plus ? `${STAT_KO[n.plus]}▲ ${STAT_KO[n.minus]}▼` : '무보정')
 
+// 성격: 무보정 5개는 효과가 같아 "노력"만 남기고, 나머지는 올라가는 스탯별로 묶음
+const NEUTRAL = 'hardy'
+const natureGroups = computed(() => {
+  const all = dex.options?.natures || []
+  const groups = [{ label: '무보정', natures: all.filter((n) => n.id === NEUTRAL) }]
+  for (const st of STATS.slice(1)) {
+    const natures = all.filter((n) => n.plus === st)
+      .sort((a, b) => STATS.indexOf(a.minus) - STATS.indexOf(b.minus))
+    groups.push({ label: `${STAT_KO[st]}▲`, natures })
+  }
+  return groups
+})
+const normNature = (id) => (id && !dex.natures[id]?.plus ? NEUTRAL : id)
+
 function pickPokemon(id) {
   sample.value = { ...emptySample(id), id: sample.value.id }
   moveSel.value = null
@@ -113,7 +127,7 @@ function loadRef() {
   if (u.spread[0]) s.sp = { ...s.sp, ...Object.fromEntries(STATS.map((x) => [x, u.spread[0].sp[x] || 0])) }
   if (u.item[0]) s.item = u.item[0].id
   if (u.ability[0] && abilities.value.some((a) => a.id === u.ability[0].id)) s.ability = u.ability[0].id
-  if (u.nature[0]) s.nature = u.nature[0].id
+  if (u.nature[0]) s.nature = normNature(u.nature[0].id)
   const learnable = new Set(learn.value.map((m) => m.id))
   s.moves = [...u.move.map((m) => m.id).filter((id) => learnable.has(id)).slice(0, 4), '', '', '', ''].slice(0, 4)
   moveSel.value = null
@@ -197,9 +211,11 @@ const itemIdOf = (form) => toId(form.required_item)
         </label>
         <label class="fld"><span>성격</span>
           <el-select v-model="sample.nature" filterable placeholder="성격 선택" class="sel">
-            <el-option v-for="n in dex.options?.natures || []" :key="n.id" :value="n.id" :label="n.name_ko">
-              <span class="opt">{{ n.name_ko }}<span class="opt-sub">{{ natureText(n) }}</span></span>
-            </el-option>
+            <el-option-group v-for="g in natureGroups" :key="g.label" :label="g.label">
+              <el-option v-for="n in g.natures" :key="n.id" :value="n.id" :label="n.name_ko">
+                <span class="opt">{{ n.name_ko }}<span class="opt-sub">{{ natureText(n) }}</span></span>
+              </el-option>
+            </el-option-group>
           </el-select>
         </label>
 
