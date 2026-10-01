@@ -291,7 +291,9 @@ def team_list(request):
     q: 포함 포켓몬 이름(한글/영문) 일부
     """
     rs = get_ruleset(request)
-    qs = Team.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_replica'))         .order_by('opgg_first', '-played_on', '-id')
+    # 배울 수 없는 기술이 있는 파티(is_legal=False)는 숨김
+    qs = Team.objects.filter(ruleset=rs).exclude(is_legal=False) \
+        .annotate(opgg_first=opgg_first('opgg_replica')).order_by('opgg_first', '-played_on', '-id')
     fmt = request.query_params.get('format')
     if fmt:
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
@@ -339,7 +341,8 @@ def sample_list(request):
     sample: 샘플 제작·파티 빌딩에 바로 넣는 모양, member: 화면 표시용 (파티 상세의 멤버와 같은 모양)
     """
     rs = get_ruleset(request)
-    qs = PokemonSet.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_sample'))         .order_by('opgg_first', 'usage_pct', '-id')
+    qs = PokemonSet.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_sample')) \
+        .order_by('opgg_first', 'usage_pct', '-id')
     if request.query_params.get('format'):
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
     if q := request.query_params.get('q', '').strip():
