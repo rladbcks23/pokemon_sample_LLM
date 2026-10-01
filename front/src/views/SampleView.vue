@@ -198,7 +198,10 @@ const itemIdOf = (form) => toId(form.required_item)
 
 <template>
   <section class="page">
-    <div v-if="fromBuilder" class="ctx mono">← 파티 빌딩 · 슬롯 {{ slot + 1 }} 편집 중</div>
+    <div v-if="fromBuilder" class="ctx">
+      <RouterLink to="/builder" class="back">← 파티 빌딩으로 돌아가기</RouterLink>
+      <span>슬롯 {{ slot + 1 }} {{ editingSlot ? '수정' : '추가' }} 중 · 저장하지 않으면 바뀌지 않습니다</span>
+    </div>
     <div class="grid">
       <!-- 왼쪽: 포켓몬·도구·특성·성격·기술 -->
       <div class="col">
@@ -353,7 +356,8 @@ const itemIdOf = (form) => toId(form.required_item)
 
 <style scoped>
 .page { padding: 40px 32px 48px; display: flex; flex-direction: column; gap: 16px; }
-.ctx { font-size: 12px; color: var(--c-primary); }
+.ctx { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--c-muted); }
+.back { color: var(--c-primary); font-weight: 600; }
 .grid { display: grid; grid-template-columns: 320px minmax(0, 1fr) 300px; gap: 32px; }
 .col { display: flex; flex-direction: column; gap: 18px; }
 .col.wide { gap: 28px; }
