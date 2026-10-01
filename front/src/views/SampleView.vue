@@ -44,6 +44,9 @@ onMounted(async () => {
     editingSlot.value = !!s
   }
   if (!s && q.sample) s = library.mySamples.find((x) => x.id === q.sample)
+  // 찜한 샘플은 복사본으로 열기 (저장하면 내 샘플에 새로 생김)
+  const fav = !s && q.sample && library.favSamples.find((x) => x.id === q.sample)
+  if (fav) s = { ...fav, id: null }
   s = s ? JSON.parse(JSON.stringify(s)) : emptySample(q.pokemon || null)
   if (!s.id && q.item) s.item = q.item
   sample.value = s
