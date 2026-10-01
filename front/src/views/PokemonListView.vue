@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { useSettings } from '@/stores/settings'
 import { STATS, TYPES, TYPE_KO } from '@/utils/pokemon'
@@ -12,18 +12,21 @@ import FormatToggle from '@/components/FormatToggle.vue'
 
 const settings = useSettings()
 const router = useRouter()
+const route = useRoute()
 const list = ref([])
 const loading = ref(true)
 const error = ref('')
 
-const q = ref('')
-const megaOnly = ref(false)
-const types = ref([])
-const sort = ref('use')
+// 검색·필터·정렬·페이지는 주소(쿼리)에도 둠 → 상세에서 돌아와도 같은 페이지
+const rq = route.query
+const q = ref(rq.q || '')
+const megaOnly = ref(rq.mega === '1')
+const types = ref(rq.types ? String(rq.types).split(',') : [])
+const sort = ref(rq.sort === 'total' ? 'total' : 'use')
 // 스피드 순은 따로 만들 스피드 표에서
 const SORTS = [['use', '사용률'], ['total', '종족값 합계']]
 const PAGE_SIZE = 30
-const page = ref(1)
+const page = ref(Number(rq.page) || 1)
 
 watch(() => settings.format, async (fmt) => {
   loading.value = true
@@ -56,6 +59,14 @@ const pages = computed(() => Math.max(1, Math.ceil(rows.value.length / PAGE_SIZE
 const pageRows = computed(() => rows.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
 // 검색·필터·정렬·포맷이 바뀌면 1페이지로
 watch([q, megaOnly, types, sort, () => settings.format], () => { page.value = 1 })
+watch([q, megaOnly, types, sort, page], () => {
+  const query = { q: q.value.trim(), mega: megaOnly.value ? '1' : '', types: types.value.join(','),
+    sort: sort.value === 'use' ? '' : sort.value, page: page.value > 1 ? page.value : '' }
+  Object.keys(query).forEach((k) => query[k] === '' && delete query[k])
+  router.replace({ query })
+})
+// 데이터를 다시 받아 페이지 수가 줄면 마지막 페이지로
+watch(pages, (n) => { if (page.value > n && list.value.length) page.value = n })
 function goPage(p) {
   page.value = p
   window.scrollTo({ top: 0 })
