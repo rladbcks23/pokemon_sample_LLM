@@ -82,6 +82,7 @@ class Command(BaseCommand):
             self.load_vgcpastes()
             self.fill_replay_sp()
             self.check_moves()
+            self.sets_from_teams()
         self.report()
 
     # ------------------------------------------------------------------ 공통
@@ -436,4 +437,30 @@ class Command(BaseCommand):
             if illegal:
                 self.skipped[f'배울 수 없는 기술 → 숨김 ({t.source} {t.external_id})'] = ', '.join(illegal)
         Team.objects.bulk_update(bad + ok, ['is_legal'], batch_size=2000)
+
+    def sets_from_teams(self) -> None:
+        """파티 멤버 → 포켓몬 샘플 (pokemon_set). SP가 있고 도구·특성·성격·기술 4개가 다 있는 것만.
+
+        같은 육성(포맷·포켓몬·도구·특성·성격·SP·기술)은 하나로, 이미 OP.GG 샘플에 있는 것도 뺌.
+        배울 수 없는 기술이 있는 파티(is_legal=False)는 쓰지 않음.
+        """
+        fields = ['pokemon_key', 'item_key', 'ability_key', 'nature_key', *[f'sp_{s}' for s in SP_STATS]]
+        key = lambda fk, b: (fk, *[getattr(b, f) for f in fields], frozenset(b.moves))
+        seen = {key(s.format_key, s) for s in PokemonSet.objects.all()}
+        for src, out in (('vgcpastes', 'vgcpastes_team'), ('opgg_replica', 'opgg_team')):
+            sets = []
+            for t in Team.objects.filter(source=src).exclude(is_legal=False).prefetch_related('members'):
+                for m in t.members.all():
+                    if not (any(getattr(m, f'sp_{s}') for s in SP_STATS) and m.item_key and m.ability_key
+                            and m.nature_key and len(m.moves) == 4):
+                        continue
+                    k = key(t.format_key, m)
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    sets.append(PokemonSet(ruleset_id=t.ruleset_id, format_key=t.format_key, name=t.name[:64],
+                                           source=out, **{f: getattr(m, f) for f in fields},
+                                           move1=m.move1, move2=m.move2, move3=m.move3, move4=m.move4))
+            PokemonSet.objects.bulk_create(sets, batch_size=2000)
+            self.counts[f'pokemon_set {out} (파티 멤버에서)'] = len(sets)
 

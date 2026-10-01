@@ -115,7 +115,8 @@ class PokemonSet(Build):
     format_key = models.CharField(max_length=48, db_index=True)
     name = models.CharField(max_length=64, blank=True)          # "스카프 선봉형" 같은 이름
     usage_pct = models.FloatField(null=True, blank=True)
-    source = models.CharField(max_length=24)                    # opgg_sample / champions / legacy_converted
+    # opgg_sample(OP.GG 샘플) / vgcpastes_team·opgg_team(파티 멤버에서 뽑은 육성) / champions / legacy_converted
+    source = models.CharField(max_length=24)
 
     class Meta:
         db_table = 'pokemon_set'
