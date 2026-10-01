@@ -9,7 +9,11 @@ meta 데이터를 전부 지우고 다시 넣는다. load_dex를 먼저 실행�
 - Smogon 월별 통계(chaos) → usage_stat/detail (사용률 %, 동료 포함)
 - OP.GG 레플리카 팀 → team/team_member,  OP.GG 샘플 빌드 → pokemon_set
 - Showdown 리플레이 → team/team_member (출전·선봉·메가·승패 포함)
+- VGCPastes 대회 팀(pokepaste) → team/team_member (SP 포함)
+- 리플레이 SP 채우기: 리플레이에는 SP가 공개되지 않음. 6마리 육성(도구·특성·성격·기술)이 모두 같은
+  VGCPastes 팀이 있고 그 SP가 한 가지일 때만 그 SP를 넣음 (sp_from에 출처). 애매하면 비워 둠
 """
+import re
 import json
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
@@ -21,8 +25,10 @@ from django.db import transaction
 
 from apps.dex.ids import DexIndex, opgg_item_id, opgg_pokemon_id, to_id
 from apps.meta import opgg_tier
+from apps.dex.models import Item
 from apps.meta.models import (SP_MAX_PER_STAT, SP_MAX_TOTAL, SP_STATS, PokemonSet, RankSnapshot, Team, TeamMember,
                               UsageDetail, UsageStat)
+from apps.meta.pokepaste import parse_paste
 from apps.meta.replay import match_species, parse_replay
 
 RAW = Path(settings.DATA_DIR) / 'raw'
@@ -73,6 +79,8 @@ class Command(BaseCommand):
             self.load_opgg_teams()
             self.load_opgg_samples()
             self.load_replays()
+            self.load_vgcpastes()
+            self.fill_replay_sp()
         self.report()
 
     # ------------------------------------------------------------------ 공통
@@ -322,3 +330,93 @@ class Command(BaseCommand):
                     teams.append((team, members))
             self.save_teams(teams)
             self.counts[f'team showdown_replay {fmt_dir.name}'] = len(teams)
+
+    # ------------------------------------------------------------------ VGCPastes
+
+    @staticmethod
+    def placement(rank: str) -> int | None:
+        """'Champion' → 1, 'Runner Up' → 2, '3rd' / 'Top 4' / 'Top 8' → 숫자."""
+        r = rank.lower()
+        if 'champion' in r or r in ('1st', 'winner'):
+            return 1
+        if 'runner' in r or 'finalist' in r:
+            return 2
+        m = re.search(r'\d+', r)
+        return int(m.group()) if m else None
+
+    def load_vgcpastes(self) -> None:
+        """data/raw/vgcpastes/{ruleset}.json (collect_samples.py vgcpastes). 챔피언스 VGC = 더블."""
+        for path in sorted((RAW / 'vgcpastes').glob('*.json')):
+            ruleset_id = path.stem
+            if ruleset_id not in self.dexes:
+                continue
+            dex = self.dexes[ruleset_id]
+            stone_of = {i.showdown_id: to_id(i.mega_from) for i in Item.objects.filter(ruleset_id=ruleset_id)
+                        if i.mega_from}
+            teams = []
+            for t in load_json(path):
+                sets = parse_paste(t.get('paste', ''))
+                if not sets or any(s['sp'] and not sp_valid(s['sp']) for s in sets):
+                    self.skipped['VGCPastes 팀 (빈 팀/SP 규칙 위반)'] += 1
+                    continue
+                try:
+                    played = datetime.strptime(t.get('date', ''), '%d %b %Y').date()
+                except ValueError:
+                    played = None
+                team = Team(ruleset_id=ruleset_id, format_key=f'{ruleset_id}_doubles', source='vgcpastes',
+                            external_id=t['id'], name=t.get('title', ''), event=t.get('event', '')[:128],
+                            player=(t.get('player') or t.get('owner') or '')[:64],
+                            placement=self.placement(t.get('rank', '')), played_on=played,
+                            raw_paste=t.get('paste', ''))
+                members = []
+                for i, s in enumerate(sets[:6], 1):
+                    pid = self.verify('pokemon(vgcpastes)', dex.resolve_cosmetic(to_id(s['species'])), dex.pokemon)
+                    base = dex.base_id(pid)
+                    item = self.verify('item(vgcpastes)', to_id(s['item']), dex.items)
+                    moves = [self.verify('move(vgcpastes)', to_id(m), dex.moves) for m in s['moves']] + [''] * 4
+                    sp = s['sp'] or {}
+                    members.append(TeamMember(
+                        slot=i, pokemon_key=base, item_key=item,
+                        ability_key=self.verify('ability(vgcpastes)', to_id(s['ability']), dex.abilities),
+                        nature_key=to_id(s['nature']),
+                        **{f'sp_{k}': sp.get(k, 0) for k in SP_STATS},
+                        move1=moves[0], move2=moves[1], move3=moves[2], move4=moves[3],
+                        is_gimmick_user=dex.is_mega(pid) or stone_of.get(item) in (base, base.removesuffix('f'))))
+                teams.append((team, members))
+            self.save_teams(teams)
+            self.counts[f'team vgcpastes {ruleset_id}'] = len(teams)
+
+    def fill_replay_sp(self) -> None:
+        """리플레이 멤버 SP 채우기 (확실한 것만).
+
+        6마리 종이 같고, 리플레이 팀시트의 6마리 도구·특성·성격·기술이 VGCPastes 팀과 모두 같으며,
+        그런 팀들의 SP가 한 가지뿐일 때만. 인기 육성은 팀마다 SP가 달라서 한 마리만 같아서는 채우지 않음.
+        """
+        def build(m):
+            return (m.pokemon_key, m.item_key, m.ability_key, m.nature_key, frozenset(m.moves))
+
+        sp_of = lambda m: tuple(getattr(m, f'sp_{s}') for s in SP_STATS)
+        by_team = defaultdict(list)       # (ruleset, 6마리 육성) → [(팀 ID, {종: SP})]
+        for t in Team.objects.filter(source='vgcpastes').prefetch_related('members'):
+            ms = list(t.members.all())
+            if len(ms) == 6 and all(any(sp_of(m)) for m in ms):
+                by_team[(t.ruleset_id, frozenset(build(m) for m in ms))].append(
+                    (t.external_id, {m.pokemon_key: sp_of(m) for m in ms}))
+        updated, teams = [], 0
+        for t in Team.objects.filter(source='showdown_replay').prefetch_related('members'):
+            ms = list(t.members.all())
+            if len(ms) != 6 or not all(m.item_key and m.ability_key and m.nature_key for m in ms):
+                continue                  # 팀시트가 없는 리플레이
+            cands = by_team.get((t.ruleset_id, frozenset(build(m) for m in ms)), [])
+            if not cands or len({tuple(sorted(sp.items())) for _, sp in cands}) != 1:
+                continue                  # 같은 팀이 없거나, 있어도 SP가 여러 가지
+            tid, sp = cands[0]
+            for m in ms:
+                for s, v in zip(SP_STATS, sp[m.pokemon_key]):
+                    setattr(m, f'sp_{s}', v)
+                m.sp_from = f'vgcpastes:{tid}'
+            updated += ms
+            teams += 1
+        TeamMember.objects.bulk_update(updated, [f'sp_{s}' for s in SP_STATS] + ['sp_from'], batch_size=2000)
+        self.counts['리플레이 SP 채움 (같은 VGCPastes 팀)'] = f'{teams}팀 / {len(updated)}마리'
+
