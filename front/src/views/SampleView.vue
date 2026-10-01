@@ -7,7 +7,7 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, fromMegaId, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
-  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_KO, calcStats, spText, spTotal, toId,
+  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPE_KO, calcStats, compareMoves, spText, spTotal, toId,
 } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
@@ -103,9 +103,8 @@ const actual = computed(() => (shown.value
   : null))
 
 // ---------------------------------------------------------------- 기술
-// 타입 순서(노말 → 페어리), 같은 타입은 위력 높은 순
-const learn = computed(() => (detail.value?.learnset || []).slice()
-  .sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || (b.power || 0) - (a.power || 0)))
+// 타입 순서 → 분류(물리·특수·변화) → 위력
+const learn = computed(() => (detail.value?.learnset || []).slice().sort(compareMoves))
 // 기술 검색: 이름(한글/영문) 또는 타입(한글)
 const learnShown = computed(() => {
   const k = mq.value.trim().toLowerCase()
