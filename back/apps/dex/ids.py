@@ -56,7 +56,7 @@ class DexIndex:
 OPGG_POKEMON_OVERRIDES = {
     'floette-eternal-flower': 'floetteeternal',
     'maushold-family-of-three': 'maushold',
-    'maushold-family-of-four': 'mausholdfour',
+    'maushold-family-of-four': 'maushold',      # 네식구·세식구는 성능이 같아 하나로 합침
     'mega-meowstic': 'meowsticmmega',
     'mega-meowstic-male': 'meowsticmmega',
     'mega-meowstic-female': 'meowsticfmega',
