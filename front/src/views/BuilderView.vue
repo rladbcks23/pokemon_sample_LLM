@@ -17,7 +17,7 @@ const builder = useBuilder()
 const library = useLibrary()
 const settings = useSettings()
 
-const chatOpen = ref(true)
+const chatOpen = ref(false)   // 파티 코치는 접힌 상태로 시작
 const pickerOpen = ref(false)
 const pickerSlot = ref(0)
 const ready = ref(false)
