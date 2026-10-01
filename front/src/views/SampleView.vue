@@ -231,7 +231,7 @@ const itemIdOf = (form) => toId(form.required_item)
         <label class="fld"><span>성격</span>
           <el-select v-model="sample.nature" filterable placeholder="성격 선택" class="sel">
             <el-option-group v-for="g in natureGroups" :key="g.label" :label="g.label">
-              <el-option v-for="n in g.natures" :key="n.id" :value="n.id" :label="n.name_ko">
+              <el-option v-for="n in g.natures" :key="n.id" :value="n.id" :label="`${n.name_ko} (${natureText(n)})`">
                 <span class="opt">{{ n.name_ko }}<span class="opt-sub">{{ natureText(n) }}</span></span>
               </el-option>
             </el-option-group>
