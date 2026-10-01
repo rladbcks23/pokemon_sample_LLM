@@ -7,7 +7,7 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, loadDetail, loadDex } from '@/utils/dex'
 import {
-  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, calcStats, spText, spTotal, toId,
+  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_KO, calcStats, spText, spTotal, toId,
 } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
@@ -22,6 +22,7 @@ const settings = useSettings()
 const sample = ref(emptySample())
 const detail = ref(null)
 const moveSel = ref(null)
+const mq = ref('')            // 배울 수 있는 기술 검색
 const checks = ref([])
 const usageOpen = ref(false)
 const usageTab = ref('move')
@@ -91,6 +92,13 @@ const actual = computed(() => (mon.value
 // 타입 순서(노말 → 페어리), 같은 타입은 위력 높은 순
 const learn = computed(() => (detail.value?.learnset || []).slice()
   .sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || (b.power || 0) - (a.power || 0)))
+// 기술 검색: 이름(한글/영문) 또는 타입(한글)
+const learnShown = computed(() => {
+  const k = mq.value.trim().toLowerCase()
+  if (!k) return learn.value
+  return learn.value.filter((m) => m.name_ko.toLowerCase().includes(k) || m.name.toLowerCase().includes(k)
+    || TYPE_KO[m.type].includes(k))
+})
 const moveMap = computed(() => Object.fromEntries((detail.value?.learnset || []).map((m) => [m.id, m])))
 const moveHint = computed(() => (moveSel.value !== null
   ? `${moveSel.value + 1}번 칸 선택됨 · 아래에서 바꿀 기술을 누르세요`
@@ -257,9 +265,10 @@ const itemIdOf = (form) => toId(form.required_item)
 
         <div class="block">
           <div class="bh"><strong>배울 수 있는 기술</strong><span class="hint" :class="{ on: moveSel !== null }">{{ learnHint }}</span></div>
+          <input v-model="mq" class="msearch" placeholder="⌕ 기술 검색 (이름 또는 타입, 예: 지진 / 드래곤)">
           <div class="ltable">
             <div class="lrow head mono"><span>기술</span><span>타입</span><span>분류</span><span>위력</span><span>명중</span><span>PP</span></div>
-            <div v-for="m in learn" :key="m.id" class="lrow" :class="{ picked: sample.moves.includes(m.id) }" @click="pickMove(m.id)">
+            <div v-for="m in learnShown" :key="m.id" class="lrow" :class="{ picked: sample.moves.includes(m.id) }" @click="pickMove(m.id)">
               <span class="ln">{{ m.name_ko }}</span>
               <TypeBadge :type="m.type" :width="56" />
               <span class="cat">{{ CATEGORY_KO[m.category] }}</span>
@@ -268,6 +277,7 @@ const itemIdOf = (form) => toId(form.required_item)
               <span class="mono">{{ m.pp }}</span>
             </div>
             <p v-if="!learn.length" class="lempty">포켓몬을 선택하면 배울 수 있는 기술이 나옵니다</p>
+            <p v-else-if="!learnShown.length" class="lempty">"{{ mq }}"에 맞는 기술이 없습니다</p>
           </div>
         </div>
       </div>
@@ -383,6 +393,7 @@ const itemIdOf = (form) => toId(form.required_item)
 .act.minus { color: var(--c-primary); }
 .note { font-size: 11px; color: var(--c-faint); text-align: right; }
 .hint { font-size: 12px; color: var(--c-muted); }
+.msearch { height: 36px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }
 .hint.on { color: var(--c-primary); }
 .ltable { border: 1px solid var(--c-line); border-radius: 8px; overflow: auto; max-height: 300px; }
 .lrow { display: grid; grid-template-columns: minmax(0, 1fr) 72px 56px 48px 48px 36px; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--c-line-row); align-items: center; font-size: 12px; cursor: pointer; }
