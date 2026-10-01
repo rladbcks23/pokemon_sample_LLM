@@ -104,11 +104,6 @@ function toSample() {
   <section v-else class="page">
     <div class="topbar">
       <div class="crumb"><RouterLink to="/pokemon">포켓몬</RouterLink> / {{ d.name_ko }}</div>
-      <div class="forms">
-        <button v-for="(f, i) in d.forms" :key="f.id" :class="{ on: formIdx === i }" @click="formIdx = i">
-          {{ f.name_ko }}
-        </button>
-      </div>
     </div>
 
     <div class="main">
@@ -125,10 +120,16 @@ function toSample() {
       </div>
 
       <div class="info">
-        <div v-if="d.variants.length" class="variants">
-          <span>폼</span>
-          <RouterLink v-for="v in d.variants" :key="v.id" :to="`/pokemon/${v.id}`" :class="{ on: v.id === d.id }"
-                      replace>{{ v.label }}</RouterLink>
+        <!-- 형태: 다른 폼(페이지 이동) + 메가 폼(이 페이지에서 전환) -->
+        <div v-if="d.variants.length || d.forms.length > 1" class="variants">
+          <span>형태</span>
+          <template v-if="d.variants.length">
+            <RouterLink v-for="v in d.variants" :key="v.id" :to="`/pokemon/${v.id}`"
+                        :class="{ on: v.id === d.id && !form.is_mega }" replace>{{ v.label }}</RouterLink>
+          </template>
+          <button v-else :class="{ on: formIdx === 0 }" @click="formIdx = 0">기본</button>
+          <button v-for="(f, i) in d.forms.slice(1)" :key="f.id" :class="{ on: formIdx === i + 1 }"
+                  @click="formIdx = i + 1">{{ f.name_ko }}</button>
         </div>
         <div class="block">
           <div class="bh"><strong>종족값</strong><span class="mono">합계 <strong>{{ form.bst }}</strong></span></div>
@@ -221,9 +222,6 @@ function toSample() {
 .topbar { display: flex; align-items: center; justify-content: space-between; }
 .crumb { font-size: 13px; color: var(--c-muted); }
 .crumb a { color: var(--c-primary); }
-.forms { display: flex; gap: 4px; border-bottom: 1px solid var(--c-line); }
-.forms button { border: 0; background: none; padding: 8px 14px; font-size: 14px; color: var(--c-text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.forms button.on { font-weight: 600; color: var(--c-primary); border-bottom-color: var(--c-primary); }
 
 .main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 40px; }
 .side { border: 1px solid var(--c-line); border-radius: 12px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; align-self: start; }
@@ -255,9 +253,9 @@ function toSample() {
 .mlist { display: flex; flex-wrap: wrap; gap: 6px; }
 .variants { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: -12px; }
 .variants span { font-size: 12px; color: var(--c-muted); margin-right: 4px; }
-.variants a { height: 34px; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid var(--c-line-strong); border-radius: 17px; font-size: 13px; color: var(--c-text); background: #fff; }
-.variants a:hover { text-decoration: none; border-color: var(--c-primary); color: var(--c-primary); }
-.variants a.on { border-color: var(--c-primary); background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
+.variants a, .variants button { height: 34px; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid var(--c-line-strong); border-radius: 17px; font-size: 13px; color: var(--c-text); background: #fff; }
+.variants a:hover, .variants button:hover { text-decoration: none; border-color: var(--c-primary); color: var(--c-primary); }
+.variants a.on, .variants button.on { border-color: var(--c-primary); background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
 .mt { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
 /* 배율: 크게 + 배율별 색 (×4 진한 빨강, ×2 빨강, ×½·×¼ 초록, ×0 파랑) */
 .mul { min-width: 34px; height: 24px; padding: 0 6px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
