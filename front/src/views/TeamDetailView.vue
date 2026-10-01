@@ -59,8 +59,8 @@ function toBuilder() {
   <section v-else-if="!t" class="page"><p class="muted">불러오는 중…</p></section>
   <section v-else class="page">
     <div class="crumbbar">
-      <div class="crumb"><RouterLink to="/teams">파티 샘플</RouterLink> / {{ t.title }}</div>
       <BackLink to="/teams" label="파티 샘플 목록으로" />
+      <div class="crumb"><RouterLink to="/teams">파티 샘플</RouterLink> / {{ t.title }}</div>
     </div>
     <div class="head">
       <div class="hl">
@@ -88,7 +88,7 @@ function toBuilder() {
 .page { padding: 32px 64px 56px; display: flex; flex-direction: column; gap: 28px; }
 .muted { color: var(--c-muted); }
 .err { color: var(--c-danger); }
-.crumbbar { display: flex; align-items: center; justify-content: space-between; }
+.crumbbar { display: flex; align-items: center; gap: 16px; }
 .crumb { font-size: 13px; color: var(--c-muted); }
 .crumb a { color: var(--c-primary); }
 .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }

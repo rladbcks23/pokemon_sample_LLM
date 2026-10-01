@@ -104,8 +104,8 @@ function toSample() {
   <section v-else-if="!d" class="page"><p class="muted">불러오는 중…</p></section>
   <section v-else class="page">
     <div class="topbar">
-      <div class="crumb"><RouterLink to="/pokemon">포켓몬</RouterLink> / {{ d.name_ko }}</div>
       <BackLink to="/pokemon" label="포켓몬 목록으로" />
+      <div class="crumb"><RouterLink to="/pokemon">포켓몬</RouterLink> / {{ d.name_ko }}</div>
     </div>
 
     <div class="main">
@@ -221,7 +221,7 @@ function toSample() {
 .page { padding: 32px 64px 56px; display: flex; flex-direction: column; gap: 36px; }
 .muted { color: var(--c-muted); }
 .err { color: var(--c-danger); }
-.topbar { display: flex; align-items: center; justify-content: space-between; }
+.topbar { display: flex; align-items: center; gap: 16px; }
 .crumb { font-size: 13px; color: var(--c-muted); }
 .crumb a { color: var(--c-primary); }
 
