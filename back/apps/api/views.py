@@ -9,7 +9,7 @@ from apps.dex.ids import to_id
 from apps.dex.models import Item, Move, Nature, Pokemon
 from apps.dex.stats import SP_MAX_TOTAL, STATS, calc_stats, sp_problems
 from apps.dex.typechart import TYPE_KO, TYPES, chart, defense_profile, matchups
-from apps.meta.models import SP_STATS, Team, TeamMember, UsageStat
+from apps.meta.models import SP_STATS, RankSnapshot, Team, TeamMember, UsageStat
 
 
 def latest_usage(ruleset, fmt: str, source: str = 'opgg'):
@@ -21,24 +21,42 @@ def latest_usage(ruleset, fmt: str, source: str = 'opgg'):
     return qs.filter(**last), last
 
 
+def rank_board(ruleset, fmt: str) -> dict:
+    """최신 순위 스냅샷 + 직전 스냅샷 대비 변동.
+
+    {'captured_at', 'compared_to', 'season', 'rows': {pokemon_key: {rank, prev_rank, change, season_change}}}
+    직전 스냅샷에 없던 포켓몬은 prev_rank/change가 None.
+    """
+    qs = RankSnapshot.objects.filter(ruleset=ruleset, format_key=format_key(ruleset, fmt), source='opgg')
+    times = list(qs.order_by('-captured_at').values_list('captured_at', flat=True).distinct()[:2])
+    if not times:
+        return {'captured_at': None, 'compared_to': None, 'season': None, 'rows': {}}
+    prev = {r.pokemon_key: r.rank for r in qs.filter(captured_at=times[1])} if len(times) > 1 else {}
+    rows, season = {}, None
+    for r in qs.filter(captured_at=times[0]).order_by('rank'):
+        season = r.season
+        p = prev.get(r.pokemon_key)
+        rows[r.pokemon_key] = {'rank': r.rank, 'prev_rank': p, 'change': None if p is None else p - r.rank,
+                               'season_change': r.season_change}
+    return {'captured_at': times[0], 'compared_to': times[1] if len(times) > 1 else None,
+            'season': season, 'rows': rows}
+
+
 @api_view(['GET'])
 def ranking(request):
-    """랭킹(메타): 인게임 픽률 순위와 직전 시즌 대비 변동.
+    """랭킹: 인게임 픽률 순위와 직전 스냅샷(전날 갱신) 대비 변동.
 
     GET /api/ranking/?format=doubles&limit=50
     """
     rs, fmt = get_ruleset(request), get_format(request)
     limit = int(request.query_params.get('limit', 0)) or None
-    qs, last = latest_usage(rs, fmt)
-    rows = qs.order_by('rank')[:limit] if limit else qs.order_by('rank')
+    board = rank_board(rs, fmt)
+    rows = list(board['rows'].items())[:limit]
     return Response({
-        'ruleset': rs.id, 'format': fmt,
-        'season': last and last['season'], 'snapshot_date': last and last['snapshot_date'],
-        'items': [{
-            'rank': u.rank, 'prev_rank': u.prev_rank, 'change': u.rank_change,
-            'is_new': u.prev_rank is None,
-            'pokemon': pokemon_brief(rs.id, u.pokemon_key),
-        } for u in rows],
+        'ruleset': rs.id, 'format': fmt, 'season': board['season'],
+        'captured_at': board['captured_at'], 'compared_to': board['compared_to'],
+        'items': [{**r, 'is_new': board['compared_to'] is not None and r['prev_rank'] is None,
+                   'pokemon': pokemon_brief(rs.id, key)} for key, r in rows],
     })
 
 
@@ -49,9 +67,6 @@ def stats_of(p: Pokemon) -> dict:
     return {k: getattr(p, f) for k, f in STAT_FIELDS}
 
 
-def usage_ranks(ruleset, fmt: str) -> dict[str, UsageStat]:
-    qs, _ = latest_usage(ruleset, fmt)
-    return {u.pokemon_key: u for u in qs}
 
 
 @api_view(['GET'])
@@ -61,7 +76,7 @@ def pokemon_list(request):
     GET /api/pokemon/?format=doubles
     """
     rs, fmt = get_ruleset(request), get_format(request)
-    ranks = usage_ranks(rs, fmt)
+    ranks = rank_board(rs, fmt)['rows']
     all_p = list(Pokemon.objects.filter(ruleset=rs))
     mega_bases = {to_id(p.base_species) for p in all_p if p.is_mega}
     items = []
@@ -73,7 +88,7 @@ def pokemon_list(request):
             'id': p.showdown_id, 'num': p.num, 'name': p.name, 'name_ko': p.name_ko or p.name,
             'types': [t for t in (p.type1, p.type2) if t], 'stats': stats_of(p), 'bst': p.bst,
             'has_mega': p.showdown_id in mega_bases,
-            'rank': u.rank if u else None, 'change': u.rank_change if u else None,
+            'rank': u['rank'] if u else None, 'change': u['change'] if u else None,
         })
     return Response({'ruleset': rs.id, 'format': fmt, 'count': len(items), 'items': items})
 
