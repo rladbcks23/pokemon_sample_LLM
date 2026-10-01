@@ -5,7 +5,7 @@ import { api } from '@/api'
 import { useBuilder } from '@/stores/builder'
 import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
-import { dex, fromMegaId, loadDetail, loadDex, megaForm } from '@/utils/dex'
+import { dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
   CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPE_KO, calcStats, compareMoves, spText, spTotal, toId,
 } from '@/utils/pokemon'
@@ -57,10 +57,8 @@ watch(() => sample.value.pokemon, async (id) => {
   }
 })
 
-// 선택 목록: 사용률 순, 메가 폼은 기본 폼 바로 뒤에 (메가는 랭킹 순위 없음)
-const pokemonOptions = computed(() => (dex.list || []).slice()
-  .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
-  .flatMap((p) => [p, ...(p.megas || []).map((m) => ({ ...m, mega: true }))]))
+// 선택 목록: 사용률 순 (메가는 목록에 없고, 메가스톤을 쥐여 주면 메가 폼으로 바뀜)
+const pokemonOptions = computed(() => (dex.list || []).slice().sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)))
 const mon = computed(() => dex.pokemon[sample.value.pokemon])
 // 메가스톤을 들고 있으면 메가 폼 (화면 표시·실수치는 메가진화 후 기준)
 const mega = computed(() => megaForm(sample.value))
@@ -83,11 +81,8 @@ const natureGroups = computed(() => {
 })
 const normNature = (id) => (id && !dex.natures[id]?.plus ? NEUTRAL : id)
 
-// 메가 폼을 고르면 기본 폼 + 메가스톤으로 (게임에서는 메가스톤을 들고 배틀 중에 메가진화)
 function pickPokemon(id) {
-  const m = fromMegaId(id)
-  sample.value = { ...emptySample(m ? m.base : id), id: sample.value.id }
-  if (m) sample.value.item = m.item
+  sample.value = { ...emptySample(id), id: sample.value.id }
   moveSel.value = null
 }
 
@@ -207,11 +202,10 @@ const itemIdOf = (form) => toId(form.required_item)
     <div class="grid">
       <!-- 왼쪽: 포켓몬·도구·특성·성격·기술 -->
       <div class="col">
-        <el-select :model-value="mega?.id || sample.pokemon" filterable placeholder="⌕ 포켓몬 검색 (한글/영문)" class="sel"
+        <el-select :model-value="sample.pokemon" filterable placeholder="⌕ 포켓몬 검색 (한글/영문)" class="sel"
                    @change="pickPokemon">
           <el-option v-for="p in pokemonOptions" :key="p.id" :value="p.id" :label="`${p.name_ko} ${p.name}`">
-            <span class="opt"><PokemonImg :id="p.id" :size="24" />{{ p.name_ko }}
-              <span v-if="p.mega" class="megatag mono">MEGA</span><span class="opt-sub">{{ p.name }}</span></span>
+            <span class="opt"><PokemonImg :id="p.id" :size="24" />{{ p.name_ko }}<span class="opt-sub">{{ p.name }}</span></span>
           </el-option>
         </el-select>
         <div class="card">
