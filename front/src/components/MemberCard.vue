@@ -21,6 +21,12 @@ defineProps({
         <div class="nm"><strong :title="member.pokemon.name_ko">{{ member.pokemon.name_ko }}</strong><span v-if="member.is_mega" class="mega mono">MEGA</span></div>
         <div class="types"><TypeBadge v-for="t in member.pokemon.types" :key="t" :type="t" :width="52" /></div>
       </div>
+      <!-- md: 특성·성격·SP를 이름 오른쪽에 -->
+      <div v-if="size !== 'sm'" class="right">
+        <span><small>특성</small>{{ member.ability?.name_ko || '—' }}</span>
+        <span><small>성격</small>{{ member.nature?.name_ko || '—' }}</span>
+        <span class="mono">{{ spText(member.sp) }}</span>
+      </div>
       <div class="side">
         <slot name="actions">
           <span v-if="member.lead" class="tag lead">선봉</span>
@@ -30,8 +36,10 @@ defineProps({
     </div>
     <div class="info">
       <div class="item"><ItemIcon :id="member.item?.id" :size="size === 'sm' ? 18 : 24" />{{ member.item?.name_ko || '도구 없음' }}</div>
-      <div class="an">{{ member.ability?.name_ko || '특성 —' }} · {{ member.nature?.name_ko || '성격 —' }}</div>
-      <div class="sp mono">SP {{ spText(member.sp) }}</div>
+      <template v-if="size === 'sm'">
+        <div class="an">{{ member.ability?.name_ko || '특성 —' }} · {{ member.nature?.name_ko || '성격 —' }}</div>
+        <div class="sp mono">SP {{ spText(member.sp) }}</div>
+      </template>
     </div>
     <div class="moves">
       <div v-for="(mv, i) in member.moves" :key="i" class="mv">
@@ -54,6 +62,11 @@ defineProps({
 .sm .nm strong { font-size: 15px; }
 .mega { font-size: 10px; border: 1px solid var(--c-text); border-radius: 3px; padding: 1px 5px; }
 .types { display: flex; gap: 4px; }
+.right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 12px; color: var(--c-text-2, var(--c-text)); text-align: right; flex: none; max-width: 48%; }
+.right span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.right small { font-size: 10px; color: var(--c-muted); margin-right: 6px; }
+.right .mono { font-size: 11px; color: var(--c-text-3); }
+.side:empty { display: none; }
 .side { margin-left: auto; align-self: flex-start; display: flex; gap: 4px; flex: none; }
 .tag { font-size: 10px; border: 1px solid var(--c-line-strong); border-radius: 3px; padding: 1px 6px; color: var(--c-text-3); }
 .tag.lead { border-color: var(--c-primary); color: var(--c-primary); }
