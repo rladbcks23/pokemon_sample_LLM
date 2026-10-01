@@ -38,6 +38,7 @@ export const api = {
   pokemon: (id) => get(`pokemon/${id}/`, null, { cache: true }),
   teams: (params) => get('teams/', params),
   team: (id) => get(`teams/${id}/`),
+  samples: (params) => get('samples/', params),
   options: () => get('options/', null, { cache: true }),
   validate: (sample) => post('validate/', sample),
 }

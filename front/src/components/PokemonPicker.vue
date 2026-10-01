@@ -1,22 +1,57 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { api } from '@/api'
+import { megaForm } from '@/utils/dex'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
+import PagerNav from '@/components/PagerNav.vue'
 
 // 슬롯에 넣을 포켓몬 고르기 (현재 포맷 사용률 순). 이미 파티에 있는 포켓몬은 흐리게
 // "내 샘플" 탭: 만든 샘플·찜한 샘플을 바로 슬롯에 넣음
+// "공개 샘플" 탭: 서버의 공개 샘플(OP.GG 샘플 등)을 바로 슬롯에 넣음
 const props = defineProps({
   open: Boolean,
   slot: { type: Number, default: 0 },
   list: { type: Array, default: () => [] },       // 포켓몬 목록 (api.pokemonList items)
   inParty: { type: Array, default: () => [] },    // 이미 들어간 포켓몬 id
   formatLabel: { type: String, default: '' },
+  format: { type: String, default: 'singles' },
   samples: { type: Array, default: () => [] },    // [{ sample, member }] (member: MemberCard 모양)
 })
 const emit = defineEmits(['update:open', 'pick', 'pick-sample'])
 const q = ref('')
 const tab = ref('pokemon')
 watch(() => props.open, (v) => { if (v) { q.value = ''; tab.value = 'pokemon' } })
+
+// 공개 샘플: 검색·페이지는 서버에서 (30개씩)
+const pub = ref(null)
+const pubPage = ref(1)
+const pubError = ref('')
+let timer
+async function loadPublic() {
+  pubError.value = ''
+  try {
+    pub.value = await api.samples({ format: props.format, q: q.value.trim(), page: pubPage.value })
+  } catch (e) {
+    pub.value = { count: 0, results: [] }
+    pubError.value = e.message
+  }
+}
+watch([tab, () => props.format, () => props.open], () => {
+  if (props.open && tab.value === 'public') { pubPage.value = 1; loadPublic() }
+})
+watch(q, () => {
+  if (tab.value !== 'public') return
+  clearTimeout(timer)
+  timer = setTimeout(() => { pubPage.value = 1; loadPublic() }, 300)
+})
+function goPub(p) { pubPage.value = p; loadPublic() }
+const pubPages = computed(() => Math.max(1, Math.ceil((pub.value?.count || 0) / 30)))
+// 메가스톤을 든 샘플은 메가 폼으로 표시
+const pubRows = computed(() => (pub.value?.results || []).map((x) => {
+  const mega = megaForm(x.sample)
+  return { ...x, member: mega ? { ...x.member, pokemon: mega, is_mega: true } : x.member }
+}))
 
 const sampleRows = computed(() => {
   const k = q.value.trim().toLowerCase()
@@ -49,16 +84,35 @@ function pick(p) {
       <div class="head">
         <div><strong>슬롯 {{ slot + 1 }}에 포켓몬 추가</strong>
           <span v-if="tab === 'pokemon'">{{ formatLabel }} 사용률 순 · 고르면 샘플 제작으로 이동합니다</span>
-          <span v-else>내가 만든 샘플·찜한 샘플 · 고르면 바로 슬롯에 들어갑니다</span></div>
+          <span v-else-if="tab === 'sample'">내가 만든 샘플·찜한 샘플 · 고르면 바로 슬롯에 들어갑니다</span>
+          <span v-else>{{ formatLabel }} 공개 샘플 · 고르면 바로 슬롯에 들어갑니다</span></div>
         <button class="x" @click="emit('update:open', false)">✕</button>
       </div>
     </template>
     <div class="tabs">
       <button :class="{ on: tab === 'pokemon' }" @click="tab = 'pokemon'">포켓몬</button>
       <button :class="{ on: tab === 'sample' }" @click="tab = 'sample'">내 샘플<span class="mono">{{ samples.length }}</span></button>
+      <button :class="{ on: tab === 'public' }" @click="tab = 'public'">공개 샘플<span v-if="pub" class="mono">{{ pub.count }}</span></button>
     </div>
     <input v-model="q" class="search" placeholder="⌕ 포켓몬 검색 (한글/영문)">
-    <div v-if="tab === 'sample'" class="sgrid">
+    <template v-if="tab === 'public'">
+      <div class="sgrid">
+        <button v-for="x in pubRows" :key="x.id" class="sk" :class="{ dim: inParty.includes(x.sample.pokemon) }" @click="pickSample(x)">
+          <PokemonImg :id="x.member.pokemon.id" :size="48" />
+          <div class="si">
+            <div class="sn"><strong>{{ x.member.pokemon.name_ko }}</strong><span v-if="x.member.is_mega" class="mega mono">MEGA</span></div>
+            <span>{{ x.member.item?.name_ko || '도구 없음' }} · {{ x.member.nature?.name_ko || '성격 —' }}</span>
+            <span class="mv">{{ x.member.moves.filter(Boolean).map((m) => m.name_ko).join(' / ') || '기술 없음' }}</span>
+          </div>
+          <span v-if="inParty.includes(x.sample.pokemon)" class="in">이미 파티에 있음</span>
+        </button>
+        <p v-if="!pub" class="none">불러오는 중…</p>
+        <p v-else-if="pubError" class="none">{{ pubError }}</p>
+        <p v-else-if="!pubRows.length" class="none">{{ q.trim() ? '검색 결과가 없습니다' : '아직 공개된 샘플이 없습니다' }}</p>
+      </div>
+      <PagerNav class="ppager" :page="pubPage" :pages="pubPages" @go="goPub" />
+    </template>
+    <div v-else-if="tab === 'sample'" class="sgrid">
       <button v-for="(x, i) in sampleRows" :key="i" class="sk" :class="{ dim: inParty.includes(x.sample.pokemon) }" @click="pickSample(x)">
         <PokemonImg :id="x.member.pokemon.id" :size="48" />
         <div class="si">
@@ -110,5 +164,6 @@ function pick(p) {
 .sn strong { font-size: 14px; color: var(--c-text); }
 .mega { font-size: 10px; border: 1px solid var(--c-text); border-radius: 3px; padding: 1px 5px; color: var(--c-text); }
 .mv { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ppager { margin-top: 12px; }
 .none { grid-column: 1 / -1; text-align: center; color: var(--c-muted); font-size: 13px; padding: 32px; margin: 0; }
 </style>

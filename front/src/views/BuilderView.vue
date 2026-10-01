@@ -60,7 +60,7 @@ const mySamples = computed(() => {
 watch(() => [...library.mySamples, ...library.favSamples].map((s) => s.pokemon), (ids) => ids.forEach(loadDetail),
   { immediate: true })
 function onPickSample(sample) {
-  builder.setSlot(pickerSlot.value, JSON.parse(JSON.stringify({ ...sample, id: sample.id })))
+  builder.setSlot(pickerSlot.value, JSON.parse(JSON.stringify({ ...sample, id: sample.id ?? null })))
   ElMessage.success('샘플을 불러왔습니다')
 }
 const edit = (i) => router.push({ path: '/sample', query: { slot: i } })
@@ -135,7 +135,7 @@ function openSample(s) {
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
                :names="names" @apply="applyParty" @open-sample="openSample" />
 
-    <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()"
+    <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()" :format="settings.format"
                    :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" :samples="mySamples"
                    @pick="onPick" @pick-sample="onPickSample" />
   </div>
