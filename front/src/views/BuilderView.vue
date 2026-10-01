@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { api } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useBuilder } from '@/stores/builder'
 import { useLibrary } from '@/stores/library'
@@ -11,6 +12,7 @@ import MemberCard from '@/components/MemberCard.vue'
 import WeaknessTable from '@/components/WeaknessTable.vue'
 import PokemonPicker from '@/components/PokemonPicker.vue'
 import CoachChat from '@/components/CoachChat.vue'
+import FormatToggle from '@/components/FormatToggle.vue'
 
 const router = useRouter()
 const builder = useBuilder()
@@ -26,6 +28,9 @@ onMounted(async () => {
   await loadDex()
   ready.value = true
 })
+// 포켓몬 고르기 목록은 고른 싱글/더블의 사용률 순위
+const pickList = ref([])
+watch(() => settings.format, async (fmt) => { pickList.value = (await api.pokemonList(fmt)).items }, { immediate: true })
 // 슬롯 포켓몬의 상세(기술·특성 이름) 불러오기
 watch(() => builder.slots.map((s) => s?.pokemon), (ids) => ids.filter(Boolean).forEach(loadDetail), { immediate: true })
 
@@ -73,6 +78,7 @@ function save() {
   ElMessage.success('내 파티에 저장했습니다')
 }
 function loadTeam(t) {
+  if (t.format) settings.format = t.format
   builder.load6(JSON.parse(JSON.stringify(t.slots)), { id: t.id, title: t.name })
 }
 function applyParty(samples) { builder.load6(samples, { title: builder.name }) }
@@ -88,6 +94,7 @@ function openSample(s) {
   <div class="builder" :style="{ gridTemplateColumns: `minmax(0, 1fr) ${chatOpen ? '420px' : '56px'}` }">
     <div class="left">
       <div class="bar">
+        <FormatToggle />
         <label class="name"><input v-model="builder.name" placeholder="파티 이름"><span>✎ 이름 편집</span></label>
         <el-dropdown trigger="click" @command="loadTeam">
           <button class="btn">불러오기 ▾</button>
@@ -128,7 +135,7 @@ function openSample(s) {
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
                :names="names" @apply="applyParty" @open-sample="openSample" />
 
-    <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="dex.list || []" :format-label="settings.formatLabel()"
+    <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()"
                    :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" :samples="mySamples"
                    @pick="onPick" @pick-sample="onPickSample" />
   </div>
