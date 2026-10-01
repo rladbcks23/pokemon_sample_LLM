@@ -61,3 +61,12 @@ export function migrateSample(s) {
   if (s && MERGED_POKEMON[s.pokemon]) s.pokemon = MERGED_POKEMON[s.pokemon]
   return s
 }
+
+// 기술 기본 정렬: 타입 순서(노말 → 페어리) → 분류(물리 → 특수 → 변화) → 위력 높은 순
+const CATEGORY_ORDER = ['Physical', 'Special', 'Status']
+export function compareMoves(a, b) {
+  return TYPES.indexOf(a.type) - TYPES.indexOf(b.type)
+    || CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
+    || (b.power || 0) - (a.power || 0)
+    || a.name_ko.localeCompare(b.name_ko, 'ko')
+}
