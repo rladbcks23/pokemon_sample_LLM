@@ -104,12 +104,12 @@ const actual = computed(() => (shown.value
 // ---------------------------------------------------------------- 기술
 // 타입 순서 → 분류(물리·특수·변화) → 위력
 const learn = computed(() => (detail.value?.learnset || []).slice().sort(compareMoves))
-// 기술 검색: 이름(한글/영문) 또는 타입(한글)
+// 기술 검색: 이름(한글/영문), 타입(한글), 분류(물리/특수/변화). 띄어 쓰면 모두 만족 (예: 드래곤 물리)
 const learnShown = computed(() => {
-  const k = mq.value.trim().toLowerCase()
-  if (!k) return learn.value
-  return learn.value.filter((m) => m.name_ko.toLowerCase().includes(k) || m.name.toLowerCase().includes(k)
-    || TYPE_KO[m.type].includes(k))
+  const words = mq.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return learn.value
+  return learn.value.filter((m) => words.every((k) => m.name_ko.toLowerCase().includes(k)
+    || m.name.toLowerCase().includes(k) || TYPE_KO[m.type].includes(k) || CATEGORY_KO[m.category] === k))
 })
 const moveMap = computed(() => Object.fromEntries((detail.value?.learnset || []).map((m) => [m.id, m])))
 const moveHint = computed(() => (moveSel.value !== null
@@ -240,6 +240,7 @@ const itemIdOf = (form) => toId(form.required_item)
           <el-select v-model="sample.ability" placeholder="특성 선택" class="sel" :disabled="!abilities.length">
             <el-option v-for="a in abilities" :key="a.id" :value="a.id" :label="a.name_ko + (a.hidden ? ' (숨겨진 특성)' : '')" />
           </el-select>
+          <span v-if="mega?.ability" class="megaab">메가진화 후 특성: <strong>{{ mega.ability.name_ko }}</strong></span>
         </label>
         <label class="fld"><span>성격</span>
           <el-select v-model="sample.nature" filterable placeholder="성격 선택" class="sel">
@@ -287,7 +288,7 @@ const itemIdOf = (form) => toId(form.required_item)
 
         <div class="block">
           <div class="bh"><strong>배울 수 있는 기술</strong><span class="hint" :class="{ on: moveSel !== null }">{{ learnHint }}</span></div>
-          <input v-model="mq" class="msearch" placeholder="⌕ 기술 검색 (이름 또는 타입, 예: 지진 / 드래곤)">
+          <input v-model="mq" class="msearch" placeholder="⌕ 기술 검색 (이름·타입·분류, 예: 지진 / 드래곤 / 물리 / 드래곤 물리)">
           <div class="ltable">
             <div class="lrow head mono"><span>기술</span><span>타입</span><span>분류</span><span>위력</span><span>명중</span><span>PP</span></div>
             <div v-for="m in learnShown" :key="m.id" class="lrow" :class="{ picked: sample.moves.includes(m.id) }" @click="pickMove(m.id)">
@@ -367,6 +368,8 @@ const itemIdOf = (form) => toId(form.required_item)
 </template>
 
 <style scoped>
+.megaab { font-size: 12px; color: var(--c-text-3); }
+.megaab strong { color: var(--c-primary); }
 .rfmt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--c-muted); }
 .page { padding: 40px 32px 48px; display: flex; flex-direction: column; gap: 16px; }
 .ctx { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--c-muted); }
