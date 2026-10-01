@@ -8,7 +8,8 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
-  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPE_KO, calcStats, compareMoves, spText, spTotal, toId,
+  CATEGORY_KO, NEUTRAL_NATURE, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPE_KO, calcStats, compareMoves, normNature,
+  spText, spTotal, toId,
 } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
@@ -118,10 +119,9 @@ const abilityDesc = computed(() => abilities.value.find((a) => a.id === sample.v
 const natureText = (n) => (n?.plus ? `${STAT_KO[n.plus]}▲ ${STAT_KO[n.minus]}▼` : '무보정')
 
 // 성격: 무보정 5개는 효과가 같아 "노력"만 남기고, 나머지는 올라가는 스탯별로 묶음
-const NEUTRAL = 'hardy'
 const natureGroups = computed(() => {
   const all = dex.options?.natures || []
-  const groups = [{ label: '무보정', natures: all.filter((n) => n.id === NEUTRAL) }]
+  const groups = [{ label: '무보정', natures: all.filter((n) => n.id === NEUTRAL_NATURE) }]
   for (const st of STATS.slice(1)) {
     const natures = all.filter((n) => n.plus === st)
       .sort((a, b) => STATS.indexOf(a.minus) - STATS.indexOf(b.minus))
@@ -129,7 +129,6 @@ const natureGroups = computed(() => {
   }
   return groups
 })
-const normNature = (id) => (id && !dex.natures[id]?.plus ? NEUTRAL : id)
 
 function pickPokemon(id) {
   sample.value = { ...emptySample(id), id: sample.value.id }

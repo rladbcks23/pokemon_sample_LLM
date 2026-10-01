@@ -62,9 +62,15 @@ export const MERGED_POKEMON = {
   squawkabillyblue: 'squawkabilly', squawkabillywhite: 'squawkabillyyellow',
 }
 
-// 브라우저에 저장된 예전 샘플의 포켓몬 ID를 현재 ID로
+// 무보정 성격은 하나로: 성실 (노력·온순·수줍음·변덕도 성실로)
+export const NEUTRAL_NATURE = 'serious'
+const NEUTRAL_NATURES = ['hardy', 'docile', 'serious', 'bashful', 'quirky']
+export const normNature = (id) => (NEUTRAL_NATURES.includes(id) ? NEUTRAL_NATURE : id)
+
+// 브라우저에 저장된 예전 샘플을 현재 모양으로 (합친 폼 ID, 무보정 성격)
 export function migrateSample(s) {
   if (s && MERGED_POKEMON[s.pokemon]) s.pokemon = MERGED_POKEMON[s.pokemon]
+  if (s?.nature) s.nature = normNature(s.nature)
   return s
 }
 
