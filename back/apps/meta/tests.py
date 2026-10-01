@@ -5,6 +5,7 @@ from django.test import SimpleTestCase, TestCase
 
 from apps.dex.models import Ruleset
 from apps.meta.models import PokemonSet, Team, TeamMember, UsageDetail, UsageStat
+from apps.meta.pokepaste import parse_paste
 from apps.meta.replay import match_species, parse_replay
 
 
@@ -81,3 +82,34 @@ class ReplayParserTests(SimpleTestCase):
     def test_match_species(self):
         self.assertTrue(match_species('garchomp', {'garchompmegaz'}))   # 메가 후 이름
         self.assertFalse(match_species('incineroar', {'garchomp'}))
+
+
+class PokepasteTests(SimpleTestCase):
+    PASTE = (
+        "Aang (Staraptor) @ Staraptite  
+Ability: Intimidate  
+Level: 50  
+"
+        "EVs: 32 HP / 30 SpA / 4 Spe  
+Modest Nature  
+- Weather Ball  
+- Protect  
+
+"
+        "Indeedee-F (F) @ Rocky Helmet
+Ability: Psychic Surge
+Calm Nature
+- Follow Me
+"
+    )
+
+    def test_parse(self):
+        a, b = parse_paste(self.PASTE)
+        self.assertEqual(a['species'], 'Staraptor')                     # 별명 (종)
+        self.assertEqual(a['item'], 'Staraptite')
+        self.assertEqual(a['ability'], 'Intimidate')
+        self.assertEqual(a['nature'], 'Modest')
+        self.assertEqual(a['sp'], {'hp': 32, 'atk': 0, 'def': 0, 'spa': 30, 'spd': 0, 'spe': 4})
+        self.assertEqual(a['moves'], ['Weather Ball', 'Protect'])
+        self.assertEqual(b['species'], 'Indeedee-F')                    # 성별 (F) 제거
+        self.assertIsNone(b['sp'])                                       # EVs 줄 없음
