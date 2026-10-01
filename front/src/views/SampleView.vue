@@ -12,6 +12,7 @@ import {
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import FormatToggle from '@/components/FormatToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -296,6 +297,7 @@ const itemIdOf = (form) => toId(form.required_item)
 
       <!-- 오른쪽: 참고, 적합성 검사, 저장 -->
       <div class="col">
+        <div class="rfmt"><span>참고 사용률</span><FormatToggle size="sm" /></div>
         <div class="ref">
           <div class="rh"><strong>참고 · 인기 육성</strong><span>{{ mon ? `${mon.name_ko} 사용률 1위 조합 · ${settings.formatLabel()}` : '포켓몬을 선택하세요' }}</span></div>
           <p v-if="mon && !refBars.length" class="muted small">{{ settings.formatLabel() }} 사용률 데이터가 없습니다</p>
@@ -355,6 +357,7 @@ const itemIdOf = (form) => toId(form.required_item)
 </template>
 
 <style scoped>
+.rfmt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--c-muted); }
 .page { padding: 40px 32px 48px; display: flex; flex-direction: column; gap: 16px; }
 .ctx { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--c-muted); }
 .back { color: var(--c-primary); font-weight: 600; }
