@@ -186,7 +186,7 @@ def team_summary(t: Team, members: list[TeamMember]) -> dict:
 
 
 class TeamPagination(PageNumberPagination):
-    page_size = 8
+    page_size = 10
     page_size_query_param = 'size'
     max_page_size = 50
 
