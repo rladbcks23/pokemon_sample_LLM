@@ -391,7 +391,7 @@ const itemIdOf = (form) => toId(form.required_item)
         <div class="save">
           <span v-if="msg" class="msg">{{ msg }}</span>
           <template v-if="fromBuilder">
-            <button class="btn fill" @click="addOnly">{{ editingSlot ? '파티에 반영하고 돌아가기' : '파티에 추가' }}</button>
+            <button class="btn fill" @click="addOnly">{{ editingSlot ? '저장하기' : '파티에 추가' }}</button>
             <button class="btn line" @click="cancel">취소하고 돌아가기</button>
           </template>
           <template v-else>
