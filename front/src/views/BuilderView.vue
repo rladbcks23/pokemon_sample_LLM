@@ -45,6 +45,18 @@ const weakRows = computed(() => {
 
 function openPicker(i) { pickerSlot.value = i; pickerOpen.value = true }
 function onPick(id) { router.push({ path: '/sample', query: { slot: pickerSlot.value, pokemon: id } }) }
+// 내 샘플(만든 것 + 찜한 것)을 바로 슬롯에
+const mySamples = computed(() => {
+  if (!ready.value) return []
+  const list = [...library.mySamples, ...library.favSamples]
+  return list.map((sample) => ({ sample, member: describe(sample) })).filter((x) => x.member)
+})
+watch(() => [...library.mySamples, ...library.favSamples].map((s) => s.pokemon), (ids) => ids.forEach(loadDetail),
+  { immediate: true })
+function onPickSample(sample) {
+  builder.setSlot(pickerSlot.value, JSON.parse(JSON.stringify({ ...sample, id: sample.id })))
+  ElMessage.success('샘플을 불러왔습니다')
+}
 const edit = (i) => router.push({ path: '/sample', query: { slot: i } })
 
 async function clearAll() {
@@ -116,7 +128,8 @@ function openSample(s) {
                :names="names" @apply="applyParty" @open-sample="openSample" />
 
     <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="dex.list || []" :format-label="settings.formatLabel()"
-                   :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" @pick="onPick" />
+                   :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" :samples="mySamples"
+                   @pick="onPick" @pick-sample="onPickSample" />
   </div>
 </template>
 
