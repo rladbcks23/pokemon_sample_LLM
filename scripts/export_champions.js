@@ -104,7 +104,7 @@ const FORME_KO = {
 	// 플라엣테 / 포트데스 / 파밀리쥐 / 그우린차
 	'Eternal': '영원의꽃',
 	'Phony': '위작폼', 'Antique': '진작폼',
-	'Three': '세식구', 'Four': '네식구',
+	'Four': '네식구',
 	'Unremarkable': '범작의 모습', 'Masterpiece': '걸작의 모습',
 };
 
@@ -114,11 +114,16 @@ const MANUAL_KO = {
 	leek: '대파', // 도구
 };
 
+// 성능이 같아 기본 폼 하나로 합치는 폼. 기본 폼 이름에도 폼 이름을 붙이지 않음 (파밀리쥐-세식구 → 파밀리쥐)
+const MERGED_FORMES = new Set(['Maushold-Four']);
+
 function isLegalSpecies(species) {
 	if (species.isNonstandard || species.tier === 'Illegal') return false;
 	// 배틀 중에만 바뀌는 폼(메가 제외)과 외형만 다른 폼은 제외
 	if (species.battleOnly && !species.isMega) return false;
 	if (dex.species.get(species.baseSpecies).cosmeticFormes?.includes(species.name)) return false;
+	// 성능이 같아 하나로 합치는 폼 (파밀리쥐 네식구 = 세식구)
+	if (MERGED_FORMES.has(species.name)) return false;
 	const set = {species: species.name, name: species.baseSpecies, moves: [], ability: '', item: ''};
 	return !validator.checkSpecies(set, species, species, {});
 }
