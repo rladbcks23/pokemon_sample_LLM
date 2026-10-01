@@ -236,20 +236,13 @@ function saveOnly() {
   leaving.value = true
   router.push({ path: '/mypage', query: { tab: 'mySamples' } })
 }
-function saveAdd() {
-  const saved = save()
-  if (!saved) return
-  builder.setSlot(slot.value, JSON.parse(JSON.stringify(saved)))
-  leaving.value = true
-  router.push('/builder')
-}
 // 취소: 바꾼 내용은 버리고 원래 화면으로
 function cancel() {
   leaving.value = true
   if (fromBuilder.value) router.push('/builder')
   else router.push({ path: '/mypage', query: { tab: 'mySamples' } })
 }
-// 내 샘플에는 저장하지 않고 파티 슬롯에만 넣기 (비슷한 샘플이 계속 쌓이지 않게)
+// 파티 빌딩에서 열었으면 파티 슬롯에만 넣음 (내 샘플 저장은 샘플 제작에서 따로)
 function addOnly() {
   if (!sample.value.pokemon) { msg.value = '포켓몬을 먼저 선택하세요'; return }
   builder.setSlot(slot.value, JSON.parse(JSON.stringify(sample.value)))
@@ -399,8 +392,7 @@ const itemIdOf = (form) => toId(form.required_item)
           <span v-if="msg" class="msg">{{ msg }}</span>
           <template v-if="fromBuilder">
             <button class="btn fill" @click="addOnly">{{ editingSlot ? '파티에 반영하고 돌아가기' : '파티에 추가' }}</button>
-            <button class="btn line" @click="saveAdd">{{ editingSlot ? '내 샘플에도 저장하고 돌아가기' : '내 샘플에도 저장 + 파티에 추가' }}</button>
-            <button class="btn line" @click="cancel">취소하고 파티 빌딩으로</button>
+            <button class="btn line" @click="cancel">취소하고 돌아가기</button>
           </template>
           <template v-else>
             <button class="btn fill" @click="saveOnly">{{ editingSample ? '수정 내용 저장' : '샘플 저장' }}</button>
