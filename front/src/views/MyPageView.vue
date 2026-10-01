@@ -5,7 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
 import { useBuilder } from '@/stores/builder'
 import { useLibrary } from '@/stores/library'
-import { describe, dex, loadDetail, loadDex } from '@/utils/dex'
+import { describe, dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import TeamCard from '@/components/TeamCard.vue'
 import MemberCard from '@/components/MemberCard.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
@@ -27,11 +27,11 @@ onMounted(async () => { await loadDex(); ready.value = true })
 const samples = computed(() => (tab.value === 'favSamples' ? library.favSamples : library.mySamples))
 watch(samples, (list) => list.forEach((s) => loadDetail(s.pokemon)), { immediate: true })
 
-// 내가 만든 파티 → 카드용 요약
+// 내가 만든 파티 → 카드용 요약 (메가스톤을 든 멤버는 메가 폼으로)
 const myTeamCards = computed(() => library.myTeams.map((t) => ({
   id: t.id, title: t.name, source_label: t.format === 'singles' ? '내 파티 · 싱글' : '내 파티 · 더블',
   player: '나', date: new Date(t.updatedAt).toISOString().slice(0, 10),
-  members: t.slots.filter(Boolean).map((s) => ({ id: s.pokemon, name_ko: dex.pokemon[s.pokemon]?.name_ko || s.pokemon })),
+  members: t.slots.filter(Boolean).map((s) => megaForm(s) || { id: s.pokemon, name_ko: dex.pokemon[s.pokemon]?.name_ko || s.pokemon }),
   raw: t,
 })))
 const teamCards = computed(() => (tab.value === 'favTeams' ? library.favTeams : myTeamCards.value))
@@ -44,7 +44,7 @@ async function editTeam(card) {
     // 찜한 파티는 서버에서 멤버 육성 정보를 받아 샘플로 변환
     const t = await api.team(card.id)
     builder.load6(t.members.map((m) => ({
-      id: null, pokemon: m.pokemon.id, item: m.item?.id || '', ability: m.ability?.id || '', nature: m.nature?.id || '',
+      id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.ability?.id || '', nature: m.nature?.id || '',
       sp: { ...m.sp }, moves: [...m.moves.map((x) => x.id), '', '', '', ''].slice(0, 4),
     })), { title: t.title })
   }

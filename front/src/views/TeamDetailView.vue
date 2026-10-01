@@ -45,7 +45,7 @@ function toggleFav() {
 // 멤버 → 샘플로 바꿔서 파티 빌딩에 불러오기
 function toBuilder() {
   const samples = t.value.members.map((m) => ({
-    id: null, pokemon: m.pokemon.id, item: m.item?.id || '', ability: m.ability?.id || '',
+    id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.ability?.id || '',
     nature: m.nature?.id || '', sp: { ...m.sp }, moves: [...m.moves.map((x) => x.id), '', '', '', ''].slice(0, 4),
   }))
   builder.load6(samples, { title: t.value.title })
