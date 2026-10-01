@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { migrateSample } from '@/utils/pokemon'
 
 // 파티 빌딩에서 편집 중인 파티. 샘플 제작 페이지를 다녀와도 유지되도록 localStorage에 둠
 const KEY = 'pb-builder-v1'
@@ -17,7 +18,7 @@ export const useBuilder = defineStore('builder', () => {
   const s = load()
   const teamId = ref(s.teamId || null)      // 내 파티를 불러와 편집 중이면 그 id
   const name = ref(s.name || '새 파티')
-  const slots = ref(s.slots || EMPTY())     // sample | null
+  const slots = ref((s.slots || EMPTY()).map(migrateSample))     // sample | null
 
   watch([teamId, name, slots], () => {
     try {

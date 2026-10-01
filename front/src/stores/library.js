@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { migrateSample } from '@/utils/pokemon'
 
 // 찜·내가 만든 파티/샘플. 로그인 없이 이 브라우저(localStorage)에만 저장
 const KEY = 'pb-library-v1'
@@ -23,9 +24,9 @@ export const emptySample = (pokemon = null) => ({
 export const useLibrary = defineStore('library', () => {
   const s = load()
   const favTeams = ref(s.favTeams || [])       // 파티 요약 (API의 team_summary 그대로)
-  const favSamples = ref(s.favSamples || [])
-  const myTeams = ref(s.myTeams || [])         // { id, name, format, slots: [sample|null ×6], updatedAt }
-  const mySamples = ref(s.mySamples || [])
+  const favSamples = ref((s.favSamples || []).map(migrateSample))
+  const myTeams = ref((s.myTeams || []).map((t) => ({ ...t, slots: t.slots.map(migrateSample) })))
+  const mySamples = ref((s.mySamples || []).map(migrateSample))
 
   watch([favTeams, favSamples, myTeams, mySamples], () => {
     try {
