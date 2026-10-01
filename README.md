@@ -21,7 +21,7 @@ python -m venv .venv
 
 ### 데이터 준비
 ```bash
-# 수집 원본 (Smogon 통계, Showdown 리플레이, OP.GG)
+# 수집 원본 (Smogon 통계, Showdown 리플레이, OP.GG, VGCPastes 대회 팀)
 .venv\Scripts\python scripts/collect_samples.py all
 # 아이콘
 .venv\Scripts\python scripts/download_assets.py
@@ -34,6 +34,9 @@ python -m venv .venv
 .venv\Scripts\python scripts/collect_namuwiki.py apply   # CSV에 채움 → load_dex
 ```
 나무위키에 설명 칸이 없는 도구는 PokeAPI의 공식 한국어 설명을 쓴다. 나무위키 글은 CC BY-NC-SA 2.0 KR.
+
+Showdown 리플레이에는 SP가 공개되지 않는다(오픈 팀시트도 노력치는 숨김). `load_meta`는 6마리 육성이 모두 같은
+VGCPastes 대회 팀이 있고 그 SP가 한 가지일 때만 리플레이 멤버에 SP를 넣고 `sp_from`에 출처를 남긴다.
 
 ### DB 만들기
 ```bash
