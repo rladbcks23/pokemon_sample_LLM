@@ -13,6 +13,36 @@ assets/    포켓몬·도구·타입 아이콘 (git 제외)
 scripts/   데이터 수집·변환 스크립트
 ```
 
+## 화면
+| 메뉴 | 내용 |
+|---|---|
+| 포켓몬 | 사용률 순위 목록(싱글/더블), 상세: 종족값·형태(폼·메가)·특성·타입 상성·사용률 10위·배우는 기술 |
+| 샘플 | 포켓몬 샘플(OP.GG 샘플·대회 팀·OP.GG 팀 멤버) / 파티 샘플(OP.GG 레플리카·VGCPastes 대회 팀·리플레이) |
+| 파티 빌딩 | 6칸 파티, 포켓몬·내 샘플·공개 샘플에서 추가, 약점표, 파티 코치(LLM 자리) |
+| 샘플 제작 | 도구·특성·성격·기술·SP 배분, 실수치, 적합성 검사, 사용률 참고 |
+| 스피드표 | Lv50 스피드 실수치 (임시) |
+| 마이페이지 | 찜한·내가 만든 파티/샘플 (브라우저 localStorage에만 저장) |
+
+샘플 카드를 누르면 상세보기 창(실수치, 도구·특성·성격·기술 설명)이 뜬다. 랭킹 화면은 메뉴에서 숨김(`/ranking`).
+
+## 데이터 출처
+| 출처 | 들어가는 곳 | SP |
+|---|---|---|
+| Showdown(챔피언스 mod) + PokeAPI | 게임 데이터 CSV (`data/champions_*`) | — |
+| 나무위키 (없으면 PokeAPI 공식 설명) | 기술·특성·도구 한글 설명 | — |
+| OP.GG 인게임 랭크 | 사용률 순위·기술·도구·특성·성격·SP 배분 % | — |
+| OP.GG 샘플 / 레플리카 팀 | 포켓몬 샘플 / 파티 샘플 | 있음 |
+| VGCPastes (대회 팀 pokepaste) | 파티 샘플, 멤버는 포켓몬 샘플로도 | 있음 |
+| Showdown 리플레이 | 파티 샘플 (출전·선봉·메가·승패) | 비공개 |
+| Smogon 월별 통계 | 사용률 (M-B) | — |
+
+적재 규칙 (`load_meta`)
+- 배울 수 없는 기술이 있는 파티는 `is_legal=False`로 표시하고 목록에서 숨긴다.
+- OP.GG 레플리카 팀은 6마리 모두 SP·도구·성격·기술 4개가 있어야 넣는다.
+- 파티 멤버로 만든 포켓몬 샘플은 육성이 다 있는 것만, 같은 육성은 하나로.
+- 성능이 같은 폼(파밀리쥐·비비용·포트데스·그우린차·시비꼬)은 하나로 합치고, 무보정 성격은 성실 하나로 본다.
+- 사용률 항목은 10위까지, 성격·SP 배분은 1% 이상, 0.1% 미만은 생략.
+
 ## 처음 세팅
 ```bash
 python -m venv .venv
@@ -23,6 +53,10 @@ python -m venv .venv
 ```bash
 # 수집 원본 (Smogon 통계, Showdown 리플레이, OP.GG, VGCPastes 대회 팀)
 .venv\Scripts\python scripts/collect_samples.py all
+# OP.GG 샘플·레플리카 팀 전부 (기본 10페이지, 최대 100페이지)
+.venv\Scripts\python scripts/collect_samples.py opgg --pages 100
+# VGCPastes만 (이미 받은 팀은 건너뜀, --regs champions_mb 로 M-B도)
+.venv\Scripts\python scripts/collect_samples.py vgcpastes
 # 아이콘
 .venv\Scripts\python scripts/download_assets.py
 ```
@@ -45,6 +79,7 @@ cd back
 ..\.venv\Scripts\python manage.py load_dex    # 게임 데이터
 ..\.venv\Scripts\python manage.py load_meta   # 사용률, 파티, 육성형
 ```
+API 서버는 이름 등을 캐시하므로 DB를 다시 적재하면 API 서버를 재시작한다.
 
 ### 픽률 순위 매일 저장
 OP.GG 순위는 하루 안팎으로 갱신된다. 매일 한 번 실행하면 순위를 스냅샷으로 쌓고, 랭킹 화면은 직전 스냅샷 대비 변동을 보여준다.
@@ -67,12 +102,13 @@ cd back
 ### API
 | 주소 | 내용 |
 |---|---|
-| `GET /api/ranking/?format=doubles` | 인게임 픽률 순위, 직전 시즌 대비 변동 |
-| `GET /api/pokemon/?format=` | 포켓몬 목록 (메가 폼 제외) |
-| `GET /api/pokemon/{id}/` | 폼별 정보, 싱글·더블 사용률, 배우는 기술 |
-| `GET /api/teams/?format=&source=&q=&page=` | 파티 목록 (8개씩) |
-| `GET /api/teams/{id}/` | 파티 상세 + 약점표 |
-| `GET /api/options/` | 도구·성격·타입·타입 상성표 |
+| `GET /api/ranking/?format=doubles` | 인게임 픽률 순위, 직전 스냅샷 대비 변동 |
+| `GET /api/pokemon/?format=` | 포켓몬 목록 (메가 폼은 기본 폼의 `megas`에) |
+| `GET /api/pokemon/{id}/` | 폼(기본+메가)·다른 형태, 싱글·더블 사용률 10위, 배우는 기술(설명 포함) |
+| `GET /api/teams/?format=&source=&q=&page=` | 파티 샘플 (10개씩, OP.GG 먼저). source: opgg_replica / vgcpastes / showdown_replay |
+| `GET /api/teams/{id}/` | 파티 상세 + 약점표 (메가 멤버는 메가 폼으로, `base`에 진화 전 폼) |
+| `GET /api/samples/?format=&source=&q=&page=&size=` | 포켓몬 샘플 (30개씩). source: opgg_sample / vgcpastes_team / opgg_team |
+| `GET /api/options/` | 도구(설명)·성격·타입·타입 상성표 |
 | `POST /api/validate/` | 샘플 적합성 검사 + 실수치 |
 
 ## 커밋 규칙
