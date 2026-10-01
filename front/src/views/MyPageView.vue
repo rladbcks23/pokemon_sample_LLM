@@ -9,6 +9,7 @@ import { describe, dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import TeamCard from '@/components/TeamCard.vue'
 import MemberCard from '@/components/MemberCard.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
+import SpeedTable from '@/components/SpeedTable.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,7 +20,7 @@ const ready = ref(false)
 const TABS = [
   ['favTeams', '찜한 파티'], ['favSamples', '찜한 샘플'], ['myTeams', '내가 만든 파티'], ['mySamples', '내가 만든 샘플'],
 ]
-const tab = computed(() => (TABS.some(([k]) => k === route.query.tab) ? route.query.tab : 'favTeams'))
+const tab = computed(() => ([...TABS, ['speed']].some(([k]) => k === route.query.tab) ? route.query.tab : 'favTeams'))
 const setTab = (k) => router.replace({ query: { tab: k } })
 const isTeamTab = computed(() => tab.value === 'favTeams' || tab.value === 'myTeams')
 
@@ -104,7 +105,10 @@ const count = (k) => library[k].length
       <button v-for="[k, label] in TABS" :key="k" :class="{ on: tab === k }" @click="setTab(k)">
         {{ label }}<span class="mono">{{ count(k) }}</span>
       </button>
+      <button class="right" :class="{ on: tab === 'speed' }" @click="setTab('speed')">스피드표</button>
     </div>
+
+    <SpeedTable v-if="tab === 'speed'" />
 
     <div v-if="tab === 'myTeams' || tab === 'mySamples'" class="create">
       <span>{{ tab === 'myTeams' ? '빈 파티로 파티 빌딩을 엽니다' : '빈 샘플로 샘플 제작을 엽니다' }}</span>
@@ -123,7 +127,7 @@ const count = (k) => library[k].length
         </TeamCard>
       </div>
     </template>
-    <template v-else>
+    <template v-else-if="tab !== 'speed'">
       <div v-if="samples.length" class="samples">
         <div v-for="s in samples" :key="s.id" class="scard">
           <MemberCard v-if="ready && describe(s)" :member="describe(s)" />
@@ -136,7 +140,7 @@ const count = (k) => library[k].length
       </div>
     </template>
 
-    <div v-if="(isTeamTab ? teamCards : samples).length === 0" class="empty">
+    <div v-if="tab !== 'speed' && (isTeamTab ? teamCards : samples).length === 0" class="empty">
       <strong>아직 비어 있습니다</strong><span>{{ EMPTY_HINT[tab] }}</span>
     </div>
 
@@ -154,6 +158,7 @@ const count = (k) => library[k].length
 .tabs button { border: 0; background: none; padding: 10px 14px; font-size: 14px; color: var(--c-text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; gap: 6px; align-items: baseline; }
 .tabs button.on { font-weight: 600; color: var(--c-primary); border-bottom-color: var(--c-primary); }
 .tabs .mono { font-size: 12px; color: var(--c-faint); }
+.tabs .right { margin-left: auto; }
 .create { display: flex; align-items: center; justify-content: space-between; }
 .create span { font-size: 13px; color: var(--c-text-3); }
 .fill { border: 0; background: var(--c-primary); color: #fbfbf9; border-radius: 6px; font-weight: 600; height: 38px; padding: 0 16px; font-size: 13px; }
