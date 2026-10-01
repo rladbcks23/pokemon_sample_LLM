@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { useSettings } from '@/stores/settings'
 import { emptySample } from '@/stores/library'
-import { CATEGORY_KO, STATS, STAT_KO, mulText, spText, toId } from '@/utils/pokemon'
+import { CATEGORY_KO, STATS, STAT_KO, compareMoves, mulText, spText, toId } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
@@ -19,7 +19,7 @@ const formIdx = ref(0)
 const uFmt = ref(settings.format)
 const expanded = ref({})
 const mq = ref('')
-const mSort = ref({ k: 'power', dir: -1 })
+const mSort = ref({ k: 'type', dir: 1 })   // 기본: 타입 → 분류(물리·특수·변화) → 위력
 const addOpen = ref(false)
 const addMsg = ref('')
 const names = ref({})
@@ -73,9 +73,11 @@ const learn = computed(() => {
   return (d.value?.learnset || [])
     .filter((m) => !k || m.name_ko.toLowerCase().includes(k) || m.name.toLowerCase().includes(k))
     .sort((a, b) => {
+      // 타입은 타입 순서(노말 → 페어리)로, 같으면 분류·위력 순
+      if (key === 'type') return compareMoves(a, b) * dir
       const x = a[key] ?? -1
       const y = b[key] ?? -1
-      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ko')) * dir
+      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ko')) * dir || compareMoves(a, b)
     })
 })
 function sortBy(k) {
