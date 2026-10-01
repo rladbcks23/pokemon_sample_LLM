@@ -7,7 +7,7 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, loadDetail, loadDex } from '@/utils/dex'
 import {
-  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, calcStats, spText, spTotal, toId,
+  CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, calcStats, spText, spTotal, toId,
 } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
@@ -88,7 +88,9 @@ const actual = computed(() => (mon.value
   : null))
 
 // ---------------------------------------------------------------- 기술
-const learn = computed(() => (detail.value?.learnset || []).slice().sort((a, b) => (b.power || 0) - (a.power || 0)))
+// 타입 순서(노말 → 페어리), 같은 타입은 위력 높은 순
+const learn = computed(() => (detail.value?.learnset || []).slice()
+  .sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || (b.power || 0) - (a.power || 0)))
 const moveMap = computed(() => Object.fromEntries((detail.value?.learnset || []).map((m) => [m.id, m])))
 const moveHint = computed(() => (moveSel.value !== null
   ? `${moveSel.value + 1}번 칸 선택됨 · 아래에서 바꿀 기술을 누르세요`
