@@ -62,9 +62,15 @@ export const useLibrary = defineStore('library', () => {
   }
   const removeSample = (id) => { mySamples.value = mySamples.value.filter((x) => x.id !== id) }
   const removeFavSample = (id) => { favSamples.value = favSamples.value.filter((x) => x.id !== id) }
+  const isFavSample = (id) => favSamples.value.some((x) => x.id === id)
+  function toggleFavSample(sample) {
+    if (isFavSample(sample.id)) removeFavSample(sample.id)
+    else favSamples.value.unshift({ ...sample, savedAt: Date.now() })
+  }
 
   return {
     favTeams, favSamples, myTeams, mySamples,
     isFavTeam, toggleFavTeam, saveTeam, removeTeam, saveSample, removeSample, removeFavSample,
+    isFavSample, toggleFavSample,
   }
 })
