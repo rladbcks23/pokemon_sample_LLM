@@ -4,6 +4,7 @@
 meta 데이터를 전부 지우고 다시 넣는다. load_dex를 먼저 실행해야 한다 (ID 검증에 게임 데이터 사용).
 원본은 scripts/collect_samples.py로 수집한다.
 
+- OP.GG 픽률 순위 스냅샷(snapshot_ranking 원본) → rank_snapshot
 - OP.GG 인게임 랭크 통계 → usage_stat/detail (M-C, 기술·도구·특성·성격·SP 배분 %, 순위)
 - Smogon 월별 통계(chaos) → usage_stat/detail (사용률 %, 동료 포함)
 - OP.GG 레플리카 팀 → team/team_member,  OP.GG 샘플 빌드 → pokemon_set
@@ -19,8 +20,9 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.dex.ids import DexIndex, opgg_item_id, opgg_pokemon_id, to_id
-from apps.meta.models import (SP_MAX_PER_STAT, SP_MAX_TOTAL, SP_STATS, PokemonSet, Team, TeamMember, UsageDetail,
-                              UsageStat)
+from apps.meta import opgg_tier
+from apps.meta.models import (SP_MAX_PER_STAT, SP_MAX_TOTAL, SP_STATS, PokemonSet, RankSnapshot, Team, TeamMember,
+                              UsageDetail, UsageStat)
 from apps.meta.replay import match_species, parse_replay
 
 RAW = Path(settings.DATA_DIR) / 'raw'
@@ -63,8 +65,9 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
-            for model in (UsageStat, Team, PokemonSet):   # detail, member는 CASCADE
+            for model in (UsageStat, Team, PokemonSet, RankSnapshot):   # detail, member는 CASCADE
                 model.objects.all().delete()
+            self.load_rank_snapshots()
             self.load_opgg_ranked()
             self.load_smogon()
             self.load_opgg_teams()
@@ -110,6 +113,16 @@ class Command(BaseCommand):
                 m.team = t
             members += ms
         TeamMember.objects.bulk_create(members, batch_size=2000)
+
+    # ------------------------------------------------------------------ 순위 스냅샷
+
+    def load_rank_snapshots(self) -> None:
+        """data/raw/opgg/tier/{single|double}/*.json (manage.py snapshot_ranking이 저장한 원본)"""
+        dex = self.dexes[OPGG_RULESET]
+        for f in sorted((RAW / 'opgg' / 'tier').glob('*/*.json')):
+            data = load_json(f)
+            n = opgg_tier.store(data, dex)
+            self.counts[f'rank_snapshot {data["format"]} {data["createdAt"]}'] = n
 
     # ------------------------------------------------------------------ 사용률
 
