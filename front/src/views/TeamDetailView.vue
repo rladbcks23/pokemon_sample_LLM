@@ -75,7 +75,7 @@ function toBuilder() {
 
     <div class="weak">
       <div class="wh"><strong>파티 약점표</strong><span class="mono">18타입 × {{ t.members.length }}마리</span></div>
-      <WeaknessTable :rows="weakRows" />
+      <WeaknessTable :rows="weakRows" :show-sum="false" />
     </div>
   </section>
 </template>

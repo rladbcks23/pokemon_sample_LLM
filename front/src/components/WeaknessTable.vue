@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 import { TYPES, TYPE_KO, mulText } from '@/utils/pokemon'
 
-// 파티 약점표: 18타입 × 멤버, 맨 아래 타입별 약점(×2 이상) 마리 수
+// 파티 약점표: 18타입 × 멤버, (showSum이면) 맨 아래 타입별 약점(×2 이상) 마리 수
 // rows: [{ name, cells: { Fire: 2, ... } }]
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   compact: { type: Boolean, default: false },
+  showSum: { type: Boolean, default: true },   // 맨 아래 "약점 수" 줄
 })
 
 const cellStyle = (m) => ({
@@ -28,8 +29,10 @@ const sumStyle = (c) => (c >= 3 ? { background: 'var(--c-x4)', color: '#fbfbf9' 
       <span class="name">{{ r.name }}</span>
       <span v-for="t in TYPES" :key="t" class="cell mono" :style="cellStyle(r.cells[t])">{{ mulText(r.cells[t]) }}</span>
     </template>
-    <span class="name sum">약점 수</span>
-    <span v-for="(c, i) in sums" :key="i" class="cell mono sum" :style="sumStyle(c)">{{ c || '' }}</span>
+    <template v-if="showSum">
+      <span class="name sum">약점 수</span>
+      <span v-for="(c, i) in sums" :key="i" class="cell mono sum" :style="sumStyle(c)">{{ c || '' }}</span>
+    </template>
   </div>
 </template>
 
