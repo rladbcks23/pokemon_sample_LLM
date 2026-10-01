@@ -54,7 +54,13 @@ export function mulText(m) {
 export const toId = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
 // 성능이 같아 하나로 합친 폼 (back/apps/dex/ids.py의 MERGED_POKEMON과 같음)
-export const MERGED_POKEMON = { maushold: 'mausholdfour' }
+export const MERGED_POKEMON = {
+  maushold: 'mausholdfour',
+  vivillonfancy: 'vivillon', vivillonpokeball: 'vivillon',
+  polteageistantique: 'polteageist',
+  sinistchamasterpiece: 'sinistcha',
+  squawkabillyblue: 'squawkabilly', squawkabillywhite: 'squawkabillyyellow',
+}
 
 // 브라우저에 저장된 예전 샘플의 포켓몬 ID를 현재 ID로
 export function migrateSample(s) {
