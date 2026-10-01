@@ -118,7 +118,7 @@ const count = (k) => library[k].length
         <TeamCard v-for="c in teamCards" :key="c.id" :team="c" :heart="false" @click="openCard(c)">
           <div class="acts">
             <button class="fill sm" @click.stop="editTeam(c)">파티 수정하기</button>
-            <button class="line sm" @click.stop="removeTeam(c)">{{ tab === 'favTeams' ? '찜 해제' : '파티 삭제하기' }}</button>
+            <button class="danger sm" @click.stop="removeTeam(c)">{{ tab === 'favTeams' ? '찜 해제' : '파티 삭제하기' }}</button>
           </div>
         </TeamCard>
       </div>
@@ -130,7 +130,7 @@ const count = (k) => library[k].length
           <div class="acts">
             <button class="fill sm" @click="router.push({ path: '/sample', query: { sample: s.id } })">샘플 제작에서 열기</button>
             <button class="line sm" @click="addToBuilder(s)">파티 빌딩에 추가</button>
-            <button class="plain sm" @click="removeSample(s)">삭제</button>
+            <button class="danger sm push" @click="removeSample(s)">삭제</button>
           </div>
         </div>
       </div>
@@ -158,7 +158,9 @@ const count = (k) => library[k].length
 .create span { font-size: 13px; color: var(--c-text-3); }
 .fill { border: 0; background: var(--c-primary); color: #fbfbf9; border-radius: 6px; font-weight: 600; height: 38px; padding: 0 16px; font-size: 13px; }
 .line { border: 1px solid var(--c-text); background: #fff; color: var(--c-text); border-radius: 6px; height: 34px; padding: 0 14px; font-size: 12px; }
-.plain { border: 0; background: none; color: var(--c-muted); font-size: 12px; margin-left: auto; }
+.danger { border: 0; background: var(--c-danger); color: #fbfbf9; border-radius: 6px; font-weight: 600; }
+.danger:hover { background: #8c3832; }
+.push { margin-left: auto; }
 .sm { height: 34px; font-size: 12px; padding: 0 14px; }
 .teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .acts { display: flex; gap: 8px; border-top: 1px solid var(--c-line-faint); padding-top: 12px; }
