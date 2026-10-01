@@ -71,14 +71,21 @@ def stats_of(p: Pokemon) -> dict:
 
 @api_view(['GET'])
 def pokemon_list(request):
-    """포켓몬 목록 (메가 폼 제외, 메가 가능 여부 표시). 검색·필터·정렬은 화면에서.
+    """포켓몬 목록 (메가 폼은 기본 폼의 megas에). 검색·필터·정렬은 화면에서.
 
     GET /api/pokemon/?format=doubles
     """
     rs, fmt = get_ruleset(request), get_format(request)
     ranks = rank_board(rs, fmt)['rows']
-    all_p = list(Pokemon.objects.filter(ruleset=rs))
-    mega_bases = {to_id(p.base_species) for p in all_p if p.is_mega}
+    all_p = list(Pokemon.objects.filter(ruleset=rs).order_by('showdown_id'))
+    megas = {}   # 기본 폼 id → 메가 폼 목록 (메가스톤 id 포함: 샘플은 기본 폼 + 메가스톤으로 저장)
+    for p in all_p:
+        if p.is_mega:
+            megas.setdefault(to_id(p.base_species), []).append({
+                'id': p.showdown_id, 'name': p.name, 'name_ko': p.name_ko or p.name,
+                'types': [t for t in (p.type1, p.type2) if t], 'stats': stats_of(p), 'bst': p.bst,
+                'item': to_id(p.required_item),
+            })
     items = []
     for p in all_p:
         if p.is_mega:
@@ -87,7 +94,7 @@ def pokemon_list(request):
         items.append({
             'id': p.showdown_id, 'num': p.num, 'name': p.name, 'name_ko': p.name_ko or p.name,
             'types': [t for t in (p.type1, p.type2) if t], 'stats': stats_of(p), 'bst': p.bst,
-            'has_mega': p.showdown_id in mega_bases,
+            'has_mega': p.showdown_id in megas, 'megas': megas.get(p.showdown_id, []),
             'rank': u['rank'] if u else None, 'change': u['change'] if u else None,
         })
     return Response({'ruleset': rs.id, 'format': fmt, 'count': len(items), 'items': items})
