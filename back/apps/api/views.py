@@ -214,12 +214,25 @@ def team_title(t: Team) -> str:
     return t.name or f'{SOURCE_LABEL.get(t.source, t.source)} #{t.pk}'
 
 
+def shown_key(rid: str, pokemon_key: str, item_key: str) -> str:
+    """화면에 보여 줄 폼: 그 포켓몬의 메가스톤을 들었으면 메가 폼 (파티에는 메가 전 폼 + 메가스톤으로 저장)."""
+    it = names(rid)['item'].get(item_key)
+    if not it or not it['mega_to']:
+        return pokemon_key
+    frm, to = to_id(it['mega_from']), to_id(it['mega_to'])
+    if pokemon_key == frm:
+        return to
+    if pokemon_key == frm + 'f' and to.endswith('mmega'):      # 냐오닉스 암컷
+        return to[:-len('mmega')] + 'fmega'
+    return pokemon_key
+
+
 def team_summary(t: Team, members: list[TeamMember]) -> dict:
     return {
         'id': t.pk, 'title': team_title(t), 'source': t.source, 'source_label': SOURCE_LABEL.get(t.source, t.source),
         'format': t.format_key.rsplit('_', 1)[-1], 'player': t.player, 'date': t.played_on,
         'rating': t.rating, 'result': t.result or None, 'external_id': t.external_id,
-        'members': [pokemon_brief(t.ruleset_id, m.pokemon_key) for m in members],
+        'members': [pokemon_brief(t.ruleset_id, shown_key(t.ruleset_id, m.pokemon_key, m.item_key)) for m in members],
     }
 
 
@@ -264,14 +277,16 @@ def team_list(request):
 def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
     rid = t.ruleset_id
     nature = names(rid)['nature'].get(m.nature_key)
+    shown = shown_key(rid, m.pokemon_key, m.item_key)
     return {
-        'slot': getattr(m, 'slot', None), 'pokemon': pokemon_brief(rid, m.pokemon_key),
+        # pokemon: 화면 표시용 (메가스톤을 들면 메가 폼), base: 저장된 메가 전 폼 (샘플로 가져갈 때)
+        'slot': getattr(m, 'slot', None), 'pokemon': pokemon_brief(rid, shown), 'base': m.pokemon_key,
         'item': label(rid, 'item', m.item_key), 'ability': label(rid, 'ability', m.ability_key),
         'nature': nature and {'id': nature['id'], 'name_ko': nature['name_ko'],
                               'plus': nature['plus_stat'] or None, 'minus': nature['minus_stat'] or None},
         'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
         'moves': [label(rid, 'move', k) for k in m.moves],
-        'is_mega': getattr(m, 'is_gimmick_user', False),
+        'is_mega': shown != m.pokemon_key or getattr(m, 'is_gimmick_user', False),
         'brought': getattr(m, 'brought', None), 'lead': getattr(m, 'lead', None),
     }
 
