@@ -9,7 +9,7 @@
 - 도구: "{도구}" 문서(대개 분류 문서의 한 항목으로 넘겨줌)의 "설명" 칸.
   나무위키에 설명 칸이 없는 도구(나무열매 등)는 PokeAPI의 공식 한국어 설명(가장 최근 버전),
   메가스톤은 공식 설명 틀("○○에게 지니게 하면 배틀 중에 메가진화할 수 있는 신기한 메가스톤의 하나.")
-- 기술 정보 상자의 "변경점 챔피언스: …"는 설명과 따로 champions 로 저장
+- 기술 정보 상자의 "변경점 챔피언스: …"는 설명과 따로 champions 로 저장 (CSV에는 넣지 않음)
 저장 모양: {id: {"desc": 설명, "src": namuwiki|pokeapi|template, ("champions": 챔피언스 변경점)}}
 나무위키 robots.txt는 /w/ 문서 열람을 허용함. 요청 사이에 1초 넘게 쉼.
 이미 받은 항목은 건너뜀(중간에 끊겨도 이어서 받기). 다시 받으려면 json 파일을 지우고 실행.
@@ -285,8 +285,8 @@ def apply() -> None:
                 if e.get("rename"):                  # 최신 게임 이름으로 (깨뜨리다 → 깨트리기)
                     r["name_ko"] = e["rename"]
                 d = e.get("desc")
-                if d and e.get("champions"):        # 챔피언스에서 바뀐 점은 설명 뒤에 붙임
-                    d = f"{d} (챔피언스 변경: {e['champions']})"
+                if d and kind == "moves":           # 기술 설명에서 "(우선도 +4)"는 뺌 (챔피언스 변경점도 붙이지 않음)
+                    d = re.sub(r"\s*\(\s*우선도\s*[+-]?\s*\d+\s*\)", "", d).strip()
                 if d:
                     r["short_desc"] = d
                     filled += 1
