@@ -45,7 +45,16 @@ class DexIndex:
     def base_id(self, pokemon_id: str) -> str:
         """메가 폼이면 원래 폼 ID (파티에는 메가 전 포켓몬 + 메가스톤으로 저장)."""
         p = self.pokemon.get(pokemon_id)
-        return to_id(p['base_species']) if p and p['is_mega'] else pokemon_id
+        if not p or not p['is_mega']:
+            return pokemon_id
+        base = to_id(p['base_species'])
+        if p['forme'].startswith('F-') and base + 'f' in self.pokemon:      # 메가냐오닉스(암컷) → 냐오닉스 암컷
+            return base + 'f'
+        if base in self.pokemon:
+            return base
+        # 기본 폼이 없는 포켓몬 (메가플라엣테 → 플라엣테-영원의꽃): 같은 종의 메가 아닌 폼
+        forms = [k for k, r in self.pokemon.items() if r['base_species'] == p['base_species'] and not r['is_mega']]
+        return forms[0] if len(forms) == 1 else base
 
     def is_mega(self, pokemon_id: str) -> bool:
         return bool(self.pokemon.get(pokemon_id, {}).get('is_mega'))
