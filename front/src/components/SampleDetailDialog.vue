@@ -54,6 +54,12 @@ const natureText = computed(() => {
   if (!n) return ''
   return n.plus ? `${STAT_KO[n.plus]}▲ ${STAT_KO[n.minus]}▼` : '보정 없음'
 })
+// 성격 설명 (게임 설명문이 없어서 효과로)
+const natureDesc = computed(() => {
+  const n = nature.value
+  if (!n) return ''
+  return n.plus ? `${STAT_KO[n.plus]}이(가) 10% 오르고 ${STAT_KO[n.minus]}이(가) 10% 내려간다.` : '능력치가 바뀌지 않는다.'
+})
 </script>
 
 <template>
@@ -105,7 +111,10 @@ const natureText = computed(() => {
         </div>
         <div class="info">
           <span class="k">성격</span>
-          <div class="v"><div class="t"><strong>{{ nature?.name_ko || '—' }}</strong><span v-if="natureText" class="eff">{{ natureText }}</span></div></div>
+          <div class="v">
+            <div class="t"><strong>{{ nature?.name_ko || '—' }}</strong><span v-if="natureText" class="eff">{{ natureText }}</span></div>
+            <p v-if="natureDesc">{{ natureDesc }}</p>
+          </div>
         </div>
       </div>
     </div>
