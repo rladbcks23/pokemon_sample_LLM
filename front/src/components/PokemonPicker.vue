@@ -5,6 +5,7 @@ import { megaForm } from '@/utils/dex'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
 import PagerNav from '@/components/PagerNav.vue'
+import FormatToggle from '@/components/FormatToggle.vue'
 
 // 슬롯에 넣을 포켓몬 고르기 (현재 포맷 사용률 순). 이미 파티에 있는 포켓몬은 흐리게
 // "내 샘플" 탭: 만든 샘플·찜한 샘플을 바로 슬롯에 넣음
@@ -23,7 +24,8 @@ const q = ref('')
 const tab = ref('pokemon')
 watch(() => props.open, (v) => { if (v) { q.value = ''; tab.value = 'pokemon' } })
 
-// 공개 샘플: 검색·페이지는 서버에서 (30개씩)
+// 공개 샘플: 검색·페이지는 서버에서 (창 하나에 다 보이게 10개씩)
+const PUB_SIZE = 10
 const pub = ref(null)
 const pubPage = ref(1)
 const pubError = ref('')
@@ -31,7 +33,7 @@ let timer
 async function loadPublic() {
   pubError.value = ''
   try {
-    pub.value = await api.samples({ format: props.format, q: q.value.trim(), page: pubPage.value })
+    pub.value = await api.samples({ format: props.format, q: q.value.trim(), page: pubPage.value, size: PUB_SIZE })
   } catch (e) {
     pub.value = { count: 0, results: [] }
     pubError.value = e.message
@@ -46,7 +48,7 @@ watch(q, () => {
   timer = setTimeout(() => { pubPage.value = 1; loadPublic() }, 300)
 })
 function goPub(p) { pubPage.value = p; loadPublic() }
-const pubPages = computed(() => Math.max(1, Math.ceil((pub.value?.count || 0) / 30)))
+const pubPages = computed(() => Math.max(1, Math.ceil((pub.value?.count || 0) / PUB_SIZE)))
 // 메가스톤을 든 샘플은 메가 폼으로 표시
 const pubRows = computed(() => (pub.value?.results || []).map((x) => {
   const mega = megaForm(x.sample)
@@ -86,6 +88,7 @@ function pick(p) {
           <span v-if="tab === 'pokemon'">{{ formatLabel }} 사용률 순 · 고르면 샘플 제작으로 이동합니다</span>
           <span v-else-if="tab === 'sample'">내가 만든 샘플·찜한 샘플 · 고르면 바로 슬롯에 들어갑니다</span>
           <span v-else>{{ formatLabel }} 공개 샘플 · 고르면 바로 슬롯에 들어갑니다</span></div>
+        <FormatToggle size="sm" class="fmt" />
         <button class="x" @click="emit('update:open', false)">✕</button>
       </div>
     </template>
@@ -138,12 +141,13 @@ function pick(p) {
 
 <style scoped>
 .head { display: flex; align-items: center; gap: 12px; }
-.head div { display: flex; flex-direction: column; gap: 2px; }
+.head > div:first-child { display: flex; flex-direction: column; gap: 2px; }
 .head strong { font-size: 18px; }
 .head span { font-size: 12px; color: var(--c-muted); }
-.x { margin-left: auto; width: 32px; height: 32px; border: 1px solid var(--c-line-strong); border-radius: 6px; background: #fff; }
+.fmt { margin-left: auto; }
+.x { margin-left: 8px; width: 32px; height: 32px; border: 1px solid var(--c-line-strong); border-radius: 6px; background: #fff; }
 .search { width: 100%; height: 42px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 14px; font-size: 14px; margin-bottom: 14px; }
-.grid { max-height: 560px; overflow: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.grid { max-height: min(560px, calc(100vh - 320px)); overflow: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .pk { border: 1px solid var(--c-line); border-radius: 10px; background: #fff; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--c-text); }
 .pk:hover { border-color: var(--c-primary); background: var(--c-hover); }
 .pk.dim { opacity: .45; cursor: default; }
@@ -155,7 +159,7 @@ function pick(p) {
 .tabs button { border: 0; background: none; padding: 8px 14px; font-size: 14px; color: var(--c-text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; gap: 6px; align-items: baseline; }
 .tabs button.on { font-weight: 600; color: var(--c-primary); border-bottom-color: var(--c-primary); }
 .tabs .mono { font-size: 12px; color: var(--c-faint); }
-.sgrid { max-height: 560px; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.sgrid { max-height: min(560px, calc(100vh - 320px)); overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .sk { border: 1px solid var(--c-line); border-radius: 10px; background: #fff; padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left; color: var(--c-text); }
 .sk:hover { border-color: var(--c-primary); background: var(--c-hover); }
 .sk.dim { opacity: .45; cursor: default; }
