@@ -1,4 +1,4 @@
-"""샘플 데이터 수집: Smogon 사용률 통계 / Showdown 리플레이 / OP.GG.
+"""샘플 데이터 수집: Smogon 사용률 통계 / Showdown 리플레이 / OP.GG / VGCPastes.
 
 원본 그대로 data/raw/ 아래에 저장만 하고, DB 적재는 별도 스크립트에서 한다.
 
@@ -8,7 +8,10 @@
     python scripts/collect_samples.py replays --count 200
     python scripts/collect_samples.py opgg --pages 10
     python scripts/collect_samples.py opgg-history
+    python scripts/collect_samples.py vgcpastes      # 대회 팀 (SP 포함). 이미 받은 팀은 건너뜀
 """
+import csv
+import io
 import argparse
 import json
 import re
@@ -234,9 +237,51 @@ def collect_opgg_history() -> None:
         print(f"[opgg] history {fmt}: {len(history)}마리 저장")
 
 
+# ---------------------------------------------------------------------------
+# VGCPastes: 대회 입상 팀 모음 스프레드시트 → 각 팀의 pokepaste (SP 포함)
+# ---------------------------------------------------------------------------
+
+VGCPASTES_SHEET = "1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw"
+# 레귤레이션 → 시트 탭(gid). 탭이 바뀌면 시트를 열어 주소의 gid를 확인
+VGCPASTES_TABS = {"champions_mc": "2001945654", "champions_mb": "1458357160"}
+VGCPASTES_COLS = {  # 시트 열 이름 → 저장 이름
+    "Team ID": "id", "Team Description": "title", "Full Name": "player", "Pokepaste": "url",
+    "Date Shared": "date", "Tournament / Event": "event", "Rank": "rank", "Owner": "owner",
+}
+
+
+def collect_vgcpastes(regs: list[str]) -> None:
+    for reg in regs:
+        path = RAW / "vgcpastes" / f"{reg}.json"
+        got = {t["id"]: t for t in json.loads(path.read_text(encoding="utf-8"))} if path.exists() else {}
+        url = f"https://docs.google.com/spreadsheets/d/{VGCPASTES_SHEET}/export?format=csv&gid={VGCPASTES_TABS[reg]}"
+        rows = list(csv.reader(io.StringIO(fetch(url).decode("utf-8"))))
+        head = next(i for i, r in enumerate(rows) if "Team ID" in r and "Pokepaste" in r)
+        cols = {name: rows[head].index(col) for col, name in VGCPASTES_COLS.items()}
+        new = 0
+        for r in rows[head + 1:]:
+            t = {name: (r[i].strip() if i < len(r) else "") for name, i in cols.items()}
+            if not t["id"] or "pokepast" not in t["url"] or t["id"] in got:
+                continue
+            try:
+                p = fetch_json(t["url"].rstrip("/") + "/json")
+            except (urllib.error.URLError, ValueError) as e:
+                print(f"[vgcpastes] {t['id']} {t['url']}: {e}")
+                continue
+            got[t["id"]] = {**t, "paste": p.get("paste", ""), "author": p.get("author", ""), "notes": p.get("notes", "")}
+            new += 1
+            if new % 50 == 0:
+                save_json(path, list(got.values()))
+                print(f"[vgcpastes] {reg}: {len(got)}팀")
+        save_json(path, list(got.values()))
+        print(f"[vgcpastes] {reg}: {len(got)}팀 (새로 {new})")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("source", choices=["smogon", "replays", "opgg", "opgg-ranked", "opgg-history", "all"])
+    ap.add_argument("source", choices=["smogon", "replays", "opgg", "opgg-ranked", "opgg-history", "vgcpastes", "all"])
+    ap.add_argument("--regs", nargs="+", default=["champions_mc"], choices=list(VGCPASTES_TABS),
+                    help="vgcpastes: 받을 레귤레이션")
     ap.add_argument("--limit", type=int, default=None, help="opgg-ranked: 포켓몬 수 제한 (테스트용)")
     ap.add_argument("--month", default="2026-08", help="Smogon 통계 월 (YYYY-MM)")
     ap.add_argument("--count", type=int, default=200, help="포맷별 리플레이 수")
@@ -253,6 +298,8 @@ def main() -> None:
         collect_opgg_ranked(args.limit)
     if args.source in ("opgg-history", "all"):
         collect_opgg_history()
+    if args.source in ("vgcpastes", "all"):
+        collect_vgcpastes(args.regs)
 
 
 if __name__ == "__main__":
