@@ -146,7 +146,7 @@ function toSample() {
               <span class="ml" :style="{ color: col }">{{ label }}</span>
               <div class="mlist">
                 <span v-for="x in form.matchups[k]" :key="x.type" class="mt">
-                  <TypeBadge :type="x.type" :width="72" /><span class="mono">{{ mulText(x.multiplier) }}</span>
+                  <TypeBadge :type="x.type" :width="72" /><span class="mul mono" :class="`m${x.multiplier * 100}`">{{ mulText(x.multiplier) }}</span>
                 </span>
                 <span v-if="!form.matchups[k].length" class="none">없음</span>
               </div>
@@ -248,8 +248,13 @@ function toSample() {
 .mrow { display: flex; gap: 12px; align-items: flex-start; }
 .ml { width: 40px; flex: none; font-size: 13px; font-weight: 600; padding-top: 5px; }
 .mlist { display: flex; flex-wrap: wrap; gap: 6px; }
-.mt { display: inline-flex; align-items: center; gap: 4px; }
-.mt .mono { font-size: 11px; color: var(--c-text-3); }
+.mt { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+/* 배율: 크게 + 배율별 색 (×4 진한 빨강, ×2 빨강, ×½·×¼ 초록, ×0 파랑) */
+.mul { min-width: 34px; height: 24px; padding: 0 6px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+.mul.m400 { background: var(--c-x4); color: #fbfbf9; }
+.mul.m200 { background: var(--c-x2); color: #8c2f26; }
+.mul.m50, .mul.m25 { background: var(--c-half); color: #2f6b3d; }
+.mul.m0 { background: var(--c-zero); color: #2c4f8f; }
 .none { font-size: 12px; color: var(--c-faint); padding-top: 5px; }
 
 .section { display: flex; flex-direction: column; gap: 16px; }

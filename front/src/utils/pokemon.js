@@ -47,7 +47,7 @@ export const spTotal = (sp) => STATS.reduce((a, s) => a + (sp?.[s] || 0), 0)
 
 // 배율 표기: 4 → ×4, 0.5 → ½
 export function mulText(m) {
-  return { 4: '×4', 2: '×2', 0.5: '½', 0.25: '¼', 0: '0' }[m] ?? ''
+  return { 4: '×4', 2: '×2', 0.5: '×½', 0.25: '×¼', 0: '×0' }[m] ?? ''
 }
 
 // Showdown ID 규칙: 소문자 영숫자 ("Garchompite Z" → "garchompitez")
