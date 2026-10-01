@@ -36,6 +36,14 @@ cd back
 ..\.venv\Scripts\python manage.py load_meta   # 사용률, 파티, 육성형
 ```
 
+### 픽률 순위 매일 저장
+OP.GG 순위는 하루 안팎으로 갱신된다. 매일 한 번 실행하면 순위를 스냅샷으로 쌓고, 랭킹 화면은 직전 스냅샷 대비 변동을 보여준다.
+같은 갱신 시각이면 건너뛰므로 여러 번 실행해도 된다. 원본은 `data/raw/opgg/tier/`에 남는다.
+```bash
+cd back
+..\.venv\Scripts\python manage.py snapshot_ranking
+```
+
 ## 실행
 | 대상 | 위치 | 명령 | 주소 |
 |---|---|---|---|
