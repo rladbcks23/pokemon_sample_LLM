@@ -169,3 +169,26 @@ class UsageDetail(models.Model):
         constraints = [models.CheckConstraint(condition=Q(kind__in=['move', 'item', 'ability', 'nature', 'spread',
                                                                      'teammate']), name='usage_detail_kind')]
         verbose_name = verbose_name_plural = '사용률 상세'
+
+
+class RankSnapshot(models.Model):
+    """픽률 순위 스냅샷. OP.GG 순위가 갱신될 때마다 한 벌씩 쌓아 직전 스냅샷과 비교 (일별 변동)."""
+    ruleset = models.ForeignKey(Ruleset, on_delete=models.PROTECT)
+    format_key = models.CharField(max_length=48)
+    source = models.CharField(max_length=32, default='opgg')
+    season = models.CharField(max_length=16, blank=True)
+    captured_at = models.DateTimeField()                 # 출처의 갱신 시각 (OP.GG createdAt)
+    pokemon_key = models.CharField(max_length=48, db_index=True)
+    rank = models.IntegerField()
+    season_change = models.IntegerField(null=True, blank=True)   # 출처가 주는 직전 시즌 대비 변동 (None = 신규)
+
+    class Meta:
+        db_table = 'rank_snapshot'
+        ordering = ['-captured_at', 'rank']
+        constraints = [models.UniqueConstraint(fields=['format_key', 'source', 'captured_at', 'pokemon_key'],
+                                               name='rank_snapshot_unique')]
+        indexes = [models.Index(fields=['format_key', 'source', 'captured_at'])]
+        verbose_name = verbose_name_plural = '순위 스냅샷'
+
+    def __str__(self):
+        return f'{self.format_key} {self.captured_at:%m-%d %H:%M} {self.rank}위 {self.pokemon_key}'
