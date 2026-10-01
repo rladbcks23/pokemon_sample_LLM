@@ -334,15 +334,24 @@ class SamplePagination(PageNumberPagination):
     max_page_size = 100
 
 
+# 포켓몬 샘플 출처: 화면 이름, 정렬 순서 (OP.GG 샘플 → 대회 팀 멤버 → OP.GG 팀 멤버)
+SET_SOURCES = {'opgg_sample': 'OP.GG 샘플', 'vgcpastes_team': '대회 팀', 'opgg_team': 'OP.GG 팀'}
+
+
 @api_view(['GET'])
 def sample_list(request):
-    """공개 샘플(흔한 육성형) 목록. OP.GG 샘플이 먼저. GET /api/samples/?format=doubles&q=망나뇽&page=1
+    """공개 샘플(흔한 육성형) 목록. OP.GG 샘플이 먼저. GET /api/samples/?format=doubles&source=vgcpastes_team&q=망나뇽
+
+    source: opgg_sample / vgcpastes_team / opgg_team (생략 시 전체)
 
     sample: 샘플 제작·파티 빌딩에 바로 넣는 모양, member: 화면 표시용 (파티 상세의 멤버와 같은 모양)
     """
     rs = get_ruleset(request)
-    qs = PokemonSet.objects.filter(ruleset=rs).annotate(opgg_first=opgg_first('opgg_sample')) \
-        .order_by('opgg_first', 'usage_pct', '-id')
+    order = Case(*[When(source=k, then=Value(i)) for i, k in enumerate(SET_SOURCES)], default=Value(len(SET_SOURCES)),
+                 output_field=IntegerField())
+    qs = PokemonSet.objects.filter(ruleset=rs).annotate(src_order=order).order_by('src_order', 'usage_pct', '-id')
+    if src := request.query_params.get('source'):
+        qs = qs.filter(source=src)
     if request.query_params.get('format'):
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
     if q := request.query_params.get('q', '').strip():
@@ -350,7 +359,7 @@ def sample_list(request):
     pager = SamplePagination()
     page = pager.paginate_queryset(qs, request)
     return pager.get_paginated_response([{
-        'id': s.pk, 'name': s.name, 'source': s.source,
+        'id': s.pk, 'name': s.name, 'source': s.source, 'source_label': SET_SOURCES.get(s.source, s.source),
         'sample': {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': norm_nature(s.nature_key),
                    'sp': {st: getattr(s, f'sp_{st}') for st in SP_STATS},
                    'moves': ([*s.moves, '', '', '', ''])[:4]},
