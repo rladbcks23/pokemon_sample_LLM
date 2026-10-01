@@ -69,10 +69,13 @@ async function init() {
 }
 onMounted(init)
 
+// 수정 화면(슬롯·내 샘플)은 바꾼 게 없어도 다른 탭으로 갈 때 물어봄. 새로 만드는 중이면 바꾼 게 있을 때만
+const editing = computed(() => editingSlot.value || editingSample.value)
 async function confirmLeave() {
-  if (leaving.value || !dirty.value) return true
+  if (leaving.value || !(dirty.value || editing.value)) return true
   try {
-    await ElMessageBox.confirm('수정 중인 샘플이 있습니다. 저장하지 않고 나갈까요?', '수정 중',
+    await ElMessageBox.confirm(
+      dirty.value ? '수정한 내용이 저장되지 않습니다. 저장하지 않고 나갈까요?' : '수정을 그만두고 나갈까요?', '수정 중',
       { confirmButtonText: '나가기', cancelButtonText: '계속 수정', type: 'warning' })
     return true
   } catch {
@@ -272,11 +275,13 @@ const itemIdOf = (form) => toId(form.required_item)
       <!-- 왼쪽: 포켓몬·도구·특성·성격·기술 -->
       <div class="col">
         <el-select :model-value="sample.pokemon" filterable placeholder="⌕ 포켓몬 검색 (한글/영문)" class="sel"
+                   :disabled="editing" :title="editing ? '수정 중에는 포켓몬을 바꿀 수 없습니다' : ''"
                    @change="pickPokemon">
           <el-option v-for="p in pokemonOptions" :key="p.id" :value="p.id" :label="`${p.name_ko} ${p.name}`">
             <span class="opt"><PokemonImg :id="p.id" :size="24" />{{ p.name_ko }}<span class="opt-sub">{{ p.name }}</span></span>
           </el-option>
         </el-select>
+        <span v-if="editing" class="lockhint">수정 중에는 포켓몬을 바꿀 수 없습니다</span>
         <div class="card">
           <PokemonImg :id="shown?.id || ''" :size="128" />
           <strong>{{ shown?.name_ko || '포켓몬 선택' }}<span v-if="mega" class="megatag mono">MEGA</span></strong>
@@ -429,6 +434,7 @@ const itemIdOf = (form) => toId(form.required_item)
 <style scoped>
 .megaab { font-size: 12px; color: var(--c-text-3); }
 .megaab strong { color: var(--c-primary); }
+.lockhint { font-size: 12px; color: var(--c-muted); margin-top: -6px; }
 .dirty { color: var(--c-heart); font-weight: 600; }
 .rfmt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--c-muted); }
 .page { padding: 40px 32px 48px; display: flex; flex-direction: column; gap: 16px; }
