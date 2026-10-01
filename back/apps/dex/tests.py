@@ -75,3 +75,15 @@ class MergedFormTests(SimpleTestCase):
         self.assertEqual(opgg_pokemon_id('maushold-family-of-three', dex), 'mausholdfour')
         self.assertEqual(dex.resolve_cosmetic('maushold'), 'mausholdfour')   # 리플레이의 세식구 표기
         self.assertEqual(dex.resolve_cosmetic('mausholdfour'), 'mausholdfour')
+
+    def test_same_stat_forms_merged(self):
+        dex = DexIndex(pokemon={
+            'squawkabilly': entry('Squawkabilly', 'Squawkabilly', ''),
+            'squawkabillyyellow': entry('Squawkabilly-Yellow', 'Squawkabilly', 'Yellow'),
+            'sinistcha': entry('Sinistcha', 'Sinistcha', ''),
+        })
+        self.assertEqual(opgg_pokemon_id('squawkabilly-blue-plumage', dex), 'squawkabilly')
+        self.assertEqual(opgg_pokemon_id('squawkabilly-white-plumage', dex), 'squawkabillyyellow')
+        self.assertEqual(opgg_pokemon_id('sinistcha-masterpiece', dex), 'sinistcha')
+        self.assertEqual(dex.resolve_cosmetic('squawkabillywhite'), 'squawkabillyyellow')
+        self.assertEqual(dex.resolve_cosmetic('sinistchamasterpiece'), 'sinistcha')
