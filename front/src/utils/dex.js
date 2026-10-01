@@ -59,7 +59,8 @@ export function describe(sample) {
   return {
     pokemon: { id: p.id, name_ko: p.name_ko, types: p.types },
     item: item ? { id: item.id, name_ko: item.name_ko } : null,
-    ability: ability ? { id: ability.id, name_ko: ability.name_ko } : (sample.ability ? { name_ko: sample.ability } : null),
+    // 메가 폼이면 특성도 메가 폼 특성
+    ability: mega?.ability || (ability ? { id: ability.id, name_ko: ability.name_ko } : (sample.ability ? { name_ko: sample.ability } : null)),
     nature: nature ? { id: nature.id, name_ko: nature.name_ko } : null,
     sp: sample.sp,
     moves: sample.moves.map((id) => (id ? moves[id] || { id, name_ko: id } : null)),
