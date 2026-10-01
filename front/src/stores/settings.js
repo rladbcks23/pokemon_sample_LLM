@@ -1,28 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
-const KEY = 'pb-settings'
-
-function load() {
-  try {
-    return JSON.parse(localStorage.getItem(KEY)) || {}
-  } catch {
-    return {}
-  }
-}
-
-// 상단의 싱글/더블 전환, 레귤레이션 (현재는 M-C 하나)
+// 싱글/더블 전환(페이지마다 FormatToggle), 레귤레이션 (현재는 M-C 하나)
+// 싱글/더블은 저장하지 않음 → 새로 열면 항상 싱글
 export const useSettings = defineStore('settings', () => {
-  const saved = load()
-  const format = ref(saved.format || 'doubles')
+  const format = ref('singles')
   const ruleset = ref('champions_mc')
   const rulesetLabel = 'M-C'
-
-  watch(format, (v) => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ format: v }))
-    } catch { /* 저장 불가 환경에서는 무시 */ }
-  })
 
   const formatLabel = (f = format.value) => (f === 'singles' ? '싱글' : '더블')
   return { format, ruleset, rulesetLabel, formatLabel }
