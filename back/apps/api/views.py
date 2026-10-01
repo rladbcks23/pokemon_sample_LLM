@@ -156,6 +156,7 @@ def form_detail(p: Pokemon) -> dict:
 
 
 MIN_PCT = 1.0     # SP 배분·성격은 경우의 수가 많아 1% 미만은 생략
+MIN_SHOWN_PCT = 0.1   # 그 밖의 항목도 0.1% 미만(화면에 0%)은 생략
 USAGE_TOP = 10    # 기술·도구·특성·성격·SP 배분은 10위까지만
 USAGE_KINDS = ('move', 'item', 'ability', 'nature', 'spread')
 
@@ -169,6 +170,8 @@ def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
         if d.kind not in out:
             continue
         if d.kind in ('spread', 'nature') and d.pct < MIN_PCT:
+            continue
+        if d.pct < MIN_SHOWN_PCT:      # 0%로 보이는 항목은 빼기 (10개가 안 되면 그만큼만)
             continue
         if d.kind == 'spread':
             out['spread'].append({'sp': dict(zip(SP_STATS, map(int, d.target_key.split('/')))), 'pct': d.pct})
