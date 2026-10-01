@@ -156,13 +156,15 @@ def form_detail(p: Pokemon) -> dict:
 
 
 MIN_PCT = 1.0     # SP 배분·성격은 경우의 수가 많아 1% 미만은 생략
+USAGE_TOP = 10    # 기술·도구·특성·성격·SP 배분은 10위까지만
+USAGE_KINDS = ('move', 'item', 'ability', 'nature', 'spread')
 
 
 def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
     if not u:
         return None
     out = {'rank': u.rank, 'prev_rank': u.prev_rank, 'change': u.rank_change,
-           'move': [], 'item': [], 'ability': [], 'nature': [], 'spread': []}
+           **{k: [] for k in USAGE_KINDS}}
     for d in u.details.all():
         if d.kind not in out:
             continue
@@ -176,6 +178,8 @@ def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
             n = names(ruleset.id)['nature'].get(d.target_key, {})
             row.update(plus=n.get('plus_stat') or None, minus=n.get('minus_stat') or None)
         out[d.kind].append({**row, 'pct': d.pct})
+    for k in USAGE_KINDS:     # 항목마다 사용률 높은 순 10위까지만
+        out[k] = sorted(out[k], key=lambda x: -x['pct'])[:USAGE_TOP]
     return out
 
 
