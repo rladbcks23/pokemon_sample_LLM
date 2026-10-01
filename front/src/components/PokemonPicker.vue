@@ -30,15 +30,14 @@ function pickSample(x) {
 
 const rows = computed(() => {
   const k = q.value.trim().toLowerCase()
-  // 메가 폼은 기본 폼 바로 뒤에 (랭킹 순위 없음). 고르면 기본 폼 + 메가스톤
-  return props.list.slice().sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999) || a.num - b.num)
-    .flatMap((p) => [p, ...(p.megas || []).map((m) => ({ ...m, mega: true, base: p.id }))])
+  // 메가는 목록에 없음 (샘플 제작에서 메가스톤을 쥐여 주면 메가 폼으로 바뀜)
+  return props.list
     .filter((p) => !k || p.name_ko.toLowerCase().includes(k) || p.name.toLowerCase().includes(k))
+    .slice().sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999) || a.num - b.num)
 })
-const baseOf = (p) => (p.mega ? p.base : p.id)
 function pick(p) {
-  if (props.inParty.includes(baseOf(p))) return
-  emit('pick', p.mega ? { pokemon: p.base, item: p.item } : { pokemon: p.id })
+  if (props.inParty.includes(p.id)) return
+  emit('pick', { pokemon: p.id })
   emit('update:open', false)
 }
 </script>
@@ -72,12 +71,12 @@ function pick(p) {
       <p v-if="!sampleRows.length" class="none">{{ samples.length ? '검색 결과가 없습니다' : '저장한 샘플이 없습니다. 샘플 제작에서 저장하면 여기에 나옵니다.' }}</p>
     </div>
     <div v-else class="grid">
-      <button v-for="p in rows" :key="p.id" class="pk" :class="{ dim: inParty.includes(baseOf(p)) }" @click="pick(p)">
-        <span class="rk mono">{{ p.mega ? 'MEGA' : p.rank ? `${p.rank}위` : '순위 없음' }}</span>
+      <button v-for="p in rows" :key="p.id" class="pk" :class="{ dim: inParty.includes(p.id) }" @click="pick(p)">
+        <span class="rk mono">{{ p.rank ? `${p.rank}위` : '순위 없음' }}</span>
         <PokemonImg :id="p.id" :size="64" />
         <strong>{{ p.name_ko }}</strong>
         <div class="types"><TypeBadge v-for="t in p.types" :key="t" :type="t" :width="48" /></div>
-        <span v-if="inParty.includes(baseOf(p))" class="in">이미 파티에 있음</span>
+        <span v-if="inParty.includes(p.id)" class="in">이미 파티에 있음</span>
       </button>
     </div>
   </el-dialog>
