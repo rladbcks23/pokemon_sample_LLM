@@ -66,3 +66,11 @@ class StatTests(SimpleTestCase):
         self.assertEqual(sp_problems({'hp': 32, 'atk': 32, 'spe': 2}), [])
         self.assertEqual(len(sp_problems({'hp': 33})), 1)
         self.assertEqual(len(sp_problems({'hp': 32, 'atk': 32, 'spe': 3})), 1)
+
+
+class MergedFormTests(SimpleTestCase):
+    def test_maushold_four_is_maushold(self):
+        dex = DexIndex(pokemon={'maushold': entry('Maushold', 'Maushold')})
+        self.assertEqual(opgg_pokemon_id('maushold-family-of-four', dex), 'maushold')
+        self.assertEqual(opgg_pokemon_id('maushold-family-of-three', dex), 'maushold')
+        self.assertEqual(dex.resolve_cosmetic('mausholdfour'), 'maushold')   # 리플레이 표기
