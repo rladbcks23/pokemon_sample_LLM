@@ -69,8 +69,9 @@ class StatTests(SimpleTestCase):
 
 
 class MergedFormTests(SimpleTestCase):
-    def test_maushold_four_is_maushold(self):
-        dex = DexIndex(pokemon={'maushold': entry('Maushold', 'Maushold')})
-        self.assertEqual(opgg_pokemon_id('maushold-family-of-four', dex), 'maushold')
-        self.assertEqual(opgg_pokemon_id('maushold-family-of-three', dex), 'maushold')
-        self.assertEqual(dex.resolve_cosmetic('mausholdfour'), 'maushold')   # 리플레이 표기
+    def test_maushold_merged_into_four(self):
+        dex = DexIndex(pokemon={'mausholdfour': entry('Maushold-Four', 'Maushold', 'Four')})
+        self.assertEqual(opgg_pokemon_id('maushold-family-of-four', dex), 'mausholdfour')
+        self.assertEqual(opgg_pokemon_id('maushold-family-of-three', dex), 'mausholdfour')
+        self.assertEqual(dex.resolve_cosmetic('maushold'), 'mausholdfour')   # 리플레이의 세식구 표기
+        self.assertEqual(dex.resolve_cosmetic('mausholdfour'), 'mausholdfour')
