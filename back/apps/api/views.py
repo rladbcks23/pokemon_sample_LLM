@@ -114,7 +114,7 @@ def form_detail(p: Pokemon) -> dict:
     }
 
 
-SPREAD_MIN_PCT = 1.0
+MIN_PCT = 1.0     # SP 배분·성격은 경우의 수가 많아 1% 미만은 생략
 
 
 def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
@@ -125,9 +125,9 @@ def usage_detail(ruleset, u: UsageStat | None) -> dict | None:
     for d in u.details.all():
         if d.kind not in out:
             continue
+        if d.kind in ('spread', 'nature') and d.pct < MIN_PCT:
+            continue
         if d.kind == 'spread':
-            if d.pct < SPREAD_MIN_PCT:      # SP 배분은 경우의 수가 많아 1% 미만은 생략
-                continue
             out['spread'].append({'sp': dict(zip(SP_STATS, map(int, d.target_key.split('/')))), 'pct': d.pct})
             continue
         row = label(ruleset.id, d.kind, d.target_key) or {'id': d.target_key}
