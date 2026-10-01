@@ -113,6 +113,12 @@ def rows_of(kind: str) -> dict:
     return out
 
 
+def renamed_to(change: str) -> str:
+    """변경점의 '9세대: 깨트리다 → 깨트리기 기술명 수정' → 가장 최근 이름 (없으면 '')."""
+    names = re.findall(r"(\S+)\s*→\s*(\S+)\s*(?:기술명|이름|명칭)\s*(?:수정|변경)", change)
+    return names[-1][1] if names else ""
+
+
 def split_change(desc: str) -> tuple[str, str]:
     """'설명 … 변경점 챔피언스: PP 10 → 5' → (설명, 챔피언스 변경점)."""
     body, _, change = desc.partition(" 변경점 ")
@@ -152,12 +158,13 @@ def move_desc(page: str, ko: str, en: str) -> str:
 
 
 # 나무위키 문서 이름이 우리 한글 이름과 다른 기술
-MOVE_TITLES = {"brickbreak": "깨트리다"}
+MOVE_TITLES = {"brickbreak": "깨트리다", "covet": "탐내다"}
 
 
 def collect_moves() -> None:
     got = load("moves")
-    todo = {i: r for i, r in rows_of("moves").items() if i not in got}
+    # "rename" 칸이 없는 건 예전 형식이라 다시 받음 (최신 기술 이름 확인용)
+    todo = {i: r for i, r in rows_of("moves").items() if "rename" not in got.get(i, {})}
     print(f"[moves] {len(got)}개 있음, {len(todo)}개 받기")
     for n, (mid, r) in enumerate(todo.items(), 1):
         desc = ""
@@ -170,7 +177,10 @@ def collect_moves() -> None:
                 break
         body, change = split_change(desc)
         body, change = clean(body), clean(change)
-        got[mid] = {"desc": body, "champions": change, "src": "namuwiki" if body else ""}
+        rename = renamed_to(desc.partition(" 변경점 ")[2])
+        got[mid] = {"desc": body, "champions": change, "rename": rename, "src": "namuwiki" if body else ""}
+        if rename:
+            print(f"  ★ 이름 변경: {r['name_ko']} → {rename}")
         print(f"  {n}/{len(todo)} {r['name_ko']}: {body[:40] or '(없음)'}{' · 변경 ' + change if change else ''}")
         if n % 20 == 0:
             save("moves", got)
@@ -272,6 +282,8 @@ def apply() -> None:
             filled = 0
             for r in rows:
                 e = desc.get(r["id"], {})
+                if e.get("rename"):                  # 최신 게임 이름으로 (깨뜨리다 → 깨트리기)
+                    r["name_ko"] = e["rename"]
                 d = e.get("desc")
                 if d and e.get("champions"):        # 챔피언스에서 바뀐 점은 설명 뒤에 붙임
                     d = f"{d} (챔피언스 변경: {e['champions']})"
