@@ -68,6 +68,12 @@ def stats_of(p: Pokemon) -> dict:
     return {k: getattr(p, f) for k, f in STAT_FIELDS}
 
 
+def mega_ability(p: Pokemon) -> dict | None:
+    """메가 폼의 특성 (메가 폼은 특성이 하나)."""
+    pa = p.ability_slots.select_related('ability').order_by('slot').first()
+    return pa and {'id': pa.ability.showdown_id, 'name': pa.ability.name, 'name_ko': pa.ability.name_ko or pa.ability.name}
+
+
 def mega_owner(rs, mega: Pokemon, ids: set[str]) -> str:
     """메가 폼이 어느 폼에서 메가진화하는지 (메가냐오닉스(암컷) → meowsticf, 메가플라엣테 → floetteeternal)."""
     base = to_id(mega.base_species)
@@ -119,7 +125,7 @@ def pokemon_list(request):
             megas.setdefault(mega_owner(rs, p, ids), []).append({
                 'id': p.showdown_id, 'name': p.name, 'name_ko': p.name_ko or p.name,
                 'types': [t for t in (p.type1, p.type2) if t], 'stats': stats_of(p), 'bst': p.bst,
-                'item': to_id(p.required_item),
+                'item': to_id(p.required_item), 'ability': mega_ability(p),
             })
     items = []
     for p in all_p:
@@ -281,7 +287,10 @@ def member_detail(t: Team | PokemonSet, m: TeamMember | PokemonSet) -> dict:
     return {
         # pokemon: 화면 표시용 (메가스톤을 들면 메가 폼), base: 저장된 메가 전 폼 (샘플로 가져갈 때)
         'slot': getattr(m, 'slot', None), 'pokemon': pokemon_brief(rid, shown), 'base': m.pokemon_key,
-        'item': label(rid, 'item', m.item_key), 'ability': label(rid, 'ability', m.ability_key),
+        'item': label(rid, 'item', m.item_key),
+        # 메가 폼으로 보여 줄 때는 특성도 메가 폼 특성
+        'ability': (shown != m.pokemon_key and mega_ability(Pokemon.objects.get(ruleset_id=rid, showdown_id=shown)))
+        or label(rid, 'ability', m.ability_key),
         'nature': nature and {'id': nature['id'], 'name_ko': nature['name_ko'],
                               'plus': nature['plus_stat'] or None, 'minus': nature['minus_stat'] or None},
         'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
