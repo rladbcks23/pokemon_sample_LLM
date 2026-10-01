@@ -31,12 +31,17 @@ const msg = ref('')
 // 파티 빌딩 N번 슬롯 편집 중인지
 const slot = computed(() => (route.query.slot != null ? Number(route.query.slot) : null))
 const fromBuilder = computed(() => slot.value !== null)
+// 이미 채워진 슬롯을 "수정"으로 열었는지 (빈 슬롯에 새로 추가하는 경우와 버튼 문구가 다름)
+const editingSlot = ref(false)
 
 onMounted(async () => {
   await loadDex()
   const q = route.query
   let s = null
-  if (fromBuilder.value) s = builder.slots[slot.value]
+  if (fromBuilder.value) {
+    s = builder.slots[slot.value]
+    editingSlot.value = !!s
+  }
   if (!s && q.sample) s = library.mySamples.find((x) => x.id === q.sample)
   s = s ? JSON.parse(JSON.stringify(s)) : emptySample(q.pokemon || null)
   if (!s.id && q.item) s.item = q.item
@@ -313,7 +318,7 @@ const itemIdOf = (form) => toId(form.required_item)
         <div class="save">
           <span v-if="msg" class="msg">{{ msg }}</span>
           <template v-if="fromBuilder">
-            <button class="btn fill" @click="saveAdd">샘플 저장 + 파티에 추가</button>
+            <button class="btn fill" @click="saveAdd">{{ editingSlot ? '저장 후 돌아가기' : '샘플 저장 + 파티에 추가' }}</button>
             <button class="btn line" @click="router.push('/builder')">취소하고 파티 빌딩으로</button>
           </template>
           <button v-else class="btn fill" @click="saveOnly">샘플 저장</button>
