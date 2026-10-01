@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { api } from '@/api'
 import { useBuilder } from '@/stores/builder'
 import { emptySample, useLibrary } from '@/stores/library'
@@ -35,29 +36,68 @@ const fromBuilder = computed(() => slot.value !== null)
 // 이미 채워진 슬롯을 "수정"으로 열었는지 (빈 슬롯에 새로 추가하는 경우와 버튼 문구가 다름)
 const editingSlot = ref(false)
 
-onMounted(async () => {
+// 내 샘플을 열어 수정 중인지 (?sample=id)
+const editingSample = ref(false)
+
+// 수정 중 표시: 연 뒤에 바뀐 게 있으면 다른 화면으로 갈 때 물어봄
+const baseline = ref('')
+const leaving = ref(false)     // 저장·취소로 나갈 때는 묻지 않음
+const dirty = computed(() => !!baseline.value && JSON.stringify(sample.value) !== baseline.value)
+
+async function init() {
   await loadDex()
   const q = route.query
   let s = null
+  editingSlot.value = false
+  editingSample.value = false
+  leaving.value = false
   if (fromBuilder.value) {
     s = builder.slots[slot.value]
     editingSlot.value = !!s
   }
-  if (!s && q.sample) s = library.mySamples.find((x) => x.id === q.sample)
+  if (!s && q.sample) {
+    s = library.mySamples.find((x) => x.id === q.sample)
+    editingSample.value = !!s
+  }
   // 찜한 샘플은 복사본으로 열기 (저장하면 내 샘플에 새로 생김)
   const fav = !s && q.sample && library.favSamples.find((x) => x.id === q.sample)
   if (fav) s = { ...fav, id: null }
   s = s ? JSON.parse(JSON.stringify(s)) : emptySample(q.pokemon || null)
   if (!s.id && q.item) s.item = q.item
   sample.value = s
+  baseline.value = JSON.stringify(s)
+}
+onMounted(init)
+
+async function confirmLeave() {
+  if (leaving.value || !dirty.value) return true
+  try {
+    await ElMessageBox.confirm('수정 중인 샘플이 있습니다. 저장하지 않고 나갈까요?', '수정 중',
+      { confirmButtonText: '나가기', cancelButtonText: '계속 수정', type: 'warning' })
+    return true
+  } catch {
+    return false
+  }
+}
+onBeforeRouteLeave(confirmLeave)
+// 같은 샘플 제작 화면에서 주소만 바뀌는 경우 (예: 상단 메뉴 "샘플 제작"): 물어본 뒤 새로 열기
+onBeforeRouteUpdate(async () => {
+  const ok = await confirmLeave()
+  if (ok) setTimeout(init)
+  return ok
 })
+const onUnload = (e) => { if (dirty.value && !leaving.value) e.preventDefault() }
+window.addEventListener('beforeunload', onUnload)
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onUnload))
 
 // 포켓몬이 바뀌면 상세(특성·기술·사용률) 불러오고, 특성이 비었거나 안 맞으면 첫 특성으로
 watch(() => sample.value.pokemon, async (id) => {
   detail.value = id ? await loadDetail(id) : null
   const abilities = detail.value?.forms[0].abilities || []
   if (detail.value && !abilities.some((a) => a.id === sample.value.ability)) {
+    const clean = !dirty.value
     sample.value.ability = abilities[0]?.id || ''
+    if (clean) baseline.value = JSON.stringify(sample.value)    // 자동으로 채운 특성은 수정으로 안 침
   }
 })
 
@@ -189,18 +229,28 @@ function save() {
   return saved
 }
 function saveOnly() {
-  if (save()) router.push({ path: '/mypage', query: { tab: 'mySamples' } })
+  if (!save()) return
+  leaving.value = true
+  router.push({ path: '/mypage', query: { tab: 'mySamples' } })
 }
 function saveAdd() {
   const saved = save()
   if (!saved) return
   builder.setSlot(slot.value, JSON.parse(JSON.stringify(saved)))
+  leaving.value = true
   router.push('/builder')
+}
+// 취소: 바꾼 내용은 버리고 원래 화면으로
+function cancel() {
+  leaving.value = true
+  if (fromBuilder.value) router.push('/builder')
+  else router.push({ path: '/mypage', query: { tab: 'mySamples' } })
 }
 // 내 샘플에는 저장하지 않고 파티 슬롯에만 넣기 (비슷한 샘플이 계속 쌓이지 않게)
 function addOnly() {
   if (!sample.value.pokemon) { msg.value = '포켓몬을 먼저 선택하세요'; return }
   builder.setSlot(slot.value, JSON.parse(JSON.stringify(sample.value)))
+  leaving.value = true
   router.push('/builder')
 }
 const itemIdOf = (form) => toId(form.required_item)
@@ -211,6 +261,12 @@ const itemIdOf = (form) => toId(form.required_item)
     <div v-if="fromBuilder" class="ctx">
       <RouterLink to="/builder" class="back">← 파티 빌딩으로 돌아가기</RouterLink>
       <span>슬롯 {{ slot + 1 }} {{ editingSlot ? '수정' : '추가' }} 중 · 저장하지 않으면 바뀌지 않습니다</span>
+      <span v-if="dirty" class="dirty">● 수정 중</span>
+    </div>
+    <div v-else-if="editingSample" class="ctx">
+      <RouterLink :to="{ path: '/mypage', query: { tab: 'mySamples' } }" class="back">← 마이페이지로 돌아가기</RouterLink>
+      <span>내 샘플 수정 중 · 저장하지 않으면 바뀌지 않습니다</span>
+      <span v-if="dirty" class="dirty">● 수정 중</span>
     </div>
     <div class="grid">
       <!-- 왼쪽: 포켓몬·도구·특성·성격·기술 -->
@@ -339,9 +395,12 @@ const itemIdOf = (form) => toId(form.required_item)
           <template v-if="fromBuilder">
             <button class="btn fill" @click="addOnly">{{ editingSlot ? '파티에 반영하고 돌아가기' : '파티에 추가' }}</button>
             <button class="btn line" @click="saveAdd">{{ editingSlot ? '내 샘플에도 저장하고 돌아가기' : '내 샘플에도 저장 + 파티에 추가' }}</button>
-            <button class="btn line" @click="router.push('/builder')">취소하고 파티 빌딩으로</button>
+            <button class="btn line" @click="cancel">취소하고 파티 빌딩으로</button>
           </template>
-          <button v-else class="btn fill" @click="saveOnly">샘플 저장</button>
+          <template v-else>
+            <button class="btn fill" @click="saveOnly">{{ editingSample ? '수정 내용 저장' : '샘플 저장' }}</button>
+            <button v-if="editingSample" class="btn line" @click="cancel">취소</button>
+          </template>
         </div>
       </div>
     </div>
@@ -370,6 +429,7 @@ const itemIdOf = (form) => toId(form.required_item)
 <style scoped>
 .megaab { font-size: 12px; color: var(--c-text-3); }
 .megaab strong { color: var(--c-primary); }
+.dirty { color: var(--c-heart); font-weight: 600; }
 .rfmt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--c-muted); }
 .page { padding: 40px 32px 48px; display: flex; flex-direction: column; gap: 16px; }
 .ctx { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--c-muted); }
