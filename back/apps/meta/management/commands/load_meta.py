@@ -25,7 +25,7 @@ from django.db import transaction
 
 from apps.dex.ids import DexIndex, opgg_item_id, opgg_pokemon_id, to_id
 from apps.meta import opgg_tier
-from apps.dex.models import Item
+from apps.dex.models import Item, Learnset
 from apps.meta.models import (SP_MAX_PER_STAT, SP_MAX_TOTAL, SP_STATS, PokemonSet, RankSnapshot, Team, TeamMember,
                               UsageDetail, UsageStat)
 from apps.meta.pokepaste import parse_paste
@@ -81,6 +81,7 @@ class Command(BaseCommand):
             self.load_replays()
             self.load_vgcpastes()
             self.fill_replay_sp()
+            self.check_moves()
         self.report()
 
     # ------------------------------------------------------------------ 공통
@@ -420,4 +421,19 @@ class Command(BaseCommand):
             teams += 1
         TeamMember.objects.bulk_update(updated, [f'sp_{s}' for s in SP_STATS] + ['sp_from'], batch_size=2000)
         self.counts['리플레이 SP 채움 (같은 VGCPastes 팀)'] = f'{teams}팀 / {len(updated)}마리'
+
+    def check_moves(self) -> None:
+        """배울 수 없는 기술이 있는 파티는 is_legal=False (예: 단애의칼을 든 액슬루미온). 목록에서 숨김."""
+        learn = defaultdict(set)
+        for rid, p, m in Learnset.objects.values_list('pokemon__ruleset_id', 'pokemon__showdown_id', 'move__showdown_id'):
+            learn[(rid, p)].add(m)
+        bad, ok = [], []
+        for t in Team.objects.prefetch_related('members'):
+            illegal = [f'{m.pokemon_key}:{x}' for m in t.members.all() for x in m.moves
+                       if x not in learn[(t.ruleset_id, m.pokemon_key)]]
+            t.is_legal = not illegal
+            (bad if illegal else ok).append(t)
+            if illegal:
+                self.skipped[f'배울 수 없는 기술 → 숨김 ({t.source} {t.external_id})'] = ', '.join(illegal)
+        Team.objects.bulk_update(bad + ok, ['is_legal'], batch_size=2000)
 
