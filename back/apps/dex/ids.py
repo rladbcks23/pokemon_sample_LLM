@@ -64,7 +64,13 @@ OPGG_POKEMON_OVERRIDES = {
     'mega-meowstic-female': 'meowsticfmega',
 }
 # 성능이 같아 하나로 합친 폼: 제외한 폼 → 남긴 폼 (scripts/export_champions.js의 MERGED_FORMES)
-MERGED_POKEMON = {'maushold': 'mausholdfour'}
+MERGED_POKEMON = {
+    'maushold': 'mausholdfour',
+    'vivillonfancy': 'vivillon', 'vivillonpokeball': 'vivillon',
+    'polteageistantique': 'polteageist',
+    'sinistchamasterpiece': 'sinistcha',
+    'squawkabillyblue': 'squawkabilly', 'squawkabillywhite': 'squawkabillyyellow',
+}
 
 OPGG_REGION = {'alolan': 'alola', 'galarian': 'galar', 'hisuian': 'hisui', 'paldean': 'paldea'}
 # 메가스톤 이름이 Showdown과 다른 것
@@ -99,4 +105,4 @@ def opgg_pokemon_id(key: str, dex: DexIndex) -> str:
             if not any(to_id(p['forme']) == forme_key for p in dex.pokemon.values()
                        if to_id(p['base_species']) == base):
                 return base
-    return pid
+    return MERGED_POKEMON.get(pid, pid)
