@@ -31,7 +31,7 @@ class IdTests(SimpleTestCase):
             'lycanroc-midday': 'lycanroc',             # 기본 폼 이름이 붙은 경우
             'lycanroc-midnight': 'lycanrocmidnight',
             'squawkabilly-green-plumage': 'squawkabilly',
-            'squawkabilly-blue-plumage': 'squawkabillyblue',
+            'squawkabilly-blue-plumage': 'squawkabilly',   # 블루는 그린과 합침
             'indeedee-male': 'indeedee',
             'indeedee-female': 'indeedeef',
             'ninetales-alolan': 'ninetalesalola',

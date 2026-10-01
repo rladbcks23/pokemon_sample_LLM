@@ -97,6 +97,7 @@ def opgg_pokemon_id(key: str, dex: DexIndex) -> str:
     elif parts[-1] == 'female':                  # indeedee-female → indeedeef
         parts[-1] = 'f'
     pid = to_id(''.join(parts))
+    pid = MERGED_POKEMON.get(pid, pid)
     if pid not in dex.pokemon:
         # 기본 폼 이름이 붙은 경우 (lycanroc-midday → lycanroc)
         base = to_id(parts[0])
@@ -105,4 +106,4 @@ def opgg_pokemon_id(key: str, dex: DexIndex) -> str:
             if not any(to_id(p['forme']) == forme_key for p in dex.pokemon.values()
                        if to_id(p['base_species']) == base):
                 return base
-    return MERGED_POKEMON.get(pid, pid)
+    return pid
