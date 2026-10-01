@@ -7,6 +7,7 @@ import { useLibrary } from '@/stores/library'
 import MemberCard from '@/components/MemberCard.vue'
 import WeaknessTable from '@/components/WeaknessTable.vue'
 import BackLink from '@/components/BackLink.vue'
+import SampleDetailDialog from '@/components/SampleDetailDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,12 +44,17 @@ function toggleFav() {
   library.toggleFavTeam({ ...summary, members: members.map((m) => m.pokemon) })
 }
 
+// 멤버 → 샘플 모양 (메가 멤버는 메가 전 폼 + 메가스톤, 원래 특성)
+const toSample = (m) => ({
+  id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.base_ability || m.ability?.id || '',
+  nature: m.nature?.id || '', sp: { ...m.sp }, moves: [...m.moves.map((x) => x.id), '', '', '', ''].slice(0, 4),
+})
+const detailOpen = ref(false)
+const detailSample = ref(null)
+
 // 멤버 → 샘플로 바꿔서 파티 빌딩에 불러오기
 function toBuilder() {
-  const samples = t.value.members.map((m) => ({
-    id: null, pokemon: m.base || m.pokemon.id, item: m.item?.id || '', ability: m.base_ability || m.ability?.id || '',
-    nature: m.nature?.id || '', sp: { ...m.sp }, moves: [...m.moves.map((x) => x.id), '', '', '', ''].slice(0, 4),
-  }))
+  const samples = t.value.members.map(toSample)
   builder.load6(samples, { title: t.value.title })
   router.push('/builder')
 }
@@ -74,12 +80,14 @@ function toBuilder() {
     </div>
 
     <div class="members">
-      <MemberCard v-for="m in t.members" :key="m.slot" :member="m" />
+      <MemberCard v-for="m in t.members" :key="m.slot" :member="m" class="clickable" title="눌러서 상세보기"
+                  @click="detailSample = toSample(m); detailOpen = true" />
     </div>
 
     <div class="weak">
       <div class="wh"><strong>파티 약점표</strong><span class="mono">18타입 × {{ t.members.length }}마리</span></div>
       <WeaknessTable :rows="weakRows" :show-sum="false" />
+      <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" :title="t.title" />
     </div>
   </section>
 </template>

@@ -9,6 +9,7 @@ import { describe, dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import TeamCard from '@/components/TeamCard.vue'
 import MemberCard from '@/components/MemberCard.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
+import SampleDetailDialog from '@/components/SampleDetailDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,6 +101,12 @@ async function removeSample(s, fav) {
   else library.removeSample(s.id)
 }
 
+// 샘플 상세보기 창
+const detailOpen = ref(false)
+const detailSample = ref(null)
+const detailTitle = ref('')
+function openDetail(s, title) { detailSample.value = s; detailTitle.value = title; detailOpen.value = true }
+
 const EMPTY_HINT = {
   favTeams: '샘플 › 파티 샘플에서 ♡를 누르면 여기에 모입니다.',
   favSamples: '샘플 › 포켓몬 샘플에서 찜하면 여기에 모입니다.',
@@ -153,7 +160,8 @@ const count = (k) => (k === 'all' ? library.myTeams.length + library.favTeams.le
       <div v-if="isAll" class="sec"><strong>포켓몬 샘플</strong><span class="mono">{{ sampleRows.length }}</span></div>
       <div v-if="sampleRows.length" class="samples">
         <div v-for="{ s, fav } in samplesShown" :key="s.id" class="scard">
-          <MemberCard v-if="ready && describe(s)" :member="describe(s)" />
+          <MemberCard v-if="ready && describe(s)" :member="describe(s)" class="clickable" title="눌러서 상세보기"
+                      @click="openDetail(s, fav ? '찜한 샘플' : '내가 만든 샘플')" />
           <div class="acts">
             <button class="fill sm" @click="router.push({ path: '/sample', query: { sample: s.id } })">샘플 제작에서 열기</button>
             <button class="line sm" @click="addToBuilder(s)">파티 빌딩에 추가</button>
@@ -171,6 +179,7 @@ const count = (k) => (k === 'all' ? library.myTeams.length + library.favTeams.le
       <strong>아직 비어 있습니다</strong><span>{{ EMPTY_HINT[tab] }}</span>
     </div>
 
+    <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" :title="detailTitle" />
     <AddToPartyDialog v-model:open="addOpen" :sample="addSample" :label="names[addSample?.pokemon] || ''" :names="names"
                       @done="(m) => ElMessage.success(m)" />
   </section>

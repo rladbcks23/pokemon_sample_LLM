@@ -53,6 +53,8 @@ defineProps({
 
 <style scoped>
 .mcard { border: 1px solid var(--c-line-card); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+.mcard.clickable { cursor: pointer; transition: border-color .15s; }
+.mcard.clickable:hover { border-color: var(--c-primary); }
 .mcard.sm { padding: 16px; min-height: 236px; }
 .top { display: flex; gap: 12px; align-items: center; }
 .who { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }

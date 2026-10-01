@@ -13,6 +13,7 @@ import WeaknessTable from '@/components/WeaknessTable.vue'
 import PokemonPicker from '@/components/PokemonPicker.vue'
 import CoachChat from '@/components/CoachChat.vue'
 import FormatToggle from '@/components/FormatToggle.vue'
+import SampleDetailDialog from '@/components/SampleDetailDialog.vue'
 
 const router = useRouter()
 const builder = useBuilder()
@@ -63,6 +64,8 @@ function onPickSample(sample) {
   builder.setSlot(pickerSlot.value, JSON.parse(JSON.stringify({ ...sample, id: sample.id ?? null })))
   ElMessage.success('샘플을 불러왔습니다')
 }
+const detailOpen = ref(false)
+const detailSample = ref(null)
 const edit = (i) => router.push({ path: '/sample', query: { slot: i } })
 
 async function clearAll() {
@@ -117,6 +120,7 @@ function openSample(s) {
         <template v-for="(s, i) in builder.slots" :key="i">
           <MemberCard v-if="s && members[i]" :member="members[i]" size="sm">
             <template #actions>
+              <button class="sbtn" title="샘플 상세보기" @click="detailSample = s; detailOpen = true">상세</button>
               <button class="sbtn" title="샘플 제작에서 수정" @click="edit(i)">수정</button>
               <button class="sbtn del" title="슬롯에서 삭제" @click="builder.clearSlot(i)">삭제</button>
             </template>
@@ -137,6 +141,7 @@ function openSample(s) {
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
                :names="names" @apply="applyParty" @open-sample="openSample" />
 
+    <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" title="파티 빌딩" />
     <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()" :format="settings.format"
                    :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" :samples="mySamples"
                    @pick="onPick" @pick-sample="onPickSample" />

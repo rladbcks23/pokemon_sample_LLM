@@ -9,6 +9,7 @@ import SampleTabs from '@/components/SampleTabs.vue'
 import MemberCard from '@/components/MemberCard.vue'
 import PagerNav from '@/components/PagerNav.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
+import SampleDetailDialog from '@/components/SampleDetailDialog.vue'
 
 // 포켓몬 샘플: 공개 샘플(OP.GG 샘플 등) 목록. 찜하거나 파티에 바로 추가
 const route = useRoute()
@@ -56,6 +57,10 @@ function toggleFav(x) {
 const addOpen = ref(false)
 const addSample = ref(null)
 const names = computed(() => Object.fromEntries(Object.values(dex.pokemon).map((p) => [p.id, p.name_ko])))
+// 샘플 상세보기 창
+const detailOpen = ref(false)
+const detailX = ref(null)
+function openDetail(x) { detailX.value = x; detailOpen.value = true }
 function addToParty(x) {
   addSample.value = { ...asSample(x), id: null }
   addOpen.value = true
@@ -80,7 +85,7 @@ function addToParty(x) {
     <template v-else>
       <div v-if="data.results.length" class="grid">
         <div v-for="x in data.results" :key="x.id" class="scard">
-          <MemberCard :member="x.member" />
+          <MemberCard :member="x.member" class="clickable" title="눌러서 상세보기" @click="openDetail(x)" />
           <div class="acts">
             <button class="fill sm" @click="addToParty(x)">파티에 추가</button>
             <button class="line sm" :class="{ on: isFav(x) }" @click="toggleFav(x)">{{ isFav(x) ? '♥ 찜함' : '♡ 찜하기' }}</button>
@@ -91,6 +96,14 @@ function addToParty(x) {
       <PagerNav :page="page" :pages="pages" @go="(p) => setQuery({ page: p })" />
     </template>
 
+    <SampleDetailDialog v-model:open="detailOpen" :sample="detailX?.sample" :title="detailX?.name ? `포켓몬 샘플 · ${detailX.name}` : '포켓몬 샘플'">
+      <template #actions>
+        <div v-if="detailX" class="dacts">
+          <button class="fill sm" @click="detailOpen = false; addToParty(detailX)">파티에 추가</button>
+          <button class="line sm" :class="{ on: isFav(detailX) }" @click="toggleFav(detailX)">{{ isFav(detailX) ? '♥ 찜함' : '♡ 찜하기' }}</button>
+        </div>
+      </template>
+    </SampleDetailDialog>
     <AddToPartyDialog v-model:open="addOpen" :sample="addSample" :label="names[addSample?.pokemon] || ''" :names="names"
                       @done="(m) => ElMessage.success(m)" />
   </section>
@@ -113,6 +126,7 @@ function addToParty(x) {
 .fill { border: 0; background: var(--c-primary); color: #fbfbf9; border-radius: 6px; font-weight: 600; }
 .line { border: 1px solid var(--c-line-strong); background: #fff; color: var(--c-text); border-radius: 6px; }
 .line.on { border-color: var(--c-heart); color: var(--c-heart); }
+.dacts { display: flex; gap: 6px; }
 .sm { height: 34px; font-size: 12px; padding: 0 14px; }
 .empty { padding: 48px; text-align: center; color: var(--c-muted); font-size: 14px; border: 1.5px dashed var(--c-line-strong); border-radius: 12px; margin: 0; }
 .err { color: var(--c-danger); }
