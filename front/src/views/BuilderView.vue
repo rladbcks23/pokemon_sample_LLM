@@ -74,8 +74,10 @@ function save() {
   if (!builder.count) { ElMessage.warning('포켓몬을 먼저 추가하세요'); return }
   const t = library.saveTeam({ id: builder.teamId, name: builder.name || '새 파티', format: settings.format,
     slots: JSON.parse(JSON.stringify(builder.slots)) })
-  builder.teamId = t.id
-  ElMessage.success('내 파티에 저장했습니다')
+  // 저장하면 파티 빌딩을 비우고 마이페이지(내가 만든 파티)로
+  builder.reset()
+  ElMessage.success(`"${t.name}"을(를) 내 파티에 저장했습니다`)
+  router.push({ path: '/mypage', query: { tab: 'myTeams' } })
 }
 function loadTeam(t) {
   if (t.format) settings.format = t.format
