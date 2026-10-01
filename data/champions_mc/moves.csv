@@ -1,63 +1,63 @@
 ﻿id,name,name_ko,type,category,power,accuracy,pp,priority,target,flags,secondary_chance,short_desc
-appleacid,Apple Acid,사과산,Grass,Special,90,100,10,0,normal,protect|mirror,100,새콤한 사과에서 만들어 낸 산성 액체로 공격한다. 상대의 특수방어를 1랭크 떨어뜨린다. (챔피언스 변경: 80 → 90 위력 상승)
-banefulbunker,Baneful Bunker,토치카,Poison,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 막음과 동시에 접촉한 상대에게 독을 퍼뜨린다. (우선도 +4)
-beakblast,Beak Blast,부리캐논,Flying,Physical,120,100,5,-3,normal,protect|failmefirst|nosleeptalk|noassist|failcopycat|failinstruct|bullet,,먼저 부리를 가열시킨 다음 (우선도 +5) 공격을 날린다. (우선도 -3) 가열 중에 접촉기로 공격하면 화상을 입는다. (챔피언스 변경: 100 → 120 위력 상승)
+appleacid,Apple Acid,사과산,Grass,Special,90,100,10,0,normal,protect|mirror,100,새콤한 사과에서 만들어 낸 산성 액체로 공격한다. 상대의 특수방어를 1랭크 떨어뜨린다.
+banefulbunker,Baneful Bunker,토치카,Poison,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 막음과 동시에 접촉한 상대에게 독을 퍼뜨린다.
+beakblast,Beak Blast,부리캐논,Flying,Physical,120,100,5,-3,normal,protect|failmefirst|nosleeptalk|noassist|failcopycat|failinstruct|bullet,,먼저 부리를 가열시킨 다음 공격을 날린다. 가열 중에 접촉기로 공격하면 화상을 입는다.
 belch,Belch,트림,Poison,Special,120,90,10,0,normal,protect|failmefirst|nosleeptalk|noassist|failcopycat|failmimic|failinstruct,,상대를 향해 트림을 하여 데미지를 준다. 나무열매를 먹지 않으면 쓸 수 없다.
-bonerush,Bone Rush,본러시,Ground,Physical,30,90,10,0,normal,protect|mirror|metronome,,단단한 뼈로 상대를 세게 때려서 공격한다. 2-5회 동안 연속으로 쓴다. (챔피언스 변경: 25 → 30 위력 상승)
+bonerush,Bone Rush,본러시,Ground,Physical,30,90,10,0,normal,protect|mirror|metronome,,단단한 뼈로 상대를 세게 때려서 공격한다. 2-5회 동안 연속으로 쓴다.
 burnup,Burn Up,불사르기,Fire,Special,130,100,5,0,normal,protect|mirror|defrost|metronome,,전신의 불꽃을 모두 태워서 큰 데미지를 준다. 사용자의 불꽃 타입이 없어진다. 사용자가 이미 불꽃 타입이 아니면 실패한다. 대상의 얼음을 치료한다.
 clangoroussoul,Clangorous Soul,소울비트,Dragon,Status,0,,5,0,self,snatch|sound|dance,,"자신의 HP를 ⅓ 깎아서 공격, 방어, 특수공격, 특수방어, 스피드를 1랭크 올린다."
 corrosivegas,Corrosive Gas,부식가스,Poison,Status,0,100,20,0,allAdjacent,protect|reflectable|mirror|allyanim|metronome,,주위에 있는 모든 것을 강력한 산성 가스로 뒤덮어서 지니고 있는 도구를 녹여버린다.
-crabhammer,Crabhammer,집게해머,Water,Physical,100,95,10,0,normal,contact|protect|mirror|metronome,,큰 집게를 상대에게 내리쳐서 공격한다. 급소에 맞을 확률이 높다. (챔피언스 변경: 90 → 95 명중률 상승)
-crushclaw,Crush Claw,브레이크클로,Normal,Physical,75,95,10,0,normal,contact|protect|mirror|metronome|slicing,50,단단하고 날카로운 손톱으로 베어 갈라서 공격한다. 50% 확률로 상대의 방어를 1랭크 떨어뜨린다. (챔피언스 변경: 성질 베기 추가)
+crabhammer,Crabhammer,집게해머,Water,Physical,100,95,10,0,normal,contact|protect|mirror|metronome,,큰 집게를 상대에게 내리쳐서 공격한다. 급소에 맞을 확률이 높다.
+crushclaw,Crush Claw,브레이크클로,Normal,Physical,75,95,10,0,normal,contact|protect|mirror|metronome|slicing,50,단단하고 날카로운 손톱으로 베어 갈라서 공격한다. 50% 확률로 상대의 방어를 1랭크 떨어뜨린다.
 curse,Curse,저주,Ghost,Status,0,,10,0,normal,bypasssub|metronome,,기술을 쓰는 포켓몬이 고스트 타입일 때와 그 이외의 타입일 때 효과가 다르다.
-direclaw,Dire Claw,페이탈클로,Poison,Physical,80,100,15,0,normal,contact|protect|mirror|metronome|slicing,30,"치명적인 손톱으로 공격한다. 30% 확률로 상대를 독, 마비, 잠듦 중 하나의 상태로 만든다. (챔피언스 변경: 성질 '베기' 추가 및 상대 상태이상 확률 50% → 30%)"
+direclaw,Dire Claw,페이탈클로,Poison,Physical,80,100,15,0,normal,contact|protect|mirror|metronome|slicing,30,"치명적인 손톱으로 공격한다. 30% 확률로 상대를 독, 마비, 잠듦 중 하나의 상태로 만든다."
 disable,Disable,사슬묶기,Normal,Status,0,100,20,0,normal,protect|reflectable|mirror|bypasssub|metronome,,상대의 움직임을 막아 바로 전에 쓴 기술을 4턴 동안 사용할 수 없게 만든다.
-doubleshock,Double Shock,전광쌍격,Electric,Physical,120,100,5,0,normal,contact|protect|mirror|punch,,전신의 전기를 모두 방출해서 큰 데미지를 준다. 사용자의 전기 타입이 없어진다. (챔피언스 변경: 성질 펀치 추가)
-dragoncheer,Dragon Cheer,드래곤옐,Dragon,Status,0,,15,0,adjacentAlly,bypasssub|allyanim|metronome|sound,,용의 북돋움으로 사기를 높여서 같은 편의 기술이 급소에 맞기 쉬워진다. 드래곤타입이면 더욱더 사기가 북돋는다. (챔피언스 변경: 성질 소리 추가)
-dragonclaw,Dragon Claw,드래곤클로,Dragon,Physical,80,100,15,0,normal,contact|protect|mirror|metronome|slicing,,날카롭고 뾰족하며 거대한 발톱으로 상대를 베어 갈라서 공격한다. (챔피언스 변경: 성질 베기 추가)
+doubleshock,Double Shock,전광쌍격,Electric,Physical,120,100,5,0,normal,contact|protect|mirror|punch,,전신의 전기를 모두 방출해서 큰 데미지를 준다. 사용자의 전기 타입이 없어진다.
+dragoncheer,Dragon Cheer,드래곤옐,Dragon,Status,0,,15,0,adjacentAlly,bypasssub|allyanim|metronome|sound,,용의 북돋움으로 사기를 높여서 같은 편의 기술이 급소에 맞기 쉬워진다. 드래곤타입이면 더욱더 사기가 북돋는다.
+dragonclaw,Dragon Claw,드래곤클로,Dragon,Physical,80,100,15,0,normal,contact|protect|mirror|metronome|slicing,,날카롭고 뾰족하며 거대한 발톱으로 상대를 베어 갈라서 공격한다.
 electrify,Electrify,송전,Electric,Status,0,,20,0,normal,protect|mirror|allyanim|metronome,,상대가 기술을 쓰기 전에 송전하면 그 턴에 상대가 사용하는 기술은 전기타입이 된다.
 encore,Encore,앙코르,Normal,Status,0,100,5,0,normal,protect|reflectable|mirror|bypasssub|metronome|failencore,,상대에게 앙코르를 외쳐서 기술을 3번 연속으로 쓰게 한다.
-fakeout,Fake Out,속이기,Normal,Physical,40,100,10,3,normal,contact|protect|mirror|metronome,100,선제공격으로 상대를 풀죽게 한다. 배틀에 나가서 바로 쓰지 않으면 성공할 수 없다. (우선도 +3)
-firelash,Fire Lash,불꽃채찍,Fire,Physical,90,100,15,0,normal,contact|protect|mirror|metronome,100,불타는 채찍으로 상대를 친다. 공격을 받은 상대는 방어가 1랭크 떨어진다. (챔피언스 변경: 80 → 90 위력 상승)
-firstimpression,First Impression,만나자마자,Bug,Physical,100,100,10,2,normal,contact|protect|mirror|metronome,,위력이 높은 기술이지만 배틀에 나가서 바로 쓰지 않으면 성공할 수 없다. (우선도 +2) (챔피언스 변경: 90 → 100 위력 상승)
-freezedry,Freeze-Dry,프리즈드라이,Ice,Special,70,100,20,0,normal,protect|mirror|metronome,,상대를 급격히 차갑게 하여 물타입 포켓몬에게도 효과가 굉장해진다. (챔피언스 변경: 상대 얼음 상태이상 확률 10% → 삭제)
-gravapple,Grav Apple,G의힘,Grass,Physical,90,100,10,0,normal,protect|mirror,100,높은 곳에서 사과를 떨어뜨려서 데미지를 준다. 상대의 방어를 1랭크 떨어뜨린다. 중력이 강할 때 위력이 1.5배가 된다. (챔피언스 변경: 80 → 90 위력 상승)
+fakeout,Fake Out,속이기,Normal,Physical,40,100,10,3,normal,contact|protect|mirror|metronome,100,선제공격으로 상대를 풀죽게 한다. 배틀에 나가서 바로 쓰지 않으면 성공할 수 없다.
+firelash,Fire Lash,불꽃채찍,Fire,Physical,90,100,15,0,normal,contact|protect|mirror|metronome,100,불타는 채찍으로 상대를 친다. 공격을 받은 상대는 방어가 1랭크 떨어진다.
+firstimpression,First Impression,만나자마자,Bug,Physical,100,100,10,2,normal,contact|protect|mirror|metronome,,위력이 높은 기술이지만 배틀에 나가서 바로 쓰지 않으면 성공할 수 없다.
+freezedry,Freeze-Dry,프리즈드라이,Ice,Special,70,100,20,0,normal,protect|mirror|metronome,,상대를 급격히 차갑게 하여 물타입 포켓몬에게도 효과가 굉장해진다.
+gravapple,Grav Apple,G의힘,Grass,Physical,90,100,10,0,normal,protect|mirror,100,높은 곳에서 사과를 떨어뜨려서 데미지를 준다. 상대의 방어를 1랭크 떨어뜨린다. 중력이 강할 때 위력이 1.5배가 된다.
 growth,Growth,성장,Grass,Status,0,,20,0,self,snatch|metronome,,몸을 일시에 크게 성장시켜 자신의 공격과 특수공격을 1랭크 올린다. 쾌청 상태일 때는 2랭크 올라간다.
 howl,Howl,멀리짖기,Normal,Status,0,,20,0,allies,snatch|sound|bypasssub|metronome,,큰 소리로 짖어 기합을 높여서 자신과 같은 편의 공격을 1랭크 올린다.
-infernalparade,Infernal Parade,백귀야행,Ghost,Special,65,100,15,0,normal,protect|mirror|metronome,30,무수히 많은 불덩이로 공격한다. 30% 확률로 상대를 화상 상태로 만든다. 상대가 상태이상인 경우 위력이 2배가 된다. (챔피언스 변경: 60 → 65 위력 상승)
-ironhead,Iron Head,아이언헤드,Steel,Physical,80,100,15,0,normal,contact|protect|mirror|metronome,20,강철과 같은 단단한 머리로 공격한다. 20%의 확률로 상대를 풀죽게 만든다. (챔피언스 변경: 상대 풀죽음 확률 30% → 20%)
-kingsshield,King's Shield,킹실드,Steel,Status,0,,5,4,self,noassist|failcopycat|failinstruct,,상대의 공격을 막음과 동시에 방어 태세를 갖춘다. 접촉한 상대의 공격을 1랭크 떨어뜨린다. (우선도 +4)
+infernalparade,Infernal Parade,백귀야행,Ghost,Special,65,100,15,0,normal,protect|mirror|metronome,30,무수히 많은 불덩이로 공격한다. 30% 확률로 상대를 화상 상태로 만든다. 상대가 상태이상인 경우 위력이 2배가 된다.
+ironhead,Iron Head,아이언헤드,Steel,Physical,80,100,15,0,normal,contact|protect|mirror|metronome,20,강철과 같은 단단한 머리로 공격한다. 20%의 확률로 상대를 풀죽게 만든다.
+kingsshield,King's Shield,킹실드,Steel,Status,0,,5,4,self,noassist|failcopycat|failinstruct,,상대의 공격을 막음과 동시에 방어 태세를 갖춘다. 접촉한 상대의 공격을 1랭크 떨어뜨린다.
 lightofruin,Light of Ruin,파멸의빛,Fairy,Special,140,90,5,0,normal,protect|mirror,,영원의 꽃의 파워를 빌려서 강력한 광선을 쏜다. 자신도 상대에게 준 데미지의 ½만큼 반동 피해를 받는다.
-makeitrain,Make It Rain,골드러시,Steel,Special,120,95,5,0,allAdjacentFoes,protect|mirror,,대량의 코인을 날려서 공격한다. 자신의 특수공격이 2랭크 떨어진다. 배틀 후 얻는 상금이 소폭 증가한다. (챔피언스 변경: 100 → 95 명중률 하락 및 특수공격 1랭크 → 2랭크 하락)
-meteorassault,Meteor Assault,스타어설트,Fighting,Physical,170,100,5,0,normal,recharge|protect|mirror|failinstruct,,굵은 줄기를 휘둘러서 공격한다. 단 자신도 비틀거리기 때문에 다음 턴은 움직일 수 없다. (챔피언스 변경: 150 → 170 위력 상승)
-milkdrink,Milk Drink,우유마시기,Normal,Status,0,,5,0,adjacentAllyOrSelf,snatch|heal|metronome,,자신 또는 같은 편의 HP를 최대 HP의 절반만큼 회복한다. (챔피언스 변경: 동료 최대 HP의 1/5 → 1/2 회복 상승)
-moonblast,Moonblast,문포스,Fairy,Special,95,100,15,0,normal,protect|mirror|metronome,10,달의 파워를 빌려서 상대를 공격한다. 10% 확률로 상대의 특수공격을 1랭크 떨어뜨린다. (챔피언스 변경: 상대 특수공격 1랭크 하락 확률 30% → 10%)
-mountaingale,Mountain Gale,빙산바람,Ice,Physical,120,85,10,0,normal,protect|mirror|metronome,30,빙산처럼 커다란 얼음덩어리를 부딪쳐서 공격한다. 30%의 확률로 상대를 풀죽게 만든다. (챔피언스 변경: 100 → 120 위력 상승)
-nightdaze,Night Daze,나이트버스트,Dark,Special,90,95,10,0,normal,protect|mirror|metronome,40,암흑의 충격파를 날려서 상대를 공격한다. 40% 확률로 명중률을 1랭크 떨어뜨린다. (챔피언스 변경: 85 → 90 위력 상승)
+makeitrain,Make It Rain,골드러시,Steel,Special,120,95,5,0,allAdjacentFoes,protect|mirror,,대량의 코인을 날려서 공격한다. 자신의 특수공격이 2랭크 떨어진다. 배틀 후 얻는 상금이 소폭 증가한다.
+meteorassault,Meteor Assault,스타어설트,Fighting,Physical,170,100,5,0,normal,recharge|protect|mirror|failinstruct,,굵은 줄기를 휘둘러서 공격한다. 단 자신도 비틀거리기 때문에 다음 턴은 움직일 수 없다.
+milkdrink,Milk Drink,우유마시기,Normal,Status,0,,5,0,adjacentAllyOrSelf,snatch|heal|metronome,,자신 또는 같은 편의 HP를 최대 HP의 절반만큼 회복한다.
+moonblast,Moonblast,문포스,Fairy,Special,95,100,15,0,normal,protect|mirror|metronome,10,달의 파워를 빌려서 상대를 공격한다. 10% 확률로 상대의 특수공격을 1랭크 떨어뜨린다.
+mountaingale,Mountain Gale,빙산바람,Ice,Physical,120,85,10,0,normal,protect|mirror|metronome,30,빙산처럼 커다란 얼음덩어리를 부딪쳐서 공격한다. 30%의 확률로 상대를 풀죽게 만든다.
+nightdaze,Night Daze,나이트버스트,Dark,Special,90,95,10,0,normal,protect|mirror|metronome,40,암흑의 충격파를 날려서 상대를 공격한다. 40% 확률로 명중률을 1랭크 떨어뜨린다.
 nightslash,Night Slash,깜짝베기,Dark,Physical,70,100,20,0,normal,contact|protect|mirror|metronome|slicing,,순간적으로 빈틈을 노려 상대를 베어 버린다. 급소에 맞을 확률이 높다.
 octolock,Octolock,문어굳히기,Fighting,Status,0,100,15,0,normal,protect|mirror|metronome,,상대를 도망칠 수 없게 한다. 굳히기에 당한 상대는 매 턴 방어와 특수방어가 1랭크 떨어진다.
 powershift,Power Shift,파워시프트,Normal,Status,0,,10,0,self,snatch,,자신의 공격력과 방어력을 바꾼다.
-protect,Protect,방어,Normal,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다. (우선도 +4) (챔피언스 변경: PP 10 → 5)
-psyshieldbash,Psyshield Bash,배리어러시,Psychic,Physical,90,90,10,0,normal,contact|protect|mirror|metronome,100,사념의 에너지를 두른 채로 상대에게 부딪친다. 자신의 방어를 1랭크 올린다. (챔피언스 변경: 70 → 90 위력 상승)
-ragefist,Rage Fist,분노의주먹,Ghost,Physical,50,100,10,0,normal,contact|protect|mirror|punch,,분노를 에너지로 바꿔서 공격한다. 받은 공격의 횟수가 많을수록 기술의 위력이 올라간다. (챔피언스 변경: 교체 시 위력 스택 초기화)
-saltcure,Salt Cure,소금절이,Rock,Physical,40,100,15,0,normal,protect|mirror,100,"상대를 소금절이 상태로 만들어 매 턴 최대 체력의 1/16의 데미지를 준다. 강철타입이나 물타입에게는 매 턴 최대 체력의 1/8의 데미지를 준다. (챔피언스 변경: 1/8의 데미지→1/16, 강철 및 물타입 1/4의 데미지→1/8 하락)"
+protect,Protect,방어,Normal,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다.
+psyshieldbash,Psyshield Bash,배리어러시,Psychic,Physical,90,90,10,0,normal,contact|protect|mirror|metronome,100,사념의 에너지를 두른 채로 상대에게 부딪친다. 자신의 방어를 1랭크 올린다.
+ragefist,Rage Fist,분노의주먹,Ghost,Physical,50,100,10,0,normal,contact|protect|mirror|punch,,분노를 에너지로 바꿔서 공격한다. 받은 공격의 횟수가 많을수록 기술의 위력이 올라간다.
+saltcure,Salt Cure,소금절이,Rock,Physical,40,100,15,0,normal,protect|mirror,100,상대를 소금절이 상태로 만들어 매 턴 최대 체력의 1/16의 데미지를 준다. 강철타입이나 물타입에게는 매 턴 최대 체력의 1/8의 데미지를 준다.
 sandstorm,Sandstorm,모래바람,Rock,Status,0,,5,0,all,metronome|wind,,"5턴 동안 모래바람을 일으켜 바위, 땅, 강철타입 이외의 상대에게 데미지를 준다."
-shadowclaw,Shadow Claw,섀도클로,Ghost,Physical,70,100,15,0,normal,contact|protect|mirror|metronome|slicing,,그림자로 만든 날카로운 발톱으로 상대를 베어 가른다. 급소에 맞을 확률이 높다. (챔피언스 변경: 성질 베기 추가)
-slash,Slash,베어가르기,Normal,Physical,80,100,20,0,normal,contact|protect|mirror|metronome|slicing,,발톱이나 낫 등으로 상대를 베어 갈라서 공격한다. 급소에 맞을 확률이 높다. (챔피언스 변경: 70 → 80 위력 상승)
-snaptrap,Snap Trap,집게덫,Steel,Physical,35,100,15,0,normal,contact|protect|mirror,,집게덫으로 붙잡은 뒤 4~5턴 동안 상대를 끼워서 움직임을 봉쇄한다. (챔피언스 변경: 풀 타입에서 강철 타입으로 변경)
-snipeshot,Snipe Shot,노려맞히기,Water,Special,85,100,15,0,normal,protect|mirror|metronome,,상대의 기술을 끌어모으는 특성이나 기술의 영향을 무시하고 선택한 상대를 공격할 수 있다. 급소에 맞을 확률이 높다. (챔피언스 변경: 80 → 85 위력 상승)
+shadowclaw,Shadow Claw,섀도클로,Ghost,Physical,70,100,15,0,normal,contact|protect|mirror|metronome|slicing,,그림자로 만든 날카로운 발톱으로 상대를 베어 가른다. 급소에 맞을 확률이 높다.
+slash,Slash,베어가르기,Normal,Physical,80,100,20,0,normal,contact|protect|mirror|metronome|slicing,,발톱이나 낫 등으로 상대를 베어 갈라서 공격한다. 급소에 맞을 확률이 높다.
+snaptrap,Snap Trap,집게덫,Steel,Physical,35,100,15,0,normal,contact|protect|mirror,,집게덫으로 붙잡은 뒤 4~5턴 동안 상대를 끼워서 움직임을 봉쇄한다.
+snipeshot,Snipe Shot,노려맞히기,Water,Special,85,100,15,0,normal,protect|mirror|metronome,,상대의 기술을 끌어모으는 특성이나 기술의 영향을 무시하고 선택한 상대를 공격할 수 있다. 급소에 맞을 확률이 높다.
 snowscape,Snowscape,설경,Ice,Status,0,,5,0,all,,,5턴 동안 눈을 내리게 한다. 얼음타입의 방어가 올라간다.
-spikyshield,Spiky Shield,니들가드,Grass,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 막음과 동시에 접촉한 상대의 최대 체력의 1/8을 감소시킨다. (우선도 +4)
-spiritshackle,Spirit Shackle,그림자꿰매기,Ghost,Physical,90,100,10,0,normal,protect|mirror|metronome,100,공격과 동시에 상대의 그림자를 꿰매 도망칠 수 없게 한다. (챔피언스 변경: 80 → 90 위력 상승)
+spikyshield,Spiky Shield,니들가드,Grass,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 막음과 동시에 접촉한 상대의 최대 체력의 1/8을 감소시킨다.
+spiritshackle,Spirit Shackle,그림자꿰매기,Ghost,Physical,90,100,10,0,normal,protect|mirror|metronome,100,공격과 동시에 상대의 그림자를 꿰매 도망칠 수 없게 한다.
 stormthrow,Storm Throw,업어후리기,Fighting,Physical,60,100,10,0,normal,contact|protect|mirror|metronome,,강렬한 일격을 상대에게 날린다. 공격은 반드시 급소에 맞는다.
-strengthsap,Strength Sap,힘흡수,Grass,Status,0,100,5,0,normal,protect|reflectable|mirror|heal|metronome,,상대 공격력과 동일하게 자신의 HP를 회복한다. 그리고 상대의 공격을 1랭크 떨어뜨린다. (챔피언스 변경: PP 10 → 5 하락)
+strengthsap,Strength Sap,힘흡수,Grass,Status,0,100,5,0,normal,protect|reflectable|mirror|heal|metronome,,상대 공격력과 동일하게 자신의 HP를 회복한다. 그리고 상대의 공격을 1랭크 떨어뜨린다.
 stuffcheeks,Stuff Cheeks,볼가득넣기,Normal,Status,0,,10,0,self,snatch|metronome,,지니고 있는 나무열매를 먹고 방어를 2랭크 올린다.
-syrupbomb,Syrup Bomb,시럽봄,Grass,Special,60,90,10,0,normal,protect|mirror|metronome|bullet,100,상대에게 물엿을 발사해 폭발시켜 공격한다. 상대를 물엿범벅 상태로 만들어 3턴 동안 매 턴 스피드를 1랭크씩 감소시킨다. (챔피언스 변경: 85 → 90 명중률 상승)
-toxicthread,Toxic Thread,독실,Poison,Status,0,100,20,0,normal,protect|reflectable|mirror|metronome,,독이 섞인 실을 뿜어낸다. 상대를 독 상태로 만들고 스피드를 2랭크 떨어뜨린다. (챔피언스 변경: 스피드 1랭크 다운 → 2랭크 다운)
+syrupbomb,Syrup Bomb,시럽봄,Grass,Special,60,90,10,0,normal,protect|mirror|metronome|bullet,100,상대에게 물엿을 발사해 폭발시켜 공격한다. 상대를 물엿범벅 상태로 만들어 3턴 동안 매 턴 스피드를 1랭크씩 감소시킨다.
+toxicthread,Toxic Thread,독실,Poison,Status,0,100,20,0,normal,protect|reflectable|mirror|metronome,,독이 섞인 실을 뿜어낸다. 상대를 독 상태로 만들고 스피드를 2랭크 떨어뜨린다.
 trickortreat,Trick-or-Treat,핼러윈,Ghost,Status,0,100,20,0,normal,protect|reflectable|mirror|allyanim|metronome,,상대를 핼러윈으로 초대한다. 상대 타입에 고스트 타입이 추가된다.
-tropkick,Trop Kick,트로피컬킥,Grass,Physical,85,100,15,0,normal,contact|protect|mirror|metronome,100,남쪽 나라에서 유래된 뜨거운 킥을 상대에게 날린다. 상대의 공격을 1랭크 떨어뜨린다. (챔피언스 변경: 70 → 85 위력 상승)
-wish,Wish,희망사항,Normal,Status,0,,5,0,self,snatch|heal|metronome,,다음 턴에 자신 또는 교체한 포켓몬의 HP를 최대 HP의 ½만큼 회복한다. (챔피언스 변경: PP 10 → 5 하락)
-accelerock,Accelerock,액셀록,Rock,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,재빠른 스피드로 상대에게 부딪쳐서 공격한다. 반드시 선제공격할 수 있다. (우선도 +1)
+tropkick,Trop Kick,트로피컬킥,Grass,Physical,85,100,15,0,normal,contact|protect|mirror|metronome,100,남쪽 나라에서 유래된 뜨거운 킥을 상대에게 날린다. 상대의 공격을 1랭크 떨어뜨린다.
+wish,Wish,희망사항,Normal,Status,0,,5,0,self,snatch|heal|metronome,,다음 턴에 자신 또는 교체한 포켓몬의 HP를 최대 HP의 ½만큼 회복한다.
+accelerock,Accelerock,액셀록,Rock,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,재빠른 스피드로 상대에게 부딪쳐서 공격한다. 반드시 선제공격할 수 있다.
 acidarmor,Acid Armor,녹기,Poison,Status,0,,20,0,self,snatch|metronome,,세포의 변화로 액체가 되어 자신의 방어를 2랭크 올린다.
 acidspray,Acid Spray,애시드봄,Poison,Special,40,100,20,0,normal,protect|mirror|metronome|bullet,100,상대를 녹이는 액체를 토해내서 공격한다. 상대의 특수방어를 2랭크 떨어뜨린다.
 acrobatics,Acrobatics,애크러뱃,Flying,Physical,55,100,15,0,any,contact|protect|mirror|distance|metronome,,경쾌하게 상대를 공격한다. 자신이 도구를 지니고 있지 않을 때 큰 데미지를 준다.
@@ -68,11 +68,11 @@ agility,Agility,고속이동,Psychic,Status,0,,20,0,self,snatch|metronome,,힘�
 aircutter,Air Cutter,에어커터,Flying,Special,60,95,20,0,allAdjacentFoes,protect|mirror|metronome|slicing|wind,,날카로운 바람으로 상대를 베어 공격한다. 급소에 맞을 확률이 높다.
 airslash,Air Slash,에어슬래시,Flying,Special,75,95,15,0,any,protect|mirror|distance|metronome|slicing,30,하늘까지 베어 가르는 공기의 칼날로 공격한다. 30% 확률로 상대를 풀죽게 만든다.
 alluringvoice,Alluring Voice,매혹의보이스,Fairy,Special,80,100,10,0,normal,protect|mirror|sound|bypasssub|metronome,100,천사와도 같은 노랫소리로 상대를 공격한다. 그 턴에 능력이 올라간 포켓몬을 혼란 상태로 만든다.
-allyswitch,Ally Switch,사이드체인지,Psychic,Status,0,,15,2,self,metronome,,이상한 힘으로 순간이동하여 자신과 같은 편의 위치를 바꾼다. 연속으로 쓰면 실패하기 쉽다.(우선도 +2)
+allyswitch,Ally Switch,사이드체인지,Psychic,Status,0,,15,2,self,metronome,,이상한 힘으로 순간이동하여 자신과 같은 편의 위치를 바꾼다. 연속으로 쓰면 실패하기 쉽다.
 amnesia,Amnesia,망각술,Psychic,Status,0,,20,0,self,snatch|metronome,,머리를 비워서 순간적으로 무언가를 잊어버림으로써 자신의 특수방어를 2랭크 올린다.
 ancientpower,Ancient Power,원시의힘,Rock,Special,60,100,5,0,normal,protect|mirror|metronome,10,원시의 힘으로 공격한다. 10% 확률로 자신의 모든 능력이 1랭크 오른다.
 aquacutter,Aqua Cutter,아쿠아커터,Water,Physical,70,100,20,0,normal,protect|mirror|metronome|slicing,,압력을 가한 물을 칼날처럼 분사해서 상대를 베어 가른다. 급소에 맞기 쉽다.
-aquajet,Aqua Jet,아쿠아제트,Water,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진한다. 반드시 선제 공격을 할 수 있다. (우선도 +1)
+aquajet,Aqua Jet,아쿠아제트,Water,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진한다. 반드시 선제 공격을 할 수 있다.
 aquaring,Aqua Ring,아쿠아링,Water,Status,0,,20,0,self,snatch|metronome,,몸 주변을 물로 만든 베일로 덮는다. 매 턴마다 최대 HP의 1/16을 회복한다.
 aquastep,Aqua Step,아쿠아스텝,Water,Physical,80,100,10,0,normal,contact|protect|mirror|dance|metronome,100,물 흐르듯 민첩하고 경쾌한 발재간으로 상대를 농락하여 데미지를 준다. 자신의 스피드를 1랭크 올린다.
 aquatail,Aqua Tail,아쿠아테일,Water,Physical,90,90,10,0,normal,contact|protect|mirror|metronome,,세차게 날뛰는 거친 파도와 같이 큰 꼬리를 흔들어서 공격한다.
@@ -83,9 +83,9 @@ attract,Attract,헤롱헤롱,Normal,Status,0,100,15,0,normal,protect|reflectable
 aurasphere,Aura Sphere,파동탄,Fighting,Special,80,,20,0,any,protect|mirror|distance|metronome|bullet|pulse,,몸 속에서 파동의 힘을 끌어내 쏜다. 공격은 반드시 명중한다.
 aurawheel,Aura Wheel,오라휠,Electric,Physical,110,100,10,0,normal,protect|mirror,100,볼주머니에 저장해 둔 에너지로 공격하고 자신의 스피드를 1랭크 올린다. 모르페코의 모습에 따라 타입이 바뀐다.
 auroraveil,Aurora Veil,오로라베일,Ice,Status,0,,20,0,allySide,snatch|metronome,,5턴 동안 물리와 특수 기술의 데미지를 약하게 한다. 설경일 때만 쓸 수 있다.
-avalanche,Avalanche,눈사태,Ice,Physical,60,100,10,-4,normal,contact|protect|mirror|metronome,,상대로부터 기술을 받으면 그 상대에 대해서 기술의 위력이 2배가 된다. (우선도 -4)
+avalanche,Avalanche,눈사태,Ice,Physical,60,100,10,-4,normal,contact|protect|mirror|metronome,,상대로부터 기술을 받으면 그 상대에 대해서 기술의 위력이 2배가 된다.
 axekick,Axe Kick,발꿈치찍기,Fighting,Physical,120,90,10,0,normal,contact|protect|mirror|metronome,30,발꿈치를 들어 올린 뒤 내리찍어 공격한다. 30%의 확률로 상대를 혼란 상태로 만든다. 빗나가면 자신이 전체 HP의 ½만큼 대미지를 입는다.
-babydolleyes,Baby-Doll Eyes,초롱초롱눈동자,Fairy,Status,0,100,20,1,normal,protect|reflectable|mirror|allyanim|metronome,,초롱초롱한 눈동자로 상대를 바라보며 공격을 1랭크 떨어뜨린다. 반드시 선제공격할 수 있다. (우선도 +1)
+babydolleyes,Baby-Doll Eyes,초롱초롱눈동자,Fairy,Status,0,100,20,1,normal,protect|reflectable|mirror|allyanim|metronome,,초롱초롱한 눈동자로 상대를 바라보며 공격을 1랭크 떨어뜨린다. 반드시 선제공격할 수 있다.
 barbbarrage,Barb Barrage,독침천발,Poison,Physical,60,100,10,0,normal,protect|mirror|metronome,50,무수히 많은 독침으로 공격한다. 50% 확률로 상대를 독 상태로 만든다. 상대가 독/맹독 상태인 경우 위력이 2배가 된다.
 batonpass,Baton Pass,배턴터치,Normal,Status,0,,20,0,self,metronome,,교대 포켓몬과 교체한다. 능력 변화는 교대 포켓몬이 그대로 이어받는다.
 beatup,Beat Up,집단구타,Dark,Physical,0,100,10,0,normal,protect|mirror|allyanim|metronome,,같은 편 전원이 공격한다. 동료 포켓몬이 많을수록 기술의 공격 횟수가 증가한다.
@@ -110,7 +110,7 @@ bugbite,Bug Bite,벌레먹기,Bug,Physical,60,100,20,0,normal,contact|protect|mi
 bugbuzz,Bug Buzz,벌레의야단법석,Bug,Special,90,100,10,0,normal,protect|mirror|sound|bypasssub|metronome,10,진동으로 음파를 일으켜서 공격한다. 10% 확률로 상대의 특수방어를 1랭크 떨어뜨린다.
 bulkup,Bulk Up,벌크업,Fighting,Status,0,,20,0,self,snatch|metronome,,몸에 힘을 담아 근육을 두껍게 해서 자신의 공격과 방어를 1랭크 올린다.
 bulldoze,Bulldoze,땅고르기,Ground,Physical,60,100,20,0,allAdjacent,protect|mirror|nonsky|metronome,100,땅을 힘껏 밟아 자신의 주위에 있는 포켓몬을 공격한다. 상대의 스피드를 1랭크 떨어뜨린다.
-bulletpunch,Bullet Punch,불릿펀치,Steel,Physical,40,100,20,1,normal,contact|protect|mirror|punch|metronome,,탄환처럼 빠르고 단단한 펀치를 상대에게 날린다. 반드시 선제공격을 할 수 있다. (우선도 +1)
+bulletpunch,Bullet Punch,불릿펀치,Steel,Physical,40,100,20,1,normal,contact|protect|mirror|punch|metronome,,탄환처럼 빠르고 단단한 펀치를 상대에게 날린다. 반드시 선제공격을 할 수 있다.
 bulletseed,Bullet Seed,씨기관총,Grass,Physical,25,100,20,0,normal,protect|mirror|metronome|bullet,,씨앗을 기세 좋게 상대에게 발사하여 공격한다. 2~5회 동안 연속으로 쓴다.
 burningjealousy,Burning Jealousy,질투의불꽃,Fire,Special,70,100,5,0,allAdjacentFoes,protect|mirror|metronome,100,질투의 에너지로 상대를 공격한다. 그 턴에 능력이 올라간 포켓몬을 화상 상태로 만든다.
 calmmind,Calm Mind,명상,Psychic,Status,0,,20,0,self,snatch|metronome,,조용히 정신을 통일하고 마음을 가라앉혀서 자신의 특수공격과 특수방어를 1랭크 올린다.
@@ -120,19 +120,19 @@ chargebeam,Charge Beam,차지빔,Electric,Special,50,90,10,0,normal,protect|mirr
 charm,Charm,애교부리기,Fairy,Status,0,100,20,0,normal,protect|reflectable|mirror|allyanim|metronome,,귀엽게 바라보고 방심을 유도하여 대상의 공격을 2랭크 떨어뜨린다.
 chillingwater,Chilling Water,찬물끼얹기,Water,Special,50,100,20,0,normal,protect|mirror,100,상대의 기운이 빠질 정도로 차가운 물을 끼얹어서 공격한다. 상대의 공격을 1랭크 떨어뜨린다.
 chillyreception,Chilly Reception,썰렁개그,Ice,Status,0,,10,0,all,,,자리를 얼어붙게 만드는 개그를 하고 교대 포켓몬과 교체한다. 5턴 동안 눈을 내리게 한다.
-circlethrow,Circle Throw,배대뒤치기,Fighting,Physical,60,90,10,-6,normal,contact|protect|mirror|metronome|noassist|failcopycat,,상대를 내던져서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다. (우선도 -6)
+circlethrow,Circle Throw,배대뒤치기,Fighting,Physical,60,90,10,-6,normal,contact|protect|mirror|metronome|noassist|failcopycat,,상대를 내던져서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다.
 clangingscales,Clanging Scales,스케일노이즈,Dragon,Special,110,100,5,0,allAdjacentFoes,protect|mirror|sound|bypasssub|metronome,,전신의 비늘을 비벼서 큰 소리를 내 공격한다. 공격 후 자신의 방어가 1랭크 떨어진다.
 clearsmog,Clear Smog,클리어스모그,Poison,Special,50,,15,0,normal,protect|mirror|metronome,,특수한 진흙 덩어리를 상대에게 내던져서 공격한다. 능력 변화를 원래대로 돌린다.
 closecombat,Close Combat,인파이트,Fighting,Physical,120,100,5,0,normal,contact|protect|mirror|metronome,,방어를 포기하고 상대 쪽으로 깊숙이 돌격한다. 사용 후 사용자의 방어와 특수방어가 1랭크 떨어진다.
 coaching,Coaching,코칭,Fighting,Status,0,,10,0,adjacentAlly,bypasssub|allyanim|metronome,,적절한 지도를 통해서 같은 편 전원의 공격과 방어를 1랭크 올린다.
 coil,Coil,똬리틀기,Poison,Status,0,,20,0,self,snatch|metronome,,똬리를 틀어서 집중한다. 자신의 공격과 방어와 명중률을 1랭크 올린다.
-comeuppance,Comeuppance,앙갚음,Dark,Physical,0,100,10,0,scripted,contact|protect|mirror|failmefirst,,기술을 쓰기 전에 마지막으로 받은 기술의 데미지를 1.5배 늘려서 기술을 쓴 상대에게 돌려준다.(우선도 0)
+comeuppance,Comeuppance,앙갚음,Dark,Physical,0,100,10,0,scripted,contact|protect|mirror|failmefirst,,기술을 쓰기 전에 마지막으로 받은 기술의 데미지를 1.5배 늘려서 기술을 쓴 상대에게 돌려준다.
 confuseray,Confuse Ray,이상한빛,Ghost,Status,0,100,10,0,normal,protect|reflectable|mirror|metronome,,이상한 빛을 상대에게 비춰 당황하게 한다. 상대를 혼란시킨다.
 copycat,Copycat,흉내쟁이,Normal,Status,0,,20,0,self,failencore|nosleeptalk|noassist|failcopycat|failmimic|failinstruct,,직전에 나온 기술을 흉내 내어 같은 기술을 쓴다. 기술이 나오지 않았으면 실패한다.
 cosmicpower,Cosmic Power,코스믹파워,Psychic,Status,0,,20,0,self,snatch|metronome,,우주로부터 신비한 힘을 손에 넣음으로써 자신의 방어와 특수방어를 1랭크 올린다.
 cottonguard,Cotton Guard,코튼가드,Grass,Status,0,,10,0,self,snatch|metronome,,푹신푹신한 솜털로 자신의 몸을 둘러싸서 지킨다. 자신의 방어를 3랭크 올린다.
 cottonspore,Cotton Spore,목화포자,Grass,Status,0,100,20,0,allAdjacentFoes,protect|reflectable|mirror|metronome|powder,,솜처럼 폭신폭신한 포자를 착 달라붙게 해서 상대의 스피드를 2랭크 떨어뜨린다.
-counter,Counter,카운터,Fighting,Physical,0,100,20,-5,scripted,contact|protect|failmefirst|noassist|failcopycat,,상대로부터 받은 물리공격의 데미지를 2배로 만들어 그 상대에게 돌려준다. (우선도-5)
+counter,Counter,카운터,Fighting,Physical,0,100,20,-5,scripted,contact|protect|failmefirst|noassist|failcopycat,,상대로부터 받은 물리공격의 데미지를 2배로 만들어 그 상대에게 돌려준다.
 courtchange,Court Change,코트체인지,Normal,Status,0,100,10,0,all,mirror|metronome,,이상한 힘으로 서로의 필드 효과를 교체한다.
 covet,Covet,탐내기,Normal,Physical,60,100,20,0,normal,contact|protect|mirror|failmefirst|noassist|failcopycat,,귀엽게 애교부리며 상대에게 다가가 지니고 있는 도구를 뺏는다.
 crosschop,Cross Chop,크로스촙,Fighting,Physical,100,80,5,0,normal,contact|protect|mirror|metronome,,양손으로 당수를 상대에게 힘껏 쳐서 공격한다. 급소에 맞기 쉽다.
@@ -144,7 +144,7 @@ dazzlinggleam,Dazzling Gleam,매지컬샤인,Fairy,Special,80,100,10,0,allAdjace
 decorate,Decorate,데코레이션,Fairy,Status,0,,15,0,normal,allyanim,,데코레이션을 해서 상대의 공격과 특수공격을 2랭크 올린다.
 defog,Defog,안개제거,Flying,Status,0,,15,0,normal,protect|reflectable|mirror|bypasssub|metronome,,강한 바람으로 상대의 리플렉터나 빛의장막 등을 제거한다. 회피율도 1랭크 떨어뜨린다.
 destinybond,Destiny Bond,길동무,Ghost,Status,0,,5,0,self,bypasssub|noassist|failcopycat,,기술을 쓴 뒤 공격을 받아 기절했을 때 공격한 상대도 기절하게 한다.
-detect,Detect,판별,Fighting,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다. (우선도 +4)
+detect,Detect,판별,Fighting,Status,0,,5,4,self,noassist|failcopycat,,상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다.
 dig,Dig,구멍파기,Ground,Physical,80,100,10,0,normal,contact|charge|protect|mirror|nonsky|metronome|nosleeptalk|noassist|failinstruct,,1턴째에 땅속으로 파고들어 2턴째에 상대를 공격한다.
 discharge,Discharge,방전,Electric,Special,80,100,15,0,allAdjacent,protect|mirror|metronome,30,눈부신 전격으로 주위에 있는 모두를 공격한다. 30% 확률로 상대를 마비 상태로 만든다.
 dive,Dive,다이빙,Water,Physical,80,100,10,0,normal,contact|charge|protect|mirror|nonsky|allyanim|metronome|nosleeptalk|noassist|failinstruct,,1턴째에 잠수했다가 2턴째에 떠올라 공격한다. 깊은 바다에서 잠수도 할 수 있다.
@@ -156,7 +156,7 @@ dragondance,Dragon Dance,용의춤,Dragon,Status,0,,20,0,self,snatch|dance|metro
 dragondarts,Dragon Darts,드래곤애로,Dragon,Physical,50,100,10,0,normal,protect|mirror|metronome|noparentalbond,,드라꼰으로 2번 공격한다. 상대가 2마리일 때는 각각 1번씩 공격한다.
 dragonpulse,Dragon Pulse,용의파동,Dragon,Special,85,100,10,0,any,protect|mirror|distance|metronome|pulse,,큰 입으로 충격파를 일으켜서 상대를 공격한다.
 dragonrush,Dragon Rush,드래곤다이브,Dragon,Physical,100,75,10,0,normal,contact|protect|mirror|metronome|minimize,20,굉장한 살기로 위압하면서 몸통박치기한다. 20% 확률로 상대를 풀죽게 만든다. 대상이 작아지기를 사용했었다면 필중하며 대미지가 2배다.
-dragontail,Dragon Tail,드래곤테일,Dragon,Physical,60,90,10,-6,normal,contact|protect|mirror|metronome|noassist|failcopycat,,상대를 튕겨내서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다. (우선도 -6)
+dragontail,Dragon Tail,드래곤테일,Dragon,Physical,60,90,10,-6,normal,contact|protect|mirror|metronome|noassist|failcopycat,,상대를 튕겨내서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다.
 drainingkiss,Draining Kiss,드레인키스,Fairy,Special,50,100,10,0,normal,contact|protect|mirror|heal|metronome,,키스로 상대의 HP를 흡수한다. 상대에게 준 대미지의 ¾만큼 자신의 HP를 회복한다.
 drainpunch,Drain Punch,드레인펀치,Fighting,Physical,75,100,10,0,normal,contact|protect|mirror|punch|heal|metronome,,주먹으로 상대의 힘을 흡수한다. 대상에게 준 대미지의 ½만큼 체력을 회복한다.
 drillpeck,Drill Peck,회전부리,Flying,Physical,80,100,20,0,any,contact|protect|mirror|distance|metronome,,회전하면서 뾰족한 부리를 상대에게 꿰찔러 공격한다.
@@ -173,19 +173,19 @@ electroball,Electro Ball,일렉트릭볼,Electric,Special,0,100,10,0,normal,prot
 electroshot,Electro Shot,일렉트로빔,Electric,Special,130,100,10,0,normal,charge|protect|mirror|metronome,,1턴째에 전기를 모아서 특수공격을 1랭크 올리고 2턴째에 전기를 발사한다. 비가 올 때는 1턴 만에 전기를 발사한다.
 electroweb,Electroweb,일렉트릭네트,Electric,Special,55,95,15,0,allAdjacentFoes,protect|mirror|metronome,100,전기 네트로 상대를 붙잡아서 공격한다. 상대의 스피드를 1랭크 떨어뜨린다.
 endeavor,Endeavor,죽기살기,Normal,Physical,0,100,5,0,normal,contact|protect|mirror|metronome|noparentalbond,,상대의 HP가 자신의 HP와 같아지도록 데미지를 준다.
-endure,Endure,버티기,Normal,Status,0,,10,4,self,noassist|failcopycat,,공격을 받아도 HP를 반드시 1만큼은 남긴다. 연속으로 쓰면 실패하기 쉽다. (우선도+4)
+endure,Endure,버티기,Normal,Status,0,,10,4,self,noassist|failcopycat,,공격을 받아도 HP를 반드시 1만큼은 남긴다. 연속으로 쓰면 실패하기 쉽다.
 energyball,Energy Ball,에너지볼,Grass,Special,90,100,10,0,normal,protect|mirror|metronome|bullet,10,자연으로부터 모은 생명의 힘을 발사한다. 10% 확률로 상대의 특수방어를 1랭크 떨어뜨린다.
 entrainment,Entrainment,동료만들기,Normal,Status,0,100,15,0,normal,protect|reflectable|mirror|allyanim|metronome,,이상한 리듬으로 춤춘다. 움직임을 흉내 내게 해서 상대의 특성을 자신의 특성과 같게 만든다. 사용자와 대상의 특성이 같을 경우 실패한다.
 eruption,Eruption,분화,Fire,Special,150,100,5,0,allAdjacentFoes,protect|mirror|metronome,,분노를 폭발시켜 공격한다. 자신의 HP가 적을수록 기술의 위력이 떨어진다.
 expandingforce,Expanding Force,와이드포스,Psychic,Special,80,100,10,0,normal,protect|mirror|metronome,,사이코 파워로 상대를 공격한다. 사이코필드일 때는 위력이 120으로 오르며 모든 상대에게 데미지를 준다.
 explosion,Explosion,대폭발,Normal,Physical,250,100,5,0,allAdjacent,protect|mirror|metronome|noparentalbond,,큰 폭발로 자신의 주위에 있는 포켓몬을 공격한다. 쓰고 나서는 기절한다.
 extrasensory,Extrasensory,신통력,Psychic,Special,80,100,20,0,normal,protect|mirror|metronome,10,보이지 않는 이상한 힘을 보내어 공격한다. 10% 확률로 상대를 풀죽게 만든다.
-extremespeed,Extreme Speed,신속,Normal,Physical,80,100,5,2,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진하여 공격한다. 상대방보다 먼저 공격한다. (우선도 +2)
+extremespeed,Extreme Speed,신속,Normal,Physical,80,100,5,2,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진하여 공격한다. 상대방보다 먼저 공격한다.
 facade,Facade,객기,Normal,Physical,70,100,20,0,normal,contact|protect|mirror|metronome,,"자신이 독, 마비, 화상 상태일 때 날리면 기술의 위력이 2배가 된다."
 fairylock,Fairy Lock,페어리록,Fairy,Status,0,,10,0,all,mirror|bypasssub|metronome,,록을 걸어 다음 턴의 모든 포켓몬을 도망가지 못하게 한다.
 faketears,Fake Tears,거짓울음,Dark,Status,0,100,20,0,normal,protect|reflectable|mirror|allyanim|metronome,,우는 척을 하며 눈물을 흘린다. 난처하게 만들어 상대의 특수방어를 2랭크 떨어뜨린다.
 featherdance,Feather Dance,깃털댄스,Flying,Status,0,100,15,0,normal,protect|reflectable|mirror|dance|allyanim|metronome,,깃털을 흩뿌려 상대의 몸에 휘감는다. 상대의 공격을 2랭크 떨어뜨린다.
-feint,Feint,페인트,Normal,Physical,30,100,10,2,normal,mirror|noassist|failcopycat,,방어나 판별을 하고 있는 상대에게 공격할 수 있다. 방어 효과를 해제시킨다. (우선도+2)
+feint,Feint,페인트,Normal,Physical,30,100,10,2,normal,mirror|noassist|failcopycat,,방어나 판별을 하고 있는 상대에게 공격할 수 있다. 방어 효과를 해제시킨다.
 fellstinger,Fell Stinger,마지막일침,Bug,Physical,50,100,20,0,normal,contact|protect|mirror|metronome,,이 기술을 사용하여 상대를 쓰러뜨리면 공격이 3랭크 오른다.
 ficklebeam,Fickle Beam,변덕레이저,Dragon,Special,80,100,5,0,normal,protect|mirror|metronome,,광선을 발사해서 공격한다. 30%의 확률로 다른 머리도 협력해서 레이저를 발사하여 위력이 2배가 된다.
 fierydance,Fiery Dance,불꽃춤,Fire,Special,80,100,10,0,normal,protect|mirror|dance|metronome,50,불꽃을 두른 날개를 쳐서 공격한다. 50% 확률로 자신의 특수공격이 1랭크 올라간다.
@@ -202,14 +202,14 @@ flareblitz,Flare Blitz,플레어드라이브,Fire,Physical,120,100,15,0,normal,c
 flashcannon,Flash Cannon,러스터캐논,Steel,Special,80,100,10,0,normal,protect|mirror|metronome,10,몸의 빛을 한곳에 모아서 힘을 방출한다. 10%의 확률로 상대의 특수방어를 1랭크 떨어뜨린다.
 flatter,Flatter,부추기기,Dark,Status,0,100,15,0,normal,protect|reflectable|mirror|allyanim|metronome,,상대를 부추겨서 혼란시킨다. 동시에 상대의 특수공격도 1랭크 올라가 버린다.
 fling,Fling,내던지기,Dark,Physical,0,100,10,0,normal,protect|mirror|allyanim|metronome|noparentalbond,,지니게 한 도구를 재빠르게 내던져서 공격한다. 도구에 따라 위력과 효과가 바뀐다.
-flipturn,Flip Turn,퀵턴,Water,Physical,60,100,20,0,normal,contact|protect|mirror|metronome,,공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다. (우선도 0)
+flipturn,Flip Turn,퀵턴,Water,Physical,60,100,20,0,normal,contact|protect|mirror|metronome,,공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다.
 flowertrick,Flower Trick,트릭플라워,Grass,Physical,70,,10,0,normal,protect|mirror|metronome,,숨겨진 장치가 있는 꽃다발을 상대에게 던져서 공격한다. 반드시 명중하며 급소에 맞는다.
 fly,Fly,공중날기,Flying,Physical,90,95,15,0,any,contact|charge|protect|mirror|gravity|distance|metronome|nosleeptalk|noassist|failinstruct,,1턴째에 하늘을 날아 2턴째에 상대를 공격한다.
 flyingpress,Flying Press,플라잉프레스,Fighting,Physical,100,95,10,0,any,contact|protect|mirror|gravity|distance|nonsky|metronome|minimize,,공중에서 상대에게 다이브한다. 대상이 작아지기를 사용했다면 필중하며 위력이 2배다. 이 기술은 격투타입임과 동시에 비행타입이기도 하다.
 focusblast,Focus Blast,기합구슬,Fighting,Special,120,70,5,0,normal,protect|mirror|metronome|bullet,10,기합을 높여서 혼신의 힘을 방출한다. 10% 확률로 상대의 특수방어를 떨어뜨린다.
 focusenergy,Focus Energy,기충전,Normal,Status,0,,20,0,self,snatch|metronome,,깊게 숨을 들이마셔 기합을 넣는다. 자신의 공격이 급소에 맞을 확률을 2랭크 올린다.
-focuspunch,Focus Punch,힘껏펀치,Fighting,Physical,150,100,20,-3,normal,contact|protect|punch|failmefirst|nosleeptalk|noassist|failcopycat|failinstruct,,정신력을 높여(우선도+5) 펀치를 날린다.(우선도-3) 기술을 쓰기 전에 공격을 받으면 실패한다.
-followme,Follow Me,날따름,Normal,Status,0,,20,2,self,noassist|failcopycat,,자신에게 시선을 집중시켜 상대로부터의 공격을 모두 자신에게 향하게 한다. (우선도+2)
+focuspunch,Focus Punch,힘껏펀치,Fighting,Physical,150,100,20,-3,normal,contact|protect|punch|failmefirst|nosleeptalk|noassist|failcopycat|failinstruct,,정신력을 높여 펀치를 날린다. 기술을 쓰기 전에 공격을 받으면 실패한다.
+followme,Follow Me,날따름,Normal,Status,0,,20,2,self,noassist|failcopycat,,자신에게 시선을 집중시켜 상대로부터의 공격을 모두 자신에게 향하게 한다.
 forestscurse,Forest's Curse,숲의저주,Grass,Status,0,100,20,0,normal,protect|reflectable|mirror|allyanim|metronome,,상대에게 숲의 저주를 건다. 저주에 걸린 상대는 타입에 풀타입이 추가된다.
 foulplay,Foul Play,속임수,Dark,Physical,95,100,15,0,normal,contact|protect|mirror|metronome,,상대의 힘을 이용한다. 싸우고 있는 상대의 공격이 높을수록 데미지가 올라간다.
 frenzyplant,Frenzy Plant,하드플랜트,Grass,Special,150,90,5,0,normal,recharge|protect|mirror|nonsky|metronome,,큰 나무로 상대를 힘껏 쳐서 공격한다. 사용 후 1턴간 행동할 수 없다.
@@ -222,7 +222,7 @@ gigatonhammer,Gigaton Hammer,거대해머,Steel,Physical,160,100,5,0,normal,prot
 glaiverush,Glaive Rush,대검돌격,Dragon,Physical,120,100,5,0,normal,contact|protect|mirror|metronome,,몸을 내던지는 무모한 돌격. 기술을 사용한 다음 상대의 공격이 반드시 명중하고 데미지를 2배로 입게 된다.
 glare,Glare,뱀눈초리,Normal,Status,0,100,20,0,normal,protect|reflectable|mirror|metronome,,배의 무늬로 겁을 주어 상대를 마비 상태로 만든다.
 grassknot,Grass Knot,풀묶기,Grass,Special,0,100,20,0,normal,contact|protect|mirror|nonsky|metronome,,풀을 휘감아서 상대를 쓰러뜨린다. 상대가 무거울수록 위력이 올라간다.
-grassyglide,Grassy Glide,그래스슬라이더,Grass,Physical,55,100,20,0,normal,contact|protect|mirror|metronome,,지면에 미끄러지듯 상대를 공격한다. 그래스필드일 때 반드시 선제공격할 수 있다. (우선도 +1)
+grassyglide,Grassy Glide,그래스슬라이더,Grass,Physical,55,100,20,0,normal,contact|protect|mirror|metronome,,지면에 미끄러지듯 상대를 공격한다. 그래스필드일 때 반드시 선제공격할 수 있다.
 grassyterrain,Grassy Terrain,그래스필드,Grass,Status,0,,10,0,all,nonsky|metronome,,5턴 동안 그래스필드로 만든다. 땅에 있으면 매 턴 회복한다. 풀타입의 위력이 올라간다.
 gravity,Gravity,중력,Psychic,Status,0,,5,0,all,nonsky|metronome,,5턴 동안 부유나 비행타입에 땅타입의 기술이 맞게 된다. 공중으로 나는 기술도 사용할 수 없다.
 guardsplit,Guard Split,가드셰어,Psychic,Status,0,,10,0,normal,protect|allyanim|metronome,,초능력으로 자신과 상대의 방어와 특수방어를 더해서 반으로 나눈다.
@@ -241,7 +241,7 @@ healpulse,Heal Pulse,치유파동,Psychic,Status,0,,10,0,any,protect|reflectable
 heatcrash,Heat Crash,히트스탬프,Fire,Physical,0,100,10,0,normal,contact|protect|mirror|nonsky|metronome|minimize,,불타는 몸으로 상대에게 부딪쳐서 공격한다. 자신이 상대보다 무거울수록 위력이 올라간다.
 heatwave,Heat Wave,열풍,Fire,Special,95,90,10,0,allAdjacentFoes,protect|mirror|metronome|wind,10,뜨거운 숨결을 상대에게 내뿜어 공격한다. 10% 확률로 상대를 화상 상태로 만든다.
 heavyslam,Heavy Slam,헤비봄버,Steel,Physical,0,100,10,0,normal,contact|protect|mirror|nonsky|metronome|minimize,,무거운 몸으로 상대에게 부딪쳐 공격한다. 자신이 상대보다 무거울수록 위력이 올라간다.
-helpinghand,Helping Hand,도우미,Normal,Status,0,,20,5,adjacentAlly,bypasssub|noassist|failcopycat,,동료를 돕는다. 도움받은 포켓몬이 쓰는 기술의 위력은 여느 때보다 커진다. (우선도+5)
+helpinghand,Helping Hand,도우미,Normal,Status,0,,20,5,adjacentAlly,bypasssub|noassist|failcopycat,,동료를 돕는다. 도움받은 포켓몬이 쓰는 기술의 위력은 여느 때보다 커진다.
 hex,Hex,병상첨병,Ghost,Special,65,100,10,0,normal,protect|mirror|metronome,,엎친 데 덮친 격으로 공격한다. 상태 이상인 상대에게 큰 데미지를 준다.
 highhorsepower,High Horsepower,10만마력,Ground,Physical,95,95,10,0,normal,contact|protect|mirror|metronome,,온몸을 써서 상대를 맹렬히 공격한다.
 highjumpkick,High Jump Kick,무릎차기,Fighting,Physical,130,90,10,0,normal,contact|protect|mirror|gravity|metronome,,점프해서 무릎차기로 상대를 공격한다. 빗나가면 자신이 전체 HP의 ½의 대미지를 입는다.
@@ -257,7 +257,7 @@ icebeam,Ice Beam,냉동빔,Ice,Special,90,100,10,0,normal,protect|mirror|metrono
 icefang,Ice Fang,얼음엄니,Ice,Physical,65,95,15,0,normal,contact|protect|mirror|metronome|bite,,냉기를 품은 이빨로 문다. 10% 확률로 상대를 풀죽게 하거나 얼음 상태로 만든다.
 icehammer,Ice Hammer,아이스해머,Ice,Physical,100,90,10,0,normal,contact|protect|mirror|punch|metronome,,강하고 무거운 주먹을 휘둘러 데미지를 준다. 자신의 스피드가 1랭크 떨어진다.
 icepunch,Ice Punch,냉동펀치,Ice,Physical,75,100,15,0,normal,contact|protect|mirror|punch|metronome,10,냉기를 담은 펀치로 상대를 공격한다. 10%의 확률로 상대를 얼음 상태로 만든다.
-iceshard,Ice Shard,얼음뭉치,Ice,Physical,40,100,20,1,normal,protect|mirror|metronome,,얼음 덩어리를 순식간에 만들어 재빠르게 쏜다. 반드시 선제공격할 수 있다. (우선도 +1)
+iceshard,Ice Shard,얼음뭉치,Ice,Physical,40,100,20,1,normal,protect|mirror|metronome,,얼음 덩어리를 순식간에 만들어 재빠르게 쏜다. 반드시 선제공격할 수 있다.
 icespinner,Ice Spinner,아이스스피너,Ice,Physical,80,100,15,0,normal,contact|protect|mirror|metronome,,발에 얇은 얼음을 두르고 빙글빙글 회전하며 부딪친다. 회전 운동에 의해 필드가 파괴된다.
 iciclecrash,Icicle Crash,고드름떨구기,Ice,Physical,85,90,10,0,normal,protect|mirror|metronome,30,큰 고드름을 격렬하게 부딪쳐서 공격한다. 30% 확률로 상대를 풀죽게 만든다.
 iciclespear,Icicle Spear,고드름침,Ice,Physical,25,100,20,0,normal,protect|mirror|metronome,,날카로운 고드름을 상대에게 발사하여 공격한다. 2-5회 동안 연속으로 쓴다.
@@ -270,7 +270,7 @@ instruct,Instruct,지휘,Psychic,Status,0,,15,0,normal,protect|bypasssub|allyani
 irondefense,Iron Defense,철벽,Steel,Status,0,,15,0,self,snatch|metronome,,피부를 쇠처럼 단단하게 함으로써 자신의 방어를 2랭크 올린다.
 irontail,Iron Tail,아이언테일,Steel,Physical,100,75,15,0,normal,contact|protect|mirror|metronome,30,단단한 꼬리로 상대를 힘껏 쳐서 공격한다. 30%의 확률로 상대의 방어를 떨어뜨린다.
 jawlock,Jaw Lock,물고버티기,Dark,Physical,80,100,10,0,normal,contact|protect|mirror|metronome|bite,,어느 한쪽이 기절할 때까지 교체할 수 없게 된다. 한쪽의 포켓몬이 없어지면 효과가 사라진다.
-jetpunch,Jet Punch,제트펀치,Water,Physical,60,100,15,1,normal,contact|protect|mirror|punch,,거센 물살을 주먹에 둘러 눈에 보이지 않는 속도로 펀치를 날린다. 반드시 선제공격할 수 있다. (우선도 +1)
+jetpunch,Jet Punch,제트펀치,Water,Physical,60,100,15,1,normal,contact|protect|mirror|punch,,거센 물살을 주먹에 둘러 눈에 보이지 않는 속도로 펀치를 날린다. 반드시 선제공격할 수 있다.
 knockoff,Knock Off,탁쳐서떨구기,Dark,Physical,65,100,20,0,normal,contact|protect|mirror|metronome,,상대의 지닌 물건을 탁 쳐서 떨어뜨려 배틀이 끝날 때까지 사용할 수 없게 한다. 물건을 가진 상대에게는 데미지를 더 준다.
 kowtowcleave,Kowtow Cleave,도각참,Dark,Physical,85,,10,0,normal,contact|protect|mirror|metronome|slicing,,머리를 조아려 상대를 방심하게 만든 뒤에 베어 버린다. 공격은 반드시 명중한다.
 lashout,Lash Out,분풀이,Dark,Physical,75,100,5,0,normal,contact|protect|mirror|metronome,,상대에 대한 울분이 담긴 공격을 한다. 그 턴에 능력이 떨어져 있으면 기술의 위력이 2배가 된다.
@@ -289,9 +289,9 @@ lowkick,Low Kick,안다리걸기,Fighting,Physical,0,100,20,0,normal,contact|pro
 lowsweep,Low Sweep,로킥,Fighting,Physical,65,100,20,0,normal,contact|protect|mirror|metronome,100,재빠른 움직임으로 상대의 다리를 노려 공격한다. 상대의 스피드를 떨어뜨린다.
 luminacrash,Lumina Crash,루미나콜리전,Psychic,Special,80,100,10,0,normal,protect|mirror|metronome,100,정신에도 작용하는 기묘한 빛을 발산해서 공격한다. 상대의 특수방어를 2랭크 떨어뜨린다.
 lunge,Lunge,덤벼들기,Bug,Physical,80,100,15,0,normal,contact|protect|mirror|metronome,100,전력으로 상대에게 덤벼들며 공격한다. 상대의 공격을 1랭크 떨어뜨린다.
-machpunch,Mach Punch,마하펀치,Fighting,Physical,40,100,20,1,normal,contact|protect|mirror|punch|metronome,,눈에 보이지 않는 굉장한 속도로 펀치를 날린다. 반드시 선제 공격을 할 수 있다. (우선도 +1)
+machpunch,Mach Punch,마하펀치,Fighting,Physical,40,100,20,1,normal,contact|protect|mirror|punch|metronome,,눈에 보이지 않는 굉장한 속도로 펀치를 날린다. 반드시 선제 공격을 할 수 있다.
 magicpowder,Magic Powder,마법가루,Psychic,Status,0,100,20,0,normal,protect|reflectable|mirror|allyanim|metronome|powder,,마법가루를 날려서 상대를 단일 에스퍼 타입으로 바꾼다.
-magicroom,Magic Room,매직룸,Psychic,Status,0,,10,0,all,mirror|metronome,,이상한 공간을 만든다. 5턴 동안 모든 포켓몬의 도구의 효과가 사라진다. (우선도 +0)
+magicroom,Magic Room,매직룸,Psychic,Status,0,,10,0,all,mirror|metronome,,이상한 공간을 만든다. 5턴 동안 모든 포켓몬의 도구의 효과가 사라진다.
 magneticflux,Magnetic Flux,자기장조작,Electric,Status,0,,20,0,allySide,snatch|distance|bypasssub|metronome,,"자기장 조작으로 인해 특성 플러스와 마이너스의 방어, 특수방어가 1랭크 오른다."
 magnetrise,Magnet Rise,전자부유,Electric,Status,0,,10,0,self,snatch|gravity|metronome,,전기로 만든 자력의 힘으로 허공에 뜬다. 5턴 동안 부유할 수 있다.
 matchagotcha,Matcha Gotcha,휘적휘적포,Grass,Special,80,90,15,0,allAdjacentFoes,protect|mirror|defrost|heal|metronome,20,휘저은 차를 대포처럼 발사해 준 데미지의 절반을 HP로 회복한다. 20% 확률로 상대를 화상 상태로 만든다.
@@ -299,12 +299,12 @@ meanlook,Mean Look,검은눈빛,Normal,Status,0,,5,0,normal,reflectable|mirror|m
 megahorn,Megahorn,메가혼,Bug,Physical,120,85,10,0,normal,contact|protect|mirror|metronome,,단단하고 훌륭한 뿔로 마음껏 상대를 꿰찔러서 공격한다.
 megakick,Mega Kick,메가톤킥,Normal,Physical,120,75,5,0,normal,contact|protect|mirror|metronome,,굉장한 힘을 담은 킥으로 상대를 걷어차서 공격한다.
 memento,Memento,추억의선물,Dark,Status,0,100,10,0,normal,protect|mirror|metronome,,자신은 기절하게 되지만 그 대신 상대의 공격과 특수공격을 2랭크 떨어뜨린다.
-metalburst,Metal Burst,메탈버스트,Steel,Physical,0,100,10,0,scripted,protect|mirror|metronome|failmefirst,,기술을 쓰기 전에 마지막으로 받은 기술의 데미지를 1.5배 늘려서 기술을 쓴 상대에게 돌려준다. (우선도 0)
+metalburst,Metal Burst,메탈버스트,Steel,Physical,0,100,10,0,scripted,protect|mirror|metronome|failmefirst,,기술을 쓰기 전에 마지막으로 받은 기술의 데미지를 1.5배 늘려서 기술을 쓴 상대에게 돌려준다.
 metalsound,Metal Sound,금속음,Steel,Status,0,85,20,0,normal,protect|reflectable|mirror|sound|bypasssub|allyanim|metronome,,금속을 긁을 때 나는 듯한 싫은 소리를 들려준다. 상대의 특수방어를 2랭크 떨어뜨린다.
 meteorbeam,Meteor Beam,메테오빔,Rock,Special,120,90,10,0,normal,charge|protect|mirror|metronome,,1턴째에 우주의 힘을 모아서 특수공격을 1랭크 올리고 2턴째에 상대를 공격한다.
 meteormash,Meteor Mash,코멧펀치,Steel,Physical,90,90,10,0,normal,contact|protect|mirror|punch|metronome,20,혜성과 같은 펀치를 날려서 공격한다. 20%의 확률로 자신의 공격이 올라간다.
 minimize,Minimize,작아지기,Normal,Status,0,,10,0,self,snatch|metronome,,몸을 축소하여 작게 보임으로써 회피율을 2랭크 올린다.
-mirrorcoat,Mirror Coat,미러코트,Psychic,Special,0,100,20,-5,scripted,protect|failmefirst|noassist,,상대에게 받은 특수공격의 데미지를 2배로 만들어 그 상대에게 돌려준다. (우선도-5)
+mirrorcoat,Mirror Coat,미러코트,Psychic,Special,0,100,20,-5,scripted,protect|failmefirst|noassist,,상대에게 받은 특수공격의 데미지를 2배로 만들어 그 상대에게 돌려준다.
 mistyexplosion,Misty Explosion,미스트버스트,Fairy,Special,100,100,5,0,allAdjacent,protect|mirror|metronome,,자신의 주위에 있는 모두를 공격하지만 사용하면 기절한다. 미스트필드일 때 위력이 올라간다.
 mistyterrain,Misty Terrain,미스트필드,Fairy,Status,0,,10,0,all,nonsky|metronome,,5턴 동안 땅에 있으면 상태 이상이 되지 않고 드래곤타입 기술의 데미지도 절반이 된다.
 moonlight,Moonlight,달빛,Fairy,Status,0,,5,0,self,snatch|heal|metronome,,사용자의 HP를 회복한다. 날씨에 따라 회복량이 변한다.
@@ -356,10 +356,10 @@ psychup,Psych Up,자기암시,Normal,Status,0,,10,0,normal,bypasssub|allyanim|me
 psyshock,Psyshock,사이코쇼크,Psychic,Special,80,100,10,0,normal,protect|mirror|metronome,,이상한 염력파를 실체화하여 상대를 공격한다. 물리적인 데미지를 준다.
 pyroball,Pyro Ball,화염볼,Fire,Physical,120,90,5,0,normal,protect|mirror|defrost|bullet,10,작은 돌을 태운 불꽃의 공으로 상대를 공격한다. 사용자 및 대상의 얼음을 치료한다. 10%의 확률로 상대를 화상 상태로 만든다.
 quash,Quash,순서미루기,Dark,Status,0,100,15,0,normal,protect|mirror,,상대를 억눌러서 행동의 순서를 마지막으로 만든다.
-quickattack,Quick Attack,전광석화,Normal,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진한다. 반드시 선제공격할 수 있다. (우선도 +1)
-quickguard,Quick Guard,패스트가드,Fighting,Status,0,,15,3,allySide,snatch,,아군 전원을 상대의 선제공격으로부터 보호한다.(우선도 +3)
+quickattack,Quick Attack,전광석화,Normal,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,눈에 보이지 않는 굉장한 속도로 상대에게 돌진한다. 반드시 선제공격할 수 있다.
+quickguard,Quick Guard,패스트가드,Fighting,Status,0,,15,3,allySide,snatch,,아군 전원을 상대의 선제공격으로부터 보호한다.
 quiverdance,Quiver Dance,나비춤,Bug,Status,0,,20,0,self,snatch|dance|metronome,,신비롭고 아름다운 춤을 경쾌하게 춘다. 자신의 특수공격과 특수방어와 스피드를 1랭크 올린다.
-ragepowder,Rage Powder,분노가루,Bug,Status,0,,20,2,self,noassist|failcopycat|powder,,상대를 자극하는 가루를 자신에게 뿌려서 주의를 끈다. 상대의 공격은 모두 자신에게 향한다. (우선도+2)
+ragepowder,Rage Powder,분노가루,Bug,Status,0,,20,2,self,noassist|failcopycat|powder,,상대를 자극하는 가루를 자신에게 뿌려서 주의를 끈다. 상대의 공격은 모두 자신에게 향한다.
 ragingbull,Raging Bull,레이징불,Normal,Physical,90,100,10,0,normal,contact|protect|mirror,,분노해 날뛰는 성난소의 맹렬한 태클. 폼에 따라 기술의 타입이 달라지고 빛의장막이나 리플렉터 등도 파괴할 수 있다.
 ragingfury,Raging Fury,대격분,Fire,Physical,120,100,10,0,randomNormal,protect|mirror,,2~3턴 동안 불꽃을 마구 뿜어 대며 난동을 부린다. 난동 부린 뒤에는 혼란에 빠진다.
 raindance,Rain Dance,비바라기,Water,Status,0,,5,0,all,metronome,,5턴 동안 비를 내리게 해서 물타입 기술의 위력을 올린다.
@@ -373,8 +373,8 @@ rest,Rest,잠자기,Psychic,Status,0,,5,0,self,snatch|heal|metronome,,2턴 동�
 reversal,Reversal,기사회생,Fighting,Physical,0,100,15,0,normal,contact|protect|mirror|metronome,,힘을 쥐어짜서 공격한다. 자신의 HP가 적을수록 기술의 위력이 올라간다.
 revivalblessing,Revival Blessing,회생의기도,Normal,Status,0,,1,0,self,heal|nosketch,,자애로운 마음으로 기도를 하여 기절한 교대 포켓몬을 HP가 절반인 상태로 부활시킨다.
 risingvoltage,Rising Voltage,라이징볼트,Electric,Special,70,100,20,0,normal,protect|mirror|metronome,,지면에서 올라오는 전격으로 공격한다. 상대가 일렉트릭필드 위에 있을 때 기술의 위력이 2배가 된다.
-roar,Roar,울부짖기,Normal,Status,0,,20,-6,normal,reflectable|mirror|sound|bypasssub|allyanim|metronome|noassist|failcopycat,,상대를 도망가게 해서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다. (우선도-6)
-rockblast,Rock Blast,록블라스트,Rock,Physical,25,90,10,0,normal,protect|mirror|metronome|bullet,,단단한 암석을 상대에게 발사하여 공격한다. 2-5회 동안 연속으로 쓴다. (챔피언스 변경: 성질 폭탄 추가)
+roar,Roar,울부짖기,Normal,Status,0,,20,-6,normal,reflectable|mirror|sound|bypasssub|allyanim|metronome|noassist|failcopycat,,상대를 도망가게 해서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다.
+rockblast,Rock Blast,록블라스트,Rock,Physical,25,90,10,0,normal,protect|mirror|metronome|bullet,,단단한 암석을 상대에게 발사하여 공격한다. 2-5회 동안 연속으로 쓴다.
 rockpolish,Rock Polish,록커트,Rock,Status,0,,20,0,self,snatch|metronome,,몸을 닦아 공기의 저항을 적게 한다. 스피드를 2랭크 올릴 수 있다.
 rockslide,Rock Slide,스톤샤워,Rock,Physical,75,90,10,0,allAdjacentFoes,protect|mirror|metronome,30,큰 바위를 세차게 부딪쳐서 공격한다. 30% 확률로 상대를 풀죽게 만든다.
 rocktomb,Rock Tomb,암석봉인,Rock,Physical,60,95,15,0,normal,protect|mirror|metronome,100,암석을 내던져서 공격한다. 상대의 움직임을 봉인함으로 스피드를 1랭크 떨어뜨린다.
@@ -395,7 +395,7 @@ seismictoss,Seismic Toss,지구던지기,Fighting,Physical,0,100,20,0,normal,con
 selfdestruct,Self-Destruct,자폭,Normal,Physical,200,100,5,0,allAdjacent,protect|mirror|metronome|noparentalbond,,폭발을 일으켜서 자신의 주위에 있는 포켓몬을 공격한다. 쓰고 나서 기절하게 된다.
 shadowball,Shadow Ball,섀도볼,Ghost,Special,80,100,15,0,normal,protect|mirror|metronome|bullet,20,까만 그림자의 덩어리를 내던져서 공격한다. 20% 확률로 상대의 특수방어를 1랭크 떨어뜨린다.
 shadowpunch,Shadow Punch,섀도펀치,Ghost,Physical,60,,20,0,normal,contact|protect|mirror|punch|metronome,,그림자에 섞여 펀치를 날린다. 공격은 반드시 명중한다.
-shadowsneak,Shadow Sneak,야습,Ghost,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,그림자를 늘려 상대의 배후에서 공격한다. 반드시 선제공격할 수 있다. (우선도 +1)
+shadowsneak,Shadow Sneak,야습,Ghost,Physical,40,100,20,1,normal,contact|protect|mirror|metronome,,그림자를 늘려 상대의 배후에서 공격한다. 반드시 선제공격할 수 있다.
 shedtail,Shed Tail,꼬리자르기,Normal,Status,0,,10,0,self,,,자신의 HP를 깎아서 분신을 만든 뒤 돌아와서 교대 포켓몬과 교체한다.
 sheercold,Sheer Cold,절대영도,Ice,Special,0,30,5,0,normal,protect|mirror|metronome,,절대영도의 추위로 상대를 공격한다. 맞으면 일격에 기절한다.
 shellsidearm,Shell Side Arm,셸암즈,Poison,Special,90,100,10,0,normal,protect|mirror|metronome,20,물리와 특수 중 더 많은 데미지를 줄 수 있는 능력으로 공격한다. 10% 확률로 상대를 독 상태로 만든다.
@@ -443,7 +443,7 @@ struggle,Struggle,발버둥,Normal,Physical,50,,1,0,randomNormal,contact|protect
 strugglebug,Struggle Bug,벌레의저항,Bug,Special,50,100,20,0,allAdjacentFoes,protect|mirror|metronome,100,저항해서 상대를 공격한다. 상대의 특수공격을 1랭크 떨어뜨린다.
 stunspore,Stun Spore,저리가루,Grass,Status,0,75,20,0,normal,protect|reflectable|mirror|metronome|powder,,저리가루를 많이 흩뿌려서 상대를 마비 상태로 만든다.
 substitute,Substitute,대타출동,Normal,Status,0,,10,0,self,snatch|nonsky|metronome,,자신의 HP를 ¼ 깎아서 분신을 만든다. 분신은 자신의 대타가 된다.
-suckerpunch,Sucker Punch,기습,Dark,Physical,70,100,5,1,normal,contact|protect|mirror|metronome,,상대보다 먼저 공격할 수 있다. 상대가 쓴 기술이 공격기술이 아니면 실패한다. (우선도 +1)
+suckerpunch,Sucker Punch,기습,Dark,Physical,70,100,5,1,normal,contact|protect|mirror|metronome,,상대보다 먼저 공격할 수 있다. 상대가 쓴 기술이 공격기술이 아니면 실패한다.
 sunnyday,Sunny Day,쾌청,Fire,Status,0,,5,0,all,metronome,,5턴 동안 햇살을 강하게 해서 불꽃타입 기술의 위력을 올린다.
 supercellslam,Supercell Slam,썬더다이브,Electric,Physical,100,95,15,0,normal,contact|protect|mirror|metronome|minimize,,몸에 전기를 두르고 상대를 덮친다. 빗나가면 자신이 전체 HP의 ½의 대미지를 입는다.
 superfang,Super Fang,분노의앞니,Normal,Physical,0,90,10,0,normal,contact|protect|mirror|metronome,,날카로운 앞니로 강하게 물어서 공격한다. 상대의 HP는 절반이 된다.
@@ -483,26 +483,26 @@ trailblaze,Trailblaze,개척하기,Grass,Physical,50,100,20,0,normal,contact|pro
 transform,Transform,변신,Normal,Status,0,,10,0,normal,allyanim|failencore|noassist|failcopycat|failmimic|failinstruct,,상대 포켓몬으로 변신하여 상대와 완전히 똑같은 기술을 사용할 수 있다.
 triattack,Tri Attack,트라이어택,Normal,Special,80,100,10,0,normal,protect|mirror|metronome,20,"3개의 광선으로 공격한다. 20% 확률로 상대를 마비, 화상 또는 얼음 상태로 만든다."
 trick,Trick,트릭,Psychic,Status,0,100,10,0,normal,protect|mirror|allyanim|noassist|failcopycat,,상대의 빈틈을 노려 자신과 상대가 지닌 물건을 바꿔치기한다.
-trickroom,Trick Room,트릭룸,Psychic,Status,0,,5,-7,all,mirror|metronome,,이상한 공간을 만든다. 5턴 동안 느린 포켓몬부터 행동할 수 있다. (우선도 -7)
+trickroom,Trick Room,트릭룸,Psychic,Status,0,,5,-7,all,mirror|metronome,,이상한 공간을 만든다. 5턴 동안 느린 포켓몬부터 행동할 수 있다.
 triplearrows,Triple Arrows,3연화살,Fighting,Physical,90,100,10,0,normal,protect|mirror|metronome,,발 기술을 사용하고 3개의 화살을 동시에 발사한다. 급소에 맞기 쉽다. 50% 확률로 상대의 방어를 1랭크 떨어뜨린다. 30% 확률로 상대를 풀죽게 만든다.
 tripleaxel,Triple Axel,트리플악셀,Ice,Physical,20,90,10,0,normal,contact|protect|mirror|metronome,,3회 연속으로 킥을 날려 공격한다. 기술이 맞을 때마다 위력이 올라간다.
 twinbeam,Twin Beam,트윈빔,Psychic,Special,40,100,10,0,normal,protect|mirror,,두 눈에서 불가사의한 광선을 발사해서 공격한다. 2회 연속으로 데미지를 준다.
-upperhand,Upper Hand,기선제압,Fighting,Physical,65,100,15,3,normal,contact|protect|mirror|metronome,100,움직임에 반응하여 손바닥으로 밀쳐서 상대를 풀죽게 만든다. 상대가 쓴 기술이 선제공격 기술이 아니면 실패한다. (우선도 +3)
+upperhand,Upper Hand,기선제압,Fighting,Physical,65,100,15,3,normal,contact|protect|mirror|metronome,100,움직임에 반응하여 손바닥으로 밀쳐서 상대를 풀죽게 만든다. 상대가 쓴 기술이 선제공격 기술이 아니면 실패한다.
 uproar,Uproar,소란피기,Normal,Special,90,100,10,0,randomNormal,protect|mirror|sound|bypasssub|metronome|nosleeptalk|failinstruct,,"3턴 동안 소란피워 공격한다. 그 동안은 아무도 잠들지 않게 된다. 광합성, 아침햇살, 달빛의 회복량이 1/4로 감소한다."
 uturn,U-turn,유턴,Bug,Physical,70,100,20,0,normal,contact|protect|mirror|metronome,,공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다.
-vacuumwave,Vacuum Wave,진공파,Fighting,Special,40,100,20,1,normal,protect|mirror|metronome,,주먹을 흔들어 진공의 파도를 일으킨다. 반드시 선제 공격을 할 수 있다. (우선도 +1)
+vacuumwave,Vacuum Wave,진공파,Fighting,Special,40,100,20,1,normal,protect|mirror|metronome,,주먹을 흔들어 진공의 파도를 일으킨다. 반드시 선제 공격을 할 수 있다.
 venoshock,Venoshock,베놈쇼크,Poison,Special,65,100,10,0,normal,protect|mirror|metronome,,특수한 독액을 끼얹는다. 독 상태의 상대에게는 위력이 2배가 된다.
-voltswitch,Volt Switch,볼트체인지,Electric,Special,70,100,20,0,normal,protect|mirror|metronome,,공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다. (우선도 0)
+voltswitch,Volt Switch,볼트체인지,Electric,Special,70,100,20,0,normal,protect|mirror|metronome,,공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다.
 volttackle,Volt Tackle,볼트태클,Electric,Physical,120,100,15,0,normal,contact|protect|mirror|metronome,10,전기를 한데 모아 돌진한다. 자신도 대상에게 준 피해의 ⅓만큼 반동 피해를 받는다. 10% 확률로 상대를 마비 상태로 만든다.
 waterfall,Waterfall,폭포오르기,Water,Physical,80,100,15,0,normal,contact|protect|mirror|metronome,20,굉장한 기세로 상대에게 돌진한다. 20%의 확률로 상대를 풀죽게 만들 때가 있다.
 waterpulse,Water Pulse,물의파동,Water,Special,60,100,20,0,any,protect|mirror|distance|metronome|pulse,20,물의 진동을 상대에게 가하여 공격한다. 20% 확률로 상대를 혼란 상태로 만든다.
-watershuriken,Water Shuriken,물수리검,Water,Special,15,100,20,1,normal,protect|mirror|metronome,,점액으로 만든 수리검을 2~5회 연속으로 던진다. 반드시 선제공격할 수 있다. (우선도 +1)
+watershuriken,Water Shuriken,물수리검,Water,Special,15,100,20,1,normal,protect|mirror|metronome,,점액으로 만든 수리검을 2~5회 연속으로 던진다. 반드시 선제공격할 수 있다.
 waterspout,Water Spout,해수스파우팅,Water,Special,150,100,5,0,allAdjacentFoes,protect|mirror|metronome,,바닷물을 내뿜어 공격한다. 자신의 HP가 적을수록 기술의 위력이 떨어진다.
 wavecrash,Wave Crash,웨이브태클,Water,Physical,120,100,10,0,normal,contact|protect|mirror|metronome,,물을 두르고 온몸으로 상대에게 부딪친다. 자신도 대상에게 준 피해의 ⅓만큼 반동 피해를 받는다.
 weatherball,Weather Ball,웨더볼,Normal,Special,50,100,10,0,normal,protect|mirror|metronome|bullet,,사용했을 때의 날씨에 따라서 기술 타입과 위력이 바뀐다.
 whirlpool,Whirlpool,바다회오리,Water,Special,35,85,15,0,normal,protect|mirror|metronome,,세차게 소용돌이치는 물속에 4-5턴 동안 상대를 가두어 공격한다.
-whirlwind,Whirlwind,날려버리기,Normal,Status,0,,20,-6,normal,reflectable|mirror|bypasssub|allyanim|metronome|noassist|failcopycat|wind,,상대를 날려버려서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다.(우선도-6)
-wideguard,Wide Guard,와이드가드,Rock,Status,0,,10,3,allySide,snatch,,같은 편 전원에게 향하는 공격을 1턴 동안 막는다. (우선도 +3)
+whirlwind,Whirlwind,날려버리기,Normal,Status,0,,20,-6,normal,reflectable|mirror|bypasssub|allyanim|metronome|noassist|failcopycat|wind,,상대를 날려버려서 교대할 포켓몬을 끌어낸다. 야생의 경우에는 배틀이 끝난다.
+wideguard,Wide Guard,와이드가드,Rock,Status,0,,10,3,allySide,snatch,,같은 편 전원에게 향하는 공격을 1턴 동안 막는다.
 wildcharge,Wild Charge,와일드볼트,Electric,Physical,90,100,15,0,normal,contact|protect|mirror|metronome,,전기를 두르고 상대에게 부딪쳐 공격한다. 자신도 대상에게 준 피해의 ¼만큼 반동 피해를 받는다.
 willowisp,Will-O-Wisp,도깨비불,Fire,Status,0,85,15,0,normal,protect|reflectable|mirror|metronome,,으스스하고 괴상한 불꽃을 쏘아 상대를 화상 상태로 만든다.
 wonderroom,Wonder Room,원더룸,Psychic,Status,0,,10,0,all,mirror|metronome,,이상한 공간을 만든다. 5턴 동안 모든 포켓몬의 방어와 특수방어가 바뀐다.
