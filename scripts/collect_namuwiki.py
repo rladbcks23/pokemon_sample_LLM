@@ -133,10 +133,26 @@ def entry_text(page: str, ko: str, en: str) -> str:
 
 # ---------------------------------------------------------------- 기술
 def move_desc(page: str, ko: str, en: str) -> str:
-    """기술 정보 상자: '{기술} 일본어 / 영어 {타입} | {분류} 위력 명중 PP {설명} #태그'."""
+    """기술 정보 상자: 위력·명중·PP 다음 칸(<td>)의 글. 해시태그(#광역 …) 앞까지.
+    정보 상자가 이 기술 것인지는 앞쪽에 영어 이름이 있는지로 확인."""
+    for m in re.finditer(r">\s*PP\s*<", page):
+        head = to_text(page[max(0, m.start() - 6000):m.start()])
+        if en.lower() not in head[-400:].lower():
+            continue
+        j = page.find("<td", m.end())
+        end = page.find("</td>", j)
+        if j < 0 or end < 0:
+            continue
+        cell = to_text(page[j:end])
+        return re.split(r"\s#", cell)[0].strip()
+    # 정보 상자 모양이 다르면 글에서 찾기
     chunk = entry_text(page, ko, en)
     m = re.search(r"PP \d+ (.+?)(?= #| \d+ \. |$)", chunk)
     return m.group(1) if m else ""
+
+
+# 나무위키 문서 이름이 우리 한글 이름과 다른 기술
+MOVE_TITLES = {"brickbreak": "깨트리다"}
 
 
 def collect_moves() -> None:
@@ -145,9 +161,12 @@ def collect_moves() -> None:
     print(f"[moves] {len(got)}개 있음, {len(todo)}개 받기")
     for n, (mid, r) in enumerate(todo.items(), 1):
         desc = ""
-        for title in (f"{r['name_ko']}(포켓몬스터)", r["name_ko"]):
+        titles = [f"{r['name_ko']}(포켓몬스터)", r["name_ko"]]
+        if mid in MOVE_TITLES:
+            titles.insert(0, MOVE_TITLES[mid])
+        for title in titles:
             res = fetch(title)
-            if res and (desc := move_desc(res[0], r["name_ko"], r["name"])):
+            if res and (desc := move_desc(res[0], title.split("(")[0], r["name"])):
                 break
         body, change = split_change(desc)
         body, change = clean(body), clean(change)
@@ -252,7 +271,10 @@ def apply() -> None:
             rows = list(csv.DictReader(io.StringIO(raw)))
             filled = 0
             for r in rows:
-                d = desc.get(r["id"], {}).get("desc")
+                e = desc.get(r["id"], {})
+                d = e.get("desc")
+                if d and e.get("champions"):        # 챔피언스에서 바뀐 점은 설명 뒤에 붙임
+                    d = f"{d} (챔피언스 변경: {e['champions']})"
                 if d:
                     r["short_desc"] = d
                     filled += 1
