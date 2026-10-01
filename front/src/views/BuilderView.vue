@@ -39,12 +39,13 @@ const weakRows = computed(() => {
   return builder.slots.filter(Boolean).map((s) => {
     const types = megaForm(s)?.types || dex.pokemon[s.pokemon]?.types || []
     const cells = Object.fromEntries(TYPES.map((t) => [t, types.reduce((m, d) => m * (chart[t]?.[d] ?? 1), 1)]))
-    return { name: names.value[s.pokemon] || s.pokemon, cells }
+    return { name: megaForm(s)?.name_ko || names.value[s.pokemon] || s.pokemon, cells }
   })
 })
 
 function openPicker(i) { pickerSlot.value = i; pickerOpen.value = true }
-function onPick(id) { router.push({ path: '/sample', query: { slot: pickerSlot.value, pokemon: id } }) }
+// { pokemon, item? } (메가 폼을 고르면 기본 폼 + 메가스톤)
+function onPick({ pokemon, item }) { router.push({ path: '/sample', query: { slot: pickerSlot.value, pokemon, item } }) }
 // 내 샘플(만든 것 + 찜한 것)을 바로 슬롯에
 const mySamples = computed(() => {
   if (!ready.value) return []
