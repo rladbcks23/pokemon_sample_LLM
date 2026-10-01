@@ -5,7 +5,7 @@ import { api } from '@/api'
 import { useBuilder } from '@/stores/builder'
 import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
-import { dex, loadDetail, loadDex } from '@/utils/dex'
+import { dex, fromMegaId, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
   CATEGORY_KO, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_KO, calcStats, spText, spTotal, toId,
 } from '@/utils/pokemon'
@@ -57,8 +57,14 @@ watch(() => sample.value.pokemon, async (id) => {
   }
 })
 
-const pokemonOptions = computed(() => (dex.list || []).slice().sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)))
+// 선택 목록: 사용률 순, 메가 폼은 기본 폼 바로 뒤에 (메가는 랭킹 순위 없음)
+const pokemonOptions = computed(() => (dex.list || []).slice()
+  .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+  .flatMap((p) => [p, ...(p.megas || []).map((m) => ({ ...m, mega: true }))]))
 const mon = computed(() => dex.pokemon[sample.value.pokemon])
+// 메가스톤을 들고 있으면 메가 폼 (화면 표시·실수치는 메가진화 후 기준)
+const mega = computed(() => megaForm(sample.value))
+const shown = computed(() => mega.value || mon.value)
 const abilities = computed(() => detail.value?.forms[0].abilities || [])
 const nature = computed(() => dex.natures[sample.value.nature])
 const natureText = (n) => (n?.plus ? `${STAT_KO[n.plus]}▲ ${STAT_KO[n.minus]}▼` : '무보정')
@@ -77,8 +83,11 @@ const natureGroups = computed(() => {
 })
 const normNature = (id) => (id && !dex.natures[id]?.plus ? NEUTRAL : id)
 
+// 메가 폼을 고르면 기본 폼 + 메가스톤으로 (게임에서는 메가스톤을 들고 배틀 중에 메가진화)
 function pickPokemon(id) {
-  sample.value = { ...emptySample(id), id: sample.value.id }
+  const m = fromMegaId(id)
+  sample.value = { ...emptySample(m ? m.base : id), id: sample.value.id }
+  if (m) sample.value.item = m.item
   moveSel.value = null
 }
 
@@ -89,8 +98,8 @@ function setSp(stat, v) {
   const others = used.value - sample.value.sp[stat]
   sample.value.sp[stat] = Math.max(0, Math.min(SP_MAX_PER_STAT, Math.round(v) || 0, SP_MAX_TOTAL - others))
 }
-const actual = computed(() => (mon.value
-  ? calcStats(mon.value.stats, sample.value.sp, nature.value?.plus, nature.value?.minus)
+const actual = computed(() => (shown.value
+  ? calcStats(shown.value.stats, sample.value.sp, nature.value?.plus, nature.value?.minus)
   : null))
 
 // ---------------------------------------------------------------- 기술
@@ -199,16 +208,18 @@ const itemIdOf = (form) => toId(form.required_item)
     <div class="grid">
       <!-- 왼쪽: 포켓몬·도구·특성·성격·기술 -->
       <div class="col">
-        <el-select :model-value="sample.pokemon" filterable placeholder="⌕ 포켓몬 검색 (한글/영문)" class="sel"
+        <el-select :model-value="mega?.id || sample.pokemon" filterable placeholder="⌕ 포켓몬 검색 (한글/영문)" class="sel"
                    @change="pickPokemon">
           <el-option v-for="p in pokemonOptions" :key="p.id" :value="p.id" :label="`${p.name_ko} ${p.name}`">
-            <span class="opt"><PokemonImg :id="p.id" :size="24" />{{ p.name_ko }}<span class="opt-sub">{{ p.name }}</span></span>
+            <span class="opt"><PokemonImg :id="p.id" :size="24" />{{ p.name_ko }}
+              <span v-if="p.mega" class="megatag mono">MEGA</span><span class="opt-sub">{{ p.name }}</span></span>
           </el-option>
         </el-select>
         <div class="card">
-          <PokemonImg :id="sample.pokemon || ''" :size="128" />
-          <strong>{{ mon?.name_ko || '포켓몬 선택' }}</strong>
-          <div class="types"><TypeBadge v-for="t in mon?.types || []" :key="t" :type="t" :width="60" /></div>
+          <PokemonImg :id="shown?.id || ''" :size="128" />
+          <strong>{{ shown?.name_ko || '포켓몬 선택' }}<span v-if="mega" class="megatag mono">MEGA</span></strong>
+          <div class="types"><TypeBadge v-for="t in shown?.types || []" :key="t" :type="t" :width="60" /></div>
+          <span v-if="mega" class="megahint">메가스톤을 빼면 {{ mon?.name_ko }}(으)로 돌아갑니다</span>
         </div>
 
         <label class="fld"><span>도구</span>
@@ -255,7 +266,7 @@ const itemIdOf = (form) => toId(form.required_item)
           <div class="sprow head mono"><span>스탯</span><span>종족</span><span /><span /><span>SP · 최대 32</span><span /><span /><span class="c">SP</span><span class="r">실수치</span></div>
           <div v-for="s in STATS" :key="s" class="sprow">
             <span class="lbl">{{ STAT_KO[s] }} <small>{{ nature?.plus === s ? '▲' : nature?.minus === s ? '▼' : '' }}</small></span>
-            <span class="mono base">{{ mon?.stats[s] ?? '—' }}</span>
+            <span class="mono base">{{ shown?.stats[s] ?? '—' }}</span>
             <button class="pill mono" title="0으로" @click="setSp(s, 0)">0</button>
             <button class="pm" @click="setSp(s, sample.sp[s] - 1)">−</button>
             <input type="range" min="0" :max="SP_MAX_PER_STAT" :value="sample.sp[s]" @input="setSp(s, +$event.target.value)">
@@ -265,7 +276,7 @@ const itemIdOf = (form) => toId(form.required_item)
                    @change="setSp(s, +$event.target.value); $event.target.value = sample.sp[s]">
             <strong class="mono act r" :class="{ plus: nature?.plus === s, minus: nature?.minus === s }">{{ actual?.[s] ?? '—' }}</strong>
           </div>
-          <span class="note">실수치: Lv50 · 성격 보정 반영</span>
+          <span class="note">실수치: Lv50 · 성격 보정 반영{{ mega ? ' · 메가진화 후 종족값 기준' : '' }}</span>
         </div>
 
         <div class="block">
@@ -359,6 +370,8 @@ const itemIdOf = (form) => toId(form.required_item)
 .sel :deep(.el-select__wrapper) { min-height: 40px; border-radius: 6px; }
 .opt { display: flex; align-items: center; gap: 8px; }
 .opt-sub { margin-left: auto; font-size: 11px; color: var(--c-muted); }
+.megatag { font-size: 10px; border: 1px solid var(--c-text); border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
+.megahint { font-size: 11px; color: var(--c-muted); }
 .card { border: 1px solid var(--c-line-card); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; background: #fff; }
 .card strong { font-size: 18px; }
 .types { display: flex; gap: 6px; }
