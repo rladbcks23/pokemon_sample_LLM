@@ -7,6 +7,7 @@ import { emptySample } from '@/stores/library'
 import { CATEGORY_KO, STATS, STAT_KO, compareMoves, mulText, spText, toId } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
 import TypeBadge from '@/components/TypeBadge.vue'
+import BackLink from '@/components/BackLink.vue'
 import AddToPartyDialog from '@/components/AddToPartyDialog.vue'
 
 const route = useRoute()
@@ -104,6 +105,7 @@ function toSample() {
   <section v-else class="page">
     <div class="topbar">
       <div class="crumb"><RouterLink to="/pokemon">포켓몬</RouterLink> / {{ d.name_ko }}</div>
+      <BackLink to="/pokemon" label="포켓몬 목록으로" />
     </div>
 
     <div class="main">
