@@ -246,7 +246,8 @@ class Tools:
         for a in chart:
             cnt = {'weak': sum(r['cells'][a] > 1 for r in rows), 'resist': sum(0 < r['cells'][a] < 1 for r in rows),
                    'immune': sum(r['cells'][a] == 0 for r in rows)}
-            summary[type_ko.get(a, a)] = cnt
+            if any(cnt.values()):
+                summary[type_ko.get(a, a)] = cnt
         return {
             'members': [{'name_ko': r['name_ko'], 'types': [type_ko.get(t, t) for t in r['types']],
                          'weak_to': [type_ko.get(a, a) + f"×{r['cells'][a]:g}" for a in chart if r['cells'][a] > 1]}
