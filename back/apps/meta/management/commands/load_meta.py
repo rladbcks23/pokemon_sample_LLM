@@ -58,6 +58,17 @@ def sp_valid(sp: dict) -> bool:
     return all(0 <= v <= SP_MAX_PER_STAT for v in sp.values()) and sum(sp.values()) <= SP_MAX_TOTAL
 
 
+SP_MIN_TOTAL = SP_MAX_TOTAL - 2     # 32/32 + 나머지 2 안 쓴 정도까지는 다 찍은 걸로 봄
+
+
+def complete_set(b: dict) -> bool:
+    """포켓몬 샘플로 쓸 만큼 다 채워졌는지: 도구·특성·성격, 서로 다른 기술 4개, SP를 (거의) 다 찍음."""
+    moves = [b.get(f'move{i}') for i in range(1, 5)]
+    return (bool(b.get('item_key') and b.get('ability_key') and b.get('nature_key'))
+            and all(moves) and len(set(moves)) == 4
+            and sum(b.get(f'sp_{s}', 0) for s in SP_STATS) >= SP_MIN_TOTAL)
+
+
 class Command(BaseCommand):
     help = 'data/raw/ 수집 원본(OP.GG, Smogon, Showdown 리플레이)을 meta 테이블에 적재'
 
@@ -299,6 +310,9 @@ class Command(BaseCommand):
                     self.skipped['opgg 샘플 빌드 (SP 규칙 위반/빈 슬롯)'] += 1
                     continue
                 b.pop('_is_mega')
+                if not complete_set(b) or any(b[f'move{i}'] not in dex.moves for i in range(1, 5)):
+                    self.skipped['opgg 샘플 빌드 (도구·기술·SP가 덜 채워짐 / 없는 기술)'] += 1
+                    continue
                 sets.append(PokemonSet(ruleset_id=OPGG_RULESET, format_key=f'{OPGG_RULESET}_{fmt}s',
                                        name=x.get('title') or '', source='opgg_sample', **b))
             PokemonSet.objects.bulk_create(sets)
@@ -445,7 +459,7 @@ class Command(BaseCommand):
         Team.objects.bulk_update(bad + ok, ['is_legal'], batch_size=2000)
 
     def sets_from_teams(self) -> None:
-        """파티 멤버 → 포켓몬 샘플 (pokemon_set). SP가 있고 도구·특성·성격·기술 4개가 다 있는 것만.
+        """파티 멤버 → 포켓몬 샘플 (pokemon_set). 다 채워진 육성만 (complete_set).
 
         같은 육성(포맷·포켓몬·도구·특성·성격·SP·기술)은 하나로, 이미 OP.GG 샘플에 있는 것도 뺌.
         배울 수 없는 기술이 있는 파티(is_legal=False)는 쓰지 않음.
@@ -457,8 +471,8 @@ class Command(BaseCommand):
             sets = []
             for t in Team.objects.filter(source=src).exclude(is_legal=False).prefetch_related('members'):
                 for m in t.members.all():
-                    if not (any(getattr(m, f'sp_{s}') for s in SP_STATS) and m.item_key and m.ability_key
-                            and m.nature_key and len(m.moves) == 4):
+                    b = {f: getattr(m, f) for f in fields} | {f'move{i}': getattr(m, f'move{i}') for i in range(1, 5)}
+                    if not complete_set(b):
                         continue
                     k = key(t.format_key, m)
                     if k in seen:
