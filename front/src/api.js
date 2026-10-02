@@ -39,6 +39,7 @@ export const api = {
   teams: (params) => get('teams/', params),
   team: (id) => get(`teams/${id}/`),
   samples: (params) => get('samples/', params),
+  speed: (format, top) => get('speed/', { format, top }),
   options: () => get('options/', null, { cache: true }),
   validate: (sample) => post('validate/', sample),
 }
