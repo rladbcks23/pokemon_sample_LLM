@@ -9,7 +9,7 @@ back/      Django + DRF API 서버 (게임 데이터, 메타/파티, 분석 도�
 front/     Vue 3 + Element Plus 화면
 llm/       LLM 서버 (에이전트, provider, 파인튜닝)
 data/      공용 데이터: champions_*/ (게임 데이터 CSV), raw/ (수집 원본, git 제외), pokemon.db (git 제외)
-assets/    포켓몬·도구·타입 아이콘 (git 제외)
+assets/    포켓몬·도구·타입 아이콘 (scripts/download_assets.py로 받음, types/icons-color는 직접 편집)
 scripts/   데이터 수집·변환 스크립트
 ```
 

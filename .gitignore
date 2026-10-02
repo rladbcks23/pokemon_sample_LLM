@@ -24,12 +24,6 @@ Thumbs.db
 # Claude Code 로컬 설정
 .claude/
 
-# 이미지 에셋 (scripts/download_assets.py로 재다운로드, 저작권 문제로 제외)
-# 단, 직접 편집한 타입 아이콘(assets/types/icons-color)은 다시 만들 수 없어서 포함
-assets/*
-!assets/types/
-assets/types/*
-!assets/types/icons-color/
 
 # Django 기본 DB 파일
 db.sqlite3
