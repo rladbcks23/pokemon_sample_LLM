@@ -211,6 +211,36 @@ def build_type_icons(force: bool = False) -> None:
     print(f"[type icons] {ok}/{len(TYPES)}")
 
 
+def build_type_icons_color(force: bool = False) -> None:
+    """배지(assets/types/{Type}.png) 왼쪽 심볼을 배경색 포함 43x43 정사각형 가운데로: assets/types/icons-color/{Type}.png."""
+    from PIL import Image
+
+    out = ASSETS / "types" / "icons-color"
+    S = 43
+    ok = 0
+    for name in TYPES:
+        src, path = ASSETS / "types" / f"{name}.png", out / f"{name}.png"
+        if path.exists() and not force:
+            ok += 1
+            continue
+        if not src.exists():
+            continue
+        im = Image.open(src).convert("RGBA")
+        bg = im.getpixel((0, 0))
+        left = im.crop((0, 0, im.height + 2, im.height))
+        lo = min(bg[:3])
+        # 반 이상 흰색인 픽셀로 심볼 범위를 잡음 (흐린 안티앨리어싱 가장자리는 제외)
+        mask = Image.new("L", left.size)
+        mask.putdata([255 if (min(p[:3]) - lo) * 2 > 255 - lo else 0 for p in left.getdata()])
+        l, t, r, b = mask.getbbox() or (0, 0, *left.size)
+        img = Image.new("RGBA", (S, S), bg)
+        img.alpha_composite(left, ((S - (r - l)) // 2 - l, (S - (b - t)) // 2 - t))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(path)
+        ok += 1
+    print(f"[type icons color] {ok}/{len(TYPES)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ruleset", default="champions_mc", help="data/ 아래 CSV 폴더")
@@ -221,6 +251,7 @@ def main() -> None:
     download_items(read_csv(data / "items.csv"))
     build_types(force=args.rebuild_types)
     build_type_icons(force=args.rebuild_types)
+    build_type_icons_color(force=args.rebuild_types)
 
 
 if __name__ == "__main__":
