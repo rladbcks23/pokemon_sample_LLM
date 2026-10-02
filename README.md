@@ -96,8 +96,10 @@ cd back
 | API 서버 | `back/` | `..\.venv\Scripts\python manage.py runserver` | http://localhost:8000/api/ |
 | Admin | `back/` | (위와 같음, `createsuperuser` 필요) | http://localhost:8000/admin/ |
 | DB 확인 페이지 | `back/` | `..\.venv\Scripts\python -m streamlit run ui/db_viewer.py` | http://localhost:8501/check |
+| 파티 코치 (LLM) | `llm/` | `..\.venv\Scripts\uvicorn server.app:app --port 8001` | http://localhost:8001/llm/health |
 
-화면은 `/api`, `/assets` 요청을 API 서버(8000)로 넘기므로 API 서버를 같이 띄워야 한다.
+화면은 `/api`, `/assets` 요청을 API 서버(8000)로, `/llm` 요청을 LLM 서버(8001)로 넘기므로 같이 띄워야 한다.
+LLM 서버는 `llm/requirements.txt` 설치와 `llm/.env`(`.env.example` 참고)의 API 키가 필요하다. 자세한 내용은 `llm/README.md`.
 
 ### API
 | 주소 | 내용 |
