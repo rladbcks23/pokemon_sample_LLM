@@ -44,6 +44,31 @@ export const api = {
   validate: (sample) => post('validate/', sample),
 }
 
+// 파티 코치 채팅 (llm 서버, SSE). onEvent(event, data): status / text / party / error / done
+export async function chatStream(body, onEvent) {
+  const res = await fetch('/llm/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok || !res.body) throw new Error(`LLM 서버 오류 ${res.status}`)
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buf = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buf += value
+    let i
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, i)
+      buf = buf.slice(i + 2)
+      const event = block.match(/^event: (.*)$/m)?.[1]
+      const data = block.match(/^data: (.*)$/m)?.[1]
+      if (event && data) onEvent(event, JSON.parse(data))
+    }
+  }
+}
+
 // 아이콘 주소 (scripts/download_assets.py로 받은 파일, Django가 /assets/로 제공)
 export const img = {
   pokemon: (id) => `/assets/pokemon/${id}.png`,

@@ -6,6 +6,8 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Django(back/) 개발 서버
 const BACK = 'http://localhost:8000'
+// 파티 코치 LLM 서버 (llm/)
+const LLM = 'http://localhost:8001'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,6 +26,7 @@ export default defineConfig({
     proxy: {
       '/api': BACK,
       '/assets': BACK,
+      '/llm': LLM,
     },
   },
 })
