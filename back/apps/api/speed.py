@@ -71,25 +71,14 @@ def boosts(u: dict | None, ability_ids: set[str], names: dict) -> list[tuple[str
     return out
 
 
-@api_view(['GET'])
-def speed_tiers(request):
-    """GET /api/speed/?format=doubles&top=50 → {'rows': [{'speed', 'entries': [{pokemon, label, rank}]}]}"""
-    from apps.api.views import latest_usage, mega_ability, mega_owner, rank_board, usage_detail
+def rows_for(rs, fmt: str, top: int, all_p: dict, megas: dict, ability_ko: dict) -> dict:
+    """한 포맷(싱글/더블)의 스피드 → [{pokemon, label, rank}]."""
+    from apps.api.views import latest_usage, mega_ability, rank_board, usage_detail
 
-    rs, fmt = get_ruleset(request), get_format(request)
-    top = min(int(request.query_params.get('top', 50) or 50), 300)
     ranks = sorted(rank_board(rs, fmt)['rows'].items(), key=lambda x: x[1]['rank'])[:top]
-    all_p = {p.showdown_id: p for p in Pokemon.objects.filter(ruleset=rs).prefetch_related('ability_slots__ability')}
-    ids = {k for k, p in all_p.items() if not p.is_mega}
-    megas = defaultdict(list)
-    for p in all_p.values():
-        if p.is_mega:
-            megas[mega_owner(rs, p, ids)].append(p)
     usage_qs = latest_usage(rs, fmt)[0].prefetch_related('details')
     usage = {u.pokemon_key: usage_detail(rs, u) for u in usage_qs.filter(pokemon_key__in=[k for k, _ in ranks])}
-    ability_ko = {pa.ability.showdown_id: pa.ability.name_ko for p in all_p.values() for pa in p.ability_slots.all()}
-
-    rows = defaultdict(list)          # 스피드 → 줄
+    rows = defaultdict(list)
     for key, r in ranks:
         p = all_p.get(key)
         if not p:
@@ -122,5 +111,35 @@ def speed_tiers(request):
                     'pokemon': {'id': form.showdown_id, 'name_ko': form.name_ko or form.name, 'is_mega': is_mega},
                     'label': label, 'rank': r['rank'],
                 })
-    out = [{'speed': s, 'entries': sorted(e, key=lambda x: x['rank'])} for s, e in sorted(rows.items(), reverse=True)]
-    return Response({'ruleset': rs.id, 'format': fmt, 'top': top, 'rows': out})
+    return rows
+
+
+@api_view(['GET'])
+def speed_tiers(request):
+    """GET /api/speed/?top=50 → {'rows': [{'speed', 'entries': [{pokemon, label, rank}]}]}
+
+    format(singles / doubles)을 주면 그 포맷만, 생략하면 싱글·더블 픽률 상위를 합쳐서 (같은 줄은 하나로, rank는 더 높은 쪽)
+    """
+    from apps.api.views import mega_owner
+
+    rs = get_ruleset(request)
+    fmts = [get_format(request)] if request.query_params.get('format') else ['singles', 'doubles']
+    top = min(int(request.query_params.get('top', 50) or 50), 300)
+    all_p = {p.showdown_id: p for p in Pokemon.objects.filter(ruleset=rs).prefetch_related('ability_slots__ability')}
+    ids = {k for k, p in all_p.items() if not p.is_mega}
+    megas = defaultdict(list)
+    for p in all_p.values():
+        if p.is_mega:
+            megas[mega_owner(rs, p, ids)].append(p)
+    ability_ko = {pa.ability.showdown_id: pa.ability.name_ko for p in all_p.values() for pa in p.ability_slots.all()}
+
+    merged = defaultdict(dict)        # 스피드 → (포켓몬, 라벨) → 줄
+    for fmt in fmts:
+        for spe, entries in rows_for(rs, fmt, top, all_p, megas, ability_ko).items():
+            for e in entries:
+                k = (e['pokemon']['id'], e['label'])
+                if k not in merged[spe] or e['rank'] < merged[spe][k]['rank']:
+                    merged[spe][k] = e
+    out = [{'speed': s, 'entries': sorted(e.values(), key=lambda x: x['rank'])}
+           for s, e in sorted(merged.items(), reverse=True)]
+    return Response({'ruleset': rs.id, 'formats': fmts, 'top': top, 'rows': out})
