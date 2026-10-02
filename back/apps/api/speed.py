@@ -118,17 +118,22 @@ def rows_for(rs, fmt: str, top: int, all_p: dict, megas: dict, ability_ko: dict)
 GENDER_SUFFIX = re.compile(r'(-수컷|-암컷|\(수컷\)|\(암컷\))$')
 
 
-def gender_group(p: Pokemon) -> tuple:
-    """암수 폼을 같은 묶음으로: 대쓰여너·대쓰여너-암컷, 메가냐오닉스(수컷)·(암컷). 다른 폼은 따로."""
-    forme = re.sub(r'^[MF](-|$)', '', p.forme)          # 'F' → '', 'F-Mega' → 'Mega'
-    return (p.base_species, forme, p.is_mega) if forme != p.forme or not p.forme else (p.showdown_id,)
+def short_names(names: list[str]) -> str:
+    """같은 줄에 묶인 폼 이름: 메가리자몽X·메가리자몽Y → '메가리자몽X·Y', 갸라도스·메가갸라도스는 그대로."""
+    names = list(dict.fromkeys(GENDER_SUFFIX.sub('', n) for n in names))
+    stem = names[0][:-1]
+    if len(names) > 1 and all(len(n) == len(names[0]) and n[:-1] == stem and n[-1] in 'XYZ' for n in names):
+        return stem + '·'.join(n[-1] for n in names)
+    return '·'.join(names)
 
 
 @api_view(['GET'])
 def speed_tiers(request):
-    """GET /api/speed/?top=50 → {'rows': [{'speed', 'entries': [{pokemon, label, rank}]}]}
+    """GET /api/speed/?top=50 → {'rows': [{'speed', 'entries': [{pokemon, forms, label, rank}]}]}
 
-    format(singles / doubles)을 주면 그 포맷만, 생략하면 싱글·더블 픽률 상위를 합쳐서 (같은 줄은 하나로, rank는 더 높은 쪽)
+    format(singles / doubles)을 주면 그 포맷만, 생략하면 싱글·더블 픽률 상위를 합쳐서 (같은 줄은 하나로, rank는 더 높은 쪽).
+    같은 포켓몬의 암수·메가 폼은 스피드가 같으면 한 칸으로 (메가리자몽X·Y, 갸라도스·메가갸라도스, 대쓰여너).
+    리전폼·로토무 같은 다른 폼은 따로.
     """
     from apps.api.views import mega_owner
 
@@ -142,25 +147,31 @@ def speed_tiers(request):
         if p.is_mega:
             megas[mega_owner(rs, p, ids)].append(p)
     ability_ko = {pa.ability.showdown_id: pa.ability.name_ko for p in all_p.values() for pa in p.ability_slots.all()}
-    # 암수만 다르고 스피드가 같은 폼 묶음 → 대표 폼(수컷) ID
-    groups = defaultdict(list)
-    for p in all_p.values():
-        groups[gender_group(p)].append(p)
-    gendered = {g: sorted(ps, key=lambda p: 'F' in p.forme)[0].showdown_id
-                for g, ps in groups.items() if len(ps) > 1 and len({p.spe for p in ps}) == 1}
 
-    merged = defaultdict(dict)        # 스피드 → (포켓몬, 라벨) → 줄
+    def family(p: Pokemon) -> tuple:
+        """한 칸으로 묶는 단위: 메가는 진화 전 폼을 따라가고, 암수 폼(forme '' / F / M)은 하나로."""
+        if p.is_mega:
+            p = all_p.get(mega_owner(rs, p, ids), p)
+        return (p.base_species,) if p.forme in ('', 'F', 'M') else (p.showdown_id,)
+
+    merged = defaultdict(dict)        # 스피드 → (묶음, 라벨) → 칸
     for fmt in fmts:
         for spe, entries in rows_for(rs, fmt, top, all_p, megas, ability_ko).items():
             for e in entries:
                 p = all_p[e['pokemon']['id']]
-                g = gender_group(p)
-                if g in gendered:             # 암수 폼은 하나로 (스피드가 같음): "대쓰여너"
-                    e = {**e, 'pokemon': {**e['pokemon'], 'id': gendered[g],
-                                          'name_ko': GENDER_SUFFIX.sub('', e['pokemon']['name_ko'])}}
-                k = (g, e['label'])
-                if k not in merged[spe] or e['rank'] < merged[spe][k]['rank']:
-                    merged[spe][k] = e
-    out = [{'speed': s, 'entries': sorted(e.values(), key=lambda x: x['rank'])}
-           for s, e in sorted(merged.items(), reverse=True)]
+                cell = merged[spe].setdefault((family(p), e['label']), {'forms': [], 'label': e['label'], 'rank': e['rank']})
+                cell['rank'] = min(cell['rank'], e['rank'])
+                if p not in cell['forms']:
+                    cell['forms'].append(p)
+    out = []
+    for spe, cells in sorted(merged.items(), reverse=True):
+        entries = []
+        for c in cells.values():
+            forms = sorted(c['forms'], key=lambda p: (p.is_mega, 'F' in p.forme, p.showdown_id))   # 메가 전·수컷 먼저
+            entries.append({
+                'pokemon': {'id': forms[0].showdown_id, 'is_mega': all(p.is_mega for p in forms),
+                            'name_ko': short_names([p.name_ko or p.name for p in forms])},
+                'forms': [p.showdown_id for p in forms], 'label': c['label'], 'rank': c['rank'],
+            })
+        out.append({'speed': spe, 'entries': sorted(entries, key=lambda x: x['rank'])})
     return Response({'ruleset': rs.id, 'formats': fmts, 'top': top, 'rows': out})
