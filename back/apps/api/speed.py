@@ -7,6 +7,7 @@
     준속   = 무보정 + 32          최속   = 준속 × 1.1
     스카프·1랭크업 ×1.5, 2랭크업·쓱쓱 등 ×2
 """
+import re
 from collections import defaultdict
 
 from rest_framework.decorators import api_view
@@ -114,6 +115,15 @@ def rows_for(rs, fmt: str, top: int, all_p: dict, megas: dict, ability_ko: dict)
     return rows
 
 
+GENDER_SUFFIX = re.compile(r'(-수컷|-암컷|\(수컷\)|\(암컷\))$')
+
+
+def gender_group(p: Pokemon) -> tuple:
+    """암수 폼을 같은 묶음으로: 대쓰여너·대쓰여너-암컷, 메가냐오닉스(수컷)·(암컷). 다른 폼은 따로."""
+    forme = re.sub(r'^[MF](-|$)', '', p.forme)          # 'F' → '', 'F-Mega' → 'Mega'
+    return (p.base_species, forme, p.is_mega) if forme != p.forme or not p.forme else (p.showdown_id,)
+
+
 @api_view(['GET'])
 def speed_tiers(request):
     """GET /api/speed/?top=50 → {'rows': [{'speed', 'entries': [{pokemon, label, rank}]}]}
@@ -132,12 +142,23 @@ def speed_tiers(request):
         if p.is_mega:
             megas[mega_owner(rs, p, ids)].append(p)
     ability_ko = {pa.ability.showdown_id: pa.ability.name_ko for p in all_p.values() for pa in p.ability_slots.all()}
+    # 암수만 다르고 스피드가 같은 폼 묶음 → 대표 폼(수컷) ID
+    groups = defaultdict(list)
+    for p in all_p.values():
+        groups[gender_group(p)].append(p)
+    gendered = {g: sorted(ps, key=lambda p: 'F' in p.forme)[0].showdown_id
+                for g, ps in groups.items() if len(ps) > 1 and len({p.spe for p in ps}) == 1}
 
     merged = defaultdict(dict)        # 스피드 → (포켓몬, 라벨) → 줄
     for fmt in fmts:
         for spe, entries in rows_for(rs, fmt, top, all_p, megas, ability_ko).items():
             for e in entries:
-                k = (e['pokemon']['id'], e['label'])
+                p = all_p[e['pokemon']['id']]
+                g = gender_group(p)
+                if g in gendered:             # 암수 폼은 하나로 (스피드가 같음): "대쓰여너"
+                    e = {**e, 'pokemon': {**e['pokemon'], 'id': gendered[g],
+                                          'name_ko': GENDER_SUFFIX.sub('', e['pokemon']['name_ko'])}}
+                k = (g, e['label'])
                 if k not in merged[spe] or e['rank'] < merged[spe][k]['rank']:
                     merged[spe][k] = e
     out = [{'speed': s, 'entries': sorted(e.values(), key=lambda x: x['rank'])}
