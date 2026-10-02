@@ -187,6 +187,30 @@ def build_types(force: bool = False) -> None:
     print(f"[types] {ok}/{len(TYPES)}")
 
 
+def build_type_icons(force: bool = False) -> None:
+    """타입 심볼만 (흰색, 투명 배경, 가운데 정렬 48x48): assets/types/icons/{Type}.png. 동그란 필터 버튼용."""
+    from PIL import Image
+
+    out = ASSETS / "types" / "icons"
+    S = 48
+    ok = 0
+    for name, (num, _, _) in TYPES.items():
+        path = out / f"{name}.png"
+        if path.exists() and not force:
+            ok += 1
+            continue
+        badge = get(SV_TYPE_BADGE.format(num))
+        if not badge:
+            continue
+        glyph = type_symbol(badge, S)
+        img = Image.new("RGBA", (S, S), (255, 255, 255, 0))
+        img.alpha_composite(glyph, ((S - glyph.width) // 2, (S - glyph.height) // 2))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(path)
+        ok += 1
+    print(f"[type icons] {ok}/{len(TYPES)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ruleset", default="champions_mc", help="data/ 아래 CSV 폴더")
@@ -196,6 +220,7 @@ def main() -> None:
     download_pokemon(read_csv(data / "pokemon.csv"))
     download_items(read_csv(data / "items.csv"))
     build_types(force=args.rebuild_types)
+    build_type_icons(force=args.rebuild_types)
 
 
 if __name__ == "__main__":
