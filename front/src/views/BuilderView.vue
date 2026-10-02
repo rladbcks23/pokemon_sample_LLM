@@ -139,7 +139,7 @@ function openSample(s) {
     </div>
 
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
-               :names="names" @apply="applyParty" @open-sample="openSample" />
+               :names="names" :format="settings.format" :party="builder.slots" @apply="applyParty" @open-sample="openSample" />
 
     <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" title="파티 빌딩" />
     <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()" :format="settings.format"

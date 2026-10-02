@@ -5,15 +5,15 @@
 
 ## 구조
 - `back/` Django + DRF (`apps/dex` 게임 데이터, `apps/meta` 사용률·파티·샘플, `apps/api` 화면용 API)
-- `front/` Vue 3 + Vite + Element Plus + Pinia. `/api`, `/assets`는 Vite 프록시로 back(8000)에 넘김
-- `llm/` LLM 서버 자리 (아직 README만). `data/` CSV·DB·수집 원본, `assets/` 이미지, `scripts/` 수집·변환
+- `front/` Vue 3 + Vite + Element Plus + Pinia. `/api`, `/assets`는 Vite 프록시로 back(8000)에, `/llm`은 llm(8001)에 넘김
+- `llm/` 파티 코치 LLM 서버 (FastAPI). `data/` CSV·DB·수집 원본, `assets/` 이미지, `scripts/` 수집·변환
 - 찜·내가 만든 파티/샘플은 로그인 없이 브라우저 localStorage에만 저장
 
 ## 작업 규칙
 - 커밋 메시지: `타입: 내용` (내용은 한글). 타입 = feat / fix / build / chore / ci / docs / style / refactor / test / perf
 - 큰 단위로 모으지 말고 작은 수정이 끝날 때마다 바로 커밋한다 (팀 합의, SSAFY 서울 7반)
 - **push는 사용자가 요청할 때만** 한다
-- 커밋할 때 테스트(`back`에서 `..\.venv\Scripts\python manage.py test`)와 `front`의 `npx vite build`가 통과하는지 먼저 확인
+- 커밋할 때 테스트(`back`에서 `..\.venv\Scripts\python manage.py test`, `llm`을 바꿨으면 `llm` 테스트도)와 `front`의 `npx vite build`가 통과하는지 먼저 확인
 - DB를 다시 적재(`load_dex`/`load_meta`)하면 API 서버를 재시작한다 (`names()` 등이 캐시됨)
 - 화면을 바꾸면 브라우저에서 실제로 눌러 확인한다
 
@@ -33,9 +33,14 @@
 
 ## LLM (다음 단계)
 - 1단계: API 모델 + 도구 호출. 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
-- 서버는 Django와 분리 (`llm/`, FastAPI + SSE 예정). 파티 빌딩의 CoachChat이 여기에 붙는다
-- 3단계 LoRA 파인튜닝(Google Colab): 후보는 **Apache 2.0 한국어 모델만**
-  — `Qwen/Qwen3-8B`, `kakaocorp/kanana-1.5-8b-instruct-2505`, `skt/A.X-4.0-Light`
+- 서버는 Django와 분리 (`llm/`, FastAPI + SSE, 포트 8001). 파티 빌딩의 CoachChat이 `/llm/chat`에 붙어 있다
+  - 1단계 모델은 `claude-opus-5-5`(effort medium, `LLM_MODEL`/`LLM_EFFORT`로 변경). 도구는 `llm/agent/tools.py`
+  - 테스트는 `llm`에서 `..\.venv\Scripts\python -m unittest` (모델·back은 가짜라 API 키·DB 없이 돈다)
+- 3단계 LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0)로 정함
+  - 학습은 집 PC(RTX 3060 12GB, RAM 16GB)에서 WSL2 + Unsloth, bf16 LoRA(약 10GB)
+  - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가.
+    4B가 부족할 때만 시간제 GPU로 학습하고, 추론(4bit 약 6~7GB)은 집 PC에서 가능
+  - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
   - EXAONE 제외: 라이선스가 연구 목적 전용이라 무료 공개 서비스·외부 배포도 막힘
   - 파인튜닝은 사실 암기가 아니라 도구 호출 방식과 파티 판단을 가르치는 용도.
     데이터 후보: DB로 만든 합성 도구 호출 문답, 리플레이 선출·선봉, 대회·OP.GG 팀 완성

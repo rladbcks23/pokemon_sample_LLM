@@ -1,14 +1,17 @@
 <script setup>
 import { nextTick, ref } from 'vue'
+import { chatStream } from '@/api'
 import PokemonImg from '@/components/PokemonImg.vue'
 
-// 파티 코치 채팅 (오른쪽 패널). LLM 서버 연결 전이라 안내 메시지만 답함.
-// 나중에 LLM 답변에 추천 파티(party: [샘플…])가 오면 카드와 "모두 추가하기"로 표시
+// 파티 코치 채팅 (오른쪽 패널). llm 서버(SSE)에 대화와 현재 파티를 보내고 답변을 이어 붙임.
+// 답변에 추천 파티(party: [샘플…])가 오면 카드와 "모두 추가하기"로 표시
 const props = defineProps({
   open: Boolean,
   formatLabel: { type: String, default: '' },
   rulesetLabel: { type: String, default: '' },
   names: { type: Object, default: () => ({}) },
+  format: { type: String, default: 'singles' },
+  party: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['update:open', 'apply', 'open-sample'])
 
@@ -30,14 +33,26 @@ async function ask(text) {
   if (!q || busy.value) return
   draft.value = ''
   busy.value = true
-  messages.value.push({ role: 'user', text: q }, { role: 'status', text: '답변 준비 중…' })
+  messages.value.push({ role: 'user', text: q })
+  const history = messages.value.filter((m) => m.role !== 'status' && m.text)
+    .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }))
+  messages.value.push({ role: 'status', text: '답변 준비 중…' }, { role: 'bot', text: '' })
+  const status = messages.value[messages.value.length - 2]
+  const bot = messages.value[messages.value.length - 1]
   scroll()
-  // TODO(LLM 단계): llm 서버 SSE 스트리밍 연결
-  await new Promise((r) => setTimeout(r, 600))
-  messages.value.splice(-1, 1, {
-    role: 'bot',
-    text: '파티 코치(LLM)는 아직 연결되지 않았습니다. LLM 서버를 붙이는 단계에서 이 창으로 파티 추천·진단·선출 가이드를 답하게 됩니다.',
-  })
+  try {
+    await chatStream({ history, format: props.format, party: JSON.parse(JSON.stringify(props.party)) }, (event, data) => {
+      if (event === 'status') status.text = `${data.text}…`
+      else if (event === 'text') bot.text += data.delta
+      else if (event === 'party') bot.party = data.members
+      else if (event === 'error') bot.text += `${bot.text ? '\n\n' : ''}⚠ ${data.message}`
+      scroll()
+    })
+  } catch {
+    bot.text = '파티 코치 서버(llm)에 연결하지 못했습니다. llm 서버가 켜져 있는지 확인해 주세요.'
+  }
+  messages.value.splice(messages.value.indexOf(status), 1)
+  if (!bot.text && !bot.party) bot.text = '답변을 받지 못했습니다.'
   busy.value = false
   scroll()
 }
@@ -58,7 +73,7 @@ async function ask(text) {
           <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
           <div v-else-if="m.role === 'status'" class="status mono">● {{ m.text }}</div>
           <div v-else class="botwrap">
-            <div class="bubble bot">{{ m.text }}</div>
+            <div v-if="m.text" class="bubble bot">{{ m.text }}</div>
             <div v-if="m.party" class="rec">
               <div class="rh"><span class="mono">추천 파티 · {{ m.party.length }}마리</span><span>하나 누르면 샘플 제작으로 →</span></div>
               <div class="rm">
