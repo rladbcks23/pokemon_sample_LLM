@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.api import views
+from apps.api import speed, views
 
 urlpatterns = [
     path('ranking/', views.ranking),
@@ -9,6 +9,7 @@ urlpatterns = [
     path('teams/', views.team_list),
     path('teams/<int:pk>/', views.team_detail),
     path('samples/', views.sample_list),
+    path('speed/', speed.speed_tiers),
     path('options/', views.options),
     path('validate/', views.validate_set),
 ]
