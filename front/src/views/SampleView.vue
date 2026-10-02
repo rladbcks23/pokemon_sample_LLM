@@ -361,7 +361,7 @@ const itemIdOf = (form) => toId(form.required_item)
                       @click="mCats = toggled(mCats, c)">{{ CATEGORY_KO[c] }}</button>
             </div>
             <button v-for="t in learnTypes" :key="t" class="ticon" :class="{ on: mTypes.includes(t) }" :title="TYPE_KO[t]"
-                    :style="{ backgroundImage: `url(${img.type(t)})`, '--tc': TYPE_COLOR[t] }"
+                    :style="{ backgroundImage: `url(${img.typeIcon(t)})`, backgroundColor: TYPE_COLOR[t] }"
                     @click="mTypes = toggled(mTypes, t)" />
             <button v-if="mTypes.length || mCats.length" class="clear" @click="mTypes = []; mCats = []">초기화</button>
           </div>
@@ -512,12 +512,12 @@ const itemIdOf = (form) => toId(form.required_item)
 .catseg button { border: 0; height: 30px; padding: 0 12px; font-size: 12px; background: #fff; color: var(--c-text-3); }
 .catseg button + button { border-left: 1px solid var(--c-line-strong); }
 .catseg button.on { background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
-/* 타입 배지 그림(가로 3:1)의 왼쪽 아이콘 부분만 동그랗게 */
-.ticon { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; padding: 0;
-  background-color: var(--tc); background-size: 72px 24px; background-position: 2px center; background-repeat: no-repeat;
-  opacity: .35; filter: grayscale(.4); transition: opacity .12s, transform .12s; }
-.ticon:hover { opacity: .75; }
-.ticon.on { opacity: 1; filter: none; border-color: var(--c-text); transform: scale(1.08); }
+/* 타입 색 동그라미 + 가운데 흰 심볼 (assets/types/icons) */
+.ticon { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0;
+  background-size: 62%; background-position: center; background-repeat: no-repeat;
+  opacity: .45; transition: opacity .12s, box-shadow .12s; }
+.ticon:hover { opacity: .8; }
+.ticon.on { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c-text); }
 .mtags .clear { flex: none; border: 0; background: none; color: var(--c-primary); text-decoration: underline; font-size: 12px; padding: 0 4px; }
 .msearch { height: 36px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }
 .hint.on { color: var(--c-primary); }

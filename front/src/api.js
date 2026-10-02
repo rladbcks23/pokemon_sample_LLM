@@ -49,4 +49,5 @@ export const img = {
   pokemon: (id) => `/assets/pokemon/${id}.png`,
   item: (id) => `/assets/items/${id}.png`,
   type: (t) => `/assets/types/${t}.png`,
+  typeIcon: (t) => `/assets/types/icons/${t}.png`,      // 심볼만 (흰색, 투명 배경)
 }
