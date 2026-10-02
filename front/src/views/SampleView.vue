@@ -8,7 +8,7 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
-  CATEGORY_KO, NEUTRAL_NATURE, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_COLOR, TYPE_KO, calcStats,
+  CATEGORY_KO, NEUTRAL_NATURE, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_KO, calcStats,
   compareMoves, normNature,
   spText, spTotal, toId,
 } from '@/utils/pokemon'
@@ -361,8 +361,7 @@ const itemIdOf = (form) => toId(form.required_item)
                       @click="mCats = toggled(mCats, c)">{{ CATEGORY_KO[c] }}</button>
             </div>
             <button v-for="t in learnTypes" :key="t" class="ticon" :class="{ on: mTypes.includes(t) }" :title="TYPE_KO[t]"
-                    :style="{ backgroundImage: `url(${img.typeIcon(t)})`, backgroundColor: TYPE_COLOR[t] }"
-                    @click="mTypes = toggled(mTypes, t)" />
+                    @click="mTypes = toggled(mTypes, t)"><img :src="img.typeIcon(t)" :alt="TYPE_KO[t]"></button>
             <button v-if="mTypes.length || mCats.length" class="clear" @click="mTypes = []; mCats = []">초기화</button>
           </div>
           <div class="ltable">
@@ -512,11 +511,11 @@ const itemIdOf = (form) => toId(form.required_item)
 .catseg button { border: 0; height: 30px; padding: 0 12px; font-size: 12px; background: #fff; color: var(--c-text-3); }
 .catseg button + button { border-left: 1px solid var(--c-line-strong); }
 .catseg button.on { background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
-/* 타입 색 동그라미 + 가운데 흰 심볼 (assets/types/icons) */
-.ticon { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0;
-  background-size: 62%; background-position: center; background-repeat: no-repeat;
-  opacity: .45; transition: opacity .12s, box-shadow .12s; }
-.ticon:hover { opacity: .8; }
+/* 타입 아이콘 (assets/types/icons-color: 타입 색 정사각형 + 흰 심볼) */
+.ticon { flex: none; width: 30px; height: 30px; border-radius: 6px; border: 0; padding: 0; background: none; overflow: hidden;
+  opacity: .4; transition: opacity .12s, box-shadow .12s; }
+.ticon img { width: 100%; height: 100%; display: block; }
+.ticon:hover { opacity: .75; }
 .ticon.on { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c-text); }
 .mtags .clear { flex: none; border: 0; background: none; color: var(--c-primary); text-decoration: underline; font-size: 12px; padding: 0 4px; }
 .msearch { height: 36px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }

@@ -49,5 +49,5 @@ export const img = {
   pokemon: (id) => `/assets/pokemon/${id}.png`,
   item: (id) => `/assets/items/${id}.png`,
   type: (t) => `/assets/types/${t}.png`,
-  typeIcon: (t) => `/assets/types/icons/${t}.png`,      // 심볼만 (흰색, 투명 배경)
+  typeIcon: (t) => `/assets/types/icons-color/${t}.png`,   // 타입 색 정사각형 + 흰 심볼 (43x43, 직접 편집한 아이콘)
 }
