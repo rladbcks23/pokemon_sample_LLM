@@ -2,12 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
-import { useSettings } from '@/stores/settings'
 import PokemonImg from '@/components/PokemonImg.vue'
-import FormatToggle from '@/components/FormatToggle.vue'
 
-// 스피드 라인: 같은 스피드 실수치끼리 묶어 빠른 순으로 (픽률 상위 포켓몬, 실제로 쓰는 투자·보정만)
-const settings = useSettings()
+// 스피드 라인: 같은 스피드 실수치끼리 묶어 빠른 순으로 (싱글·더블 픽률 상위 포켓몬, 실제로 쓰는 투자·보정만)
 const router = useRouter()
 const TOPS = [30, 50, 100]
 const top = ref(50)
@@ -15,11 +12,11 @@ const data = ref(null)
 const error = ref('')
 const q = ref('')
 
-watch([() => settings.format, top], async ([fmt, n]) => {
+watch(top, async (n) => {
   data.value = null
   error.value = ''
   try {
-    data.value = await api.speed(fmt, n)
+    data.value = await api.speed(n)
   } catch (e) {
     error.value = e.message
   }
@@ -38,7 +35,6 @@ const rows = computed(() => {
 <template>
   <div class="tiers">
     <div class="controls">
-      <FormatToggle />
       <div class="seg">
         <span>픽률</span>
         <button v-for="n in TOPS" :key="n" :class="{ on: top === n }" @click="top = n">{{ n }}위까지</button>
@@ -53,20 +49,22 @@ const rows = computed(() => {
       <span><b>최속</b> 준속 × 1.1</span>
       <span><b>스카프·1랭크업</b> × 1.5</span>
       <span><b>2랭크업·쓱쓱 등</b> × 2</span>
-      <small>Lv50 · 사용률 데이터에서 실제로 쓰는 투자·도구·특성·기술만</small>
+      <small>Lv50 · 싱글·더블 사용률에서 실제로 쓰는 투자·도구·특성·기술만</small>
     </div>
 
     <p v-if="error" class="msg err">{{ error }}</p>
     <p v-else-if="!data" class="msg">불러오는 중…</p>
     <p v-else-if="!rows.length" class="msg">{{ q ? '검색 결과가 없습니다' : '사용률 데이터가 없습니다' }}</p>
-    <div v-else class="cols">
-      <div v-for="r in rows" :key="r.speed" class="row">
+    <div v-else class="list">
+      <div class="lhead mono"><span>순위</span><span>스피드</span><span>포켓몬 · 투자/보정</span></div>
+      <div v-for="(r, i) in rows" :key="r.speed" class="row">
+        <span class="no mono">{{ i + 1 }}</span>
         <strong class="spd mono">{{ r.speed }}</strong>
         <div class="ents">
           <div v-for="(e, i) in r.entries" :key="i" class="ent" :title="`${e.pokemon.name_ko} · 픽률 ${e.rank}위`"
                @click="router.push(`/pokemon/${e.pokemon.id}`)">
             <PokemonImg :id="e.pokemon.id" :size="44" />
-            <div class="txt"><span class="nm">{{ e.pokemon.name_ko }}</span><span class="lb">- {{ e.label }}</span></div>
+            <div class="txt"><span class="nm">{{ e.pokemon.name_ko }}</span><span class="lb">{{ e.label }}</span></div>
           </div>
         </div>
       </div>
@@ -87,16 +85,17 @@ const rows = computed(() => {
 .legend small { margin-left: auto; font-size: 11px; color: var(--c-muted); }
 .msg { color: var(--c-muted); }
 .err { color: var(--c-danger); }
-/* 두 단으로 위→아래, 왼쪽 단 다음 오른쪽 단 (사진처럼) */
-.cols { columns: 2; column-gap: 20px; }
-.row { break-inside: avoid; display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px;
-  border: 1px solid var(--c-line); border-radius: 8px; background: #fff; padding: 6px 12px; margin-bottom: 8px; }
-.spd { font-size: 24px; font-weight: 800; text-align: center; }
-.ents { display: flex; flex-direction: column; border-left: 1px solid var(--c-line-faint); }
-.ent { display: flex; align-items: center; gap: 8px; padding: 2px 8px; cursor: pointer; border-radius: 6px; }
-.ent + .ent { border-top: 1px solid var(--c-line-faint); }
-.ent:hover { background: var(--c-hover); }
-.txt { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
-.nm { font-size: 12px; color: var(--c-muted); }
-.lb { font-size: 14px; font-weight: 600; }
+/* 랭킹처럼 한 줄씩: 순위 · 스피드 · 그 스피드의 포켓몬들(가로로) */
+.list { border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; background: #fff; }
+.lhead, .row { display: grid; grid-template-columns: 56px 88px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 20px; }
+.lhead { background: var(--c-head); font-size: 12px; color: var(--c-muted); }
+.row { border-top: 1px solid var(--c-line-row); }
+.no { font-size: 14px; color: var(--c-muted); }
+.spd { font-size: 24px; font-weight: 800; }
+.ents { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.ent { display: flex; align-items: center; gap: 6px; padding: 2px 10px 2px 2px; cursor: pointer; border-radius: 8px; border: 1px solid var(--c-line-faint); }
+.ent:hover { background: var(--c-hover); border-color: var(--c-primary); }
+.txt { display: flex; flex-direction: column; min-width: 0; }
+.nm { font-size: 11px; color: var(--c-muted); }
+.lb { font-size: 13px; font-weight: 600; }
 </style>
