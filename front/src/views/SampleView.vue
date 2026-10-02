@@ -8,7 +8,8 @@ import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
 import { dex, loadDetail, loadDex, megaForm } from '@/utils/dex'
 import {
-  CATEGORY_KO, NEUTRAL_NATURE, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPE_KO, calcStats, compareMoves, normNature,
+  CATEGORY_KO, NEUTRAL_NATURE, SP_MAX_PER_STAT, SP_MAX_TOTAL, STATS, STAT_KO, TYPES, TYPE_COLOR, TYPE_KO, calcStats,
+  compareMoves, normNature,
   spText, spTotal, toId,
 } from '@/utils/pokemon'
 import PokemonImg from '@/components/PokemonImg.vue'
@@ -25,7 +26,9 @@ const settings = useSettings()
 const sample = ref(emptySample())
 const detail = ref(null)
 const moveSel = ref(null)
-const mq = ref('')            // 배울 수 있는 기술 검색
+const mq = ref('')            // 배울 수 있는 기술: 이름 검색
+const mTypes = ref([])        // 타입 태그 (여러 개 고르면 그중 하나)
+const mCats = ref([])         // 분류 태그 (물리·특수·변화)
 const checks = ref([])
 const usageOpen = ref(false)
 const usageTab = ref('move')
@@ -149,13 +152,17 @@ const actual = computed(() => (shown.value
 // ---------------------------------------------------------------- 기술
 // 타입 순서 → 분류(물리·특수·변화) → 위력
 const learn = computed(() => (detail.value?.learnset || []).slice().sort(compareMoves))
-// 기술 검색: 이름(한글/영문), 타입(한글), 분류(물리/특수/변화). 띄어 쓰면 모두 만족 (예: 드래곤 물리)
+// 기술 찾기: 이름은 검색창, 타입·분류는 태그로 고름 (태그끼리는 그중 하나, 타입과 분류는 둘 다 만족)
+const learnTypes = computed(() => TYPES.filter((t) => learn.value.some((m) => m.type === t)))  // 이 포켓몬이 배우는 타입만
+const toggled = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 const learnShown = computed(() => {
-  const words = mq.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  if (!words.length) return learn.value
-  return learn.value.filter((m) => words.every((k) => m.name_ko.toLowerCase().includes(k)
-    || m.name.toLowerCase().includes(k) || TYPE_KO[m.type].includes(k) || CATEGORY_KO[m.category] === k))
+  const k = mq.value.trim().toLowerCase()
+  return learn.value.filter((m) => (!k || m.name_ko.toLowerCase().includes(k) || m.name.toLowerCase().includes(k))
+    && (!mTypes.value.length || mTypes.value.includes(m.type))
+    && (!mCats.value.length || mCats.value.includes(m.category)))
 })
+// 포켓몬이 바뀌면 태그 초기화
+watch(() => sample.value.pokemon, () => { mTypes.value = []; mCats.value = []; mq.value = '' })
 const moveMap = computed(() => Object.fromEntries((detail.value?.learnset || []).map((m) => [m.id, m])))
 const moveHint = computed(() => (moveSel.value !== null
   ? `${moveSel.value + 1}번 칸 선택됨 · 아래에서 바꿀 기술을 누르세요`
@@ -346,7 +353,16 @@ const itemIdOf = (form) => toId(form.required_item)
 
         <div class="block">
           <div class="bh"><strong>배울 수 있는 기술</strong><span class="hint" :class="{ on: moveSel !== null }">{{ learnHint }}</span></div>
-          <input v-model="mq" class="msearch" placeholder="⌕ 기술 검색 (이름·타입·분류, 예: 지진 / 드래곤 / 물리 / 드래곤 물리)">
+          <input v-model="mq" class="msearch" placeholder="⌕ 기술 이름 검색">
+          <div v-if="learn.length" class="mtags">
+            <button v-for="c in ['Physical', 'Special', 'Status']" :key="c" class="tag cat" :class="{ on: mCats.includes(c) }"
+                    @click="mCats = toggled(mCats, c)">{{ CATEGORY_KO[c] }}</button>
+            <span class="sep" />
+            <button v-for="t in learnTypes" :key="t" class="tag" :class="{ on: mTypes.includes(t) }"
+                    :style="mTypes.includes(t) ? { background: TYPE_COLOR[t], borderColor: TYPE_COLOR[t] } : {}"
+                    @click="mTypes = toggled(mTypes, t)">{{ TYPE_KO[t] }}</button>
+            <button v-if="mTypes.length || mCats.length" class="tag clear" @click="mTypes = []; mCats = []">초기화</button>
+          </div>
           <div class="ltable">
             <div class="lrow head mono"><span>기술</span><span>타입</span><span>분류</span><span>위력</span><span>명중</span><span>PP</span></div>
             <div v-for="m in learnShown" :key="m.id" class="lrow" :class="{ picked: sample.moves.includes(m.id) }" @click="pickMove(m.id)">
@@ -358,7 +374,7 @@ const itemIdOf = (form) => toId(form.required_item)
               <span class="mono">{{ m.pp }}</span>
             </div>
             <p v-if="!learn.length" class="lempty">포켓몬을 선택하면 배울 수 있는 기술이 나옵니다</p>
-            <p v-else-if="!learnShown.length" class="lempty">"{{ mq }}"에 맞는 기술이 없습니다</p>
+            <p v-else-if="!learnShown.length" class="lempty">조건에 맞는 기술이 없습니다</p>
           </div>
         </div>
       </div>
@@ -489,6 +505,13 @@ const itemIdOf = (form) => toId(form.required_item)
 .act.minus { color: var(--c-primary); }
 .note { font-size: 11px; color: var(--c-faint); text-align: right; }
 .hint { font-size: 12px; color: var(--c-muted); }
+.mtags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.mtags .tag { height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--c-line-strong); background: #fff; font-size: 12px; color: var(--c-text-3); }
+.mtags .tag:hover { border-color: var(--c-primary); }
+.mtags .tag.on { color: #fff; font-weight: 600; }
+.mtags .tag.cat.on { background: var(--c-primary); border-color: var(--c-primary); }
+.mtags .tag.clear { border: 0; background: none; color: var(--c-primary); text-decoration: underline; padding: 0 4px; }
+.mtags .sep { width: 1px; height: 16px; background: var(--c-line-strong); margin: 0 4px; }
 .msearch { height: 36px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }
 .hint.on { color: var(--c-primary); }
 .ltable { border: 1px solid var(--c-line); border-radius: 8px; overflow: auto; max-height: 300px; }
