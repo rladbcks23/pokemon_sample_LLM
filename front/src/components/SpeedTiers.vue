@@ -6,7 +6,7 @@ import PokemonImg from '@/components/PokemonImg.vue'
 
 // 스피드 라인: 같은 스피드 실수치끼리 묶어 빠른 순으로 (싱글·더블 픽률 상위 포켓몬, 실제로 쓰는 투자·보정만)
 const router = useRouter()
-const TOPS = [30, 50, 100]
+const TOPS = [[50, '50위까지'], [100, '100위까지'], [300, '전체']]   // 300 = 순위에 있는 포켓몬 전부
 const top = ref(50)
 const data = ref(null)
 const error = ref('')
@@ -37,7 +37,7 @@ const rows = computed(() => {
     <div class="controls">
       <div class="seg">
         <span>픽률</span>
-        <button v-for="n in TOPS" :key="n" :class="{ on: top === n }" @click="top = n">{{ n }}위까지</button>
+        <button v-for="[n, label] in TOPS" :key="n" :class="{ on: top === n }" @click="top = n">{{ label }}</button>
       </div>
       <input v-model="q" class="search" placeholder="⌕ 포켓몬 검색">
     </div>
