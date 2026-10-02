@@ -34,8 +34,11 @@
 ## LLM (다음 단계)
 - 1단계: API 모델 + 도구 호출. 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
 - 서버는 Django와 분리 (`llm/`, FastAPI + SSE 예정). 파티 빌딩의 CoachChat이 여기에 붙는다
-- 3단계 LoRA 파인튜닝(Google Colab): 후보는 **Apache 2.0 한국어 모델만**
-  — `Qwen/Qwen3-8B`, `kakaocorp/kanana-1.5-8b-instruct-2505`, `skt/A.X-4.0-Light`
+- 3단계 LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0)로 정함
+  - 학습은 집 PC(RTX 3060 12GB, RAM 16GB)에서 WSL2 + Unsloth, bf16 LoRA(약 10GB)
+  - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가.
+    4B가 부족할 때만 시간제 GPU로 학습하고, 추론(4bit 약 6~7GB)은 집 PC에서 가능
+  - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
   - EXAONE 제외: 라이선스가 연구 목적 전용이라 무료 공개 서비스·외부 배포도 막힘
   - 파인튜닝은 사실 암기가 아니라 도구 호출 방식과 파티 판단을 가르치는 용도.
     데이터 후보: DB로 만든 합성 도구 호출 문답, 리플레이 선출·선봉, 대회·OP.GG 팀 완성
