@@ -1,15 +1,14 @@
 <script setup>
 import { useRouter } from 'vue-router'
 
-// 목록으로 돌아가기: 목록에서 들어왔으면 뒤로 가기(페이지·검색 그대로), 아니면 목록 첫 화면
+// 돌아가기: 이 앱 안의 이전 화면이 있으면 그리로(스피드표·목록의 페이지·검색 그대로), 없으면(주소로 바로 들어옴) to로
 const props = defineProps({
-  to: { type: String, required: true },     // 목록 주소 (예: /pokemon)
-  label: { type: String, default: '목록으로' },
+  to: { type: String, required: true },     // 이전 화면이 없을 때 갈 곳 (예: /pokemon)
+  label: { type: String, default: '돌아가기' },
 })
 const router = useRouter()
 function back() {
-  const prev = window.history.state?.back
-  if (prev && prev.split('?')[0] === props.to) router.back()
+  if (window.history.state?.back) router.back()
   else router.push(props.to)
 }
 </script>

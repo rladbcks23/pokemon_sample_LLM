@@ -68,7 +68,7 @@ function toBuilder() {
   <section v-else-if="!t" class="page"><p class="muted">불러오는 중…</p></section>
   <section v-else class="page">
     <div class="crumbbar">
-      <BackLink to="/teams" label="파티 샘플 목록으로" />
+      <BackLink to="/teams" />
       <div class="crumb"><RouterLink to="/teams">파티 샘플</RouterLink> / {{ t.title }}</div>
     </div>
     <div class="head">

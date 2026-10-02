@@ -104,7 +104,7 @@ function toSample() {
   <section v-else-if="!d" class="page"><p class="muted">불러오는 중…</p></section>
   <section v-else class="page">
     <div class="topbar">
-      <BackLink to="/pokemon" label="포켓몬 목록으로" />
+      <BackLink to="/pokemon" />
       <div class="crumb"><RouterLink to="/pokemon">포켓몬</RouterLink> / {{ d.name_ko }}</div>
     </div>
 
