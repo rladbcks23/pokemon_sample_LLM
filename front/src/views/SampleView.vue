@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { api } from '@/api'
+import { api, img } from '@/api'
 import { useBuilder } from '@/stores/builder'
 import { emptySample, useLibrary } from '@/stores/library'
 import { useSettings } from '@/stores/settings'
@@ -354,14 +354,16 @@ const itemIdOf = (form) => toId(form.required_item)
         <div class="block">
           <div class="bh"><strong>배울 수 있는 기술</strong><span class="hint" :class="{ on: moveSel !== null }">{{ learnHint }}</span></div>
           <input v-model="mq" class="msearch" placeholder="⌕ 기술 이름 검색">
+          <!-- 한 줄: 분류 버튼 + 타입 아이콘 (그 포켓몬이 배우는 타입만, 고르면 진하게) -->
           <div v-if="learn.length" class="mtags">
-            <button v-for="c in ['Physical', 'Special', 'Status']" :key="c" class="tag cat" :class="{ on: mCats.includes(c) }"
-                    @click="mCats = toggled(mCats, c)">{{ CATEGORY_KO[c] }}</button>
-            <span class="sep" />
-            <button v-for="t in learnTypes" :key="t" class="tag" :class="{ on: mTypes.includes(t) }"
-                    :style="mTypes.includes(t) ? { background: TYPE_COLOR[t], borderColor: TYPE_COLOR[t] } : {}"
-                    @click="mTypes = toggled(mTypes, t)">{{ TYPE_KO[t] }}</button>
-            <button v-if="mTypes.length || mCats.length" class="tag clear" @click="mTypes = []; mCats = []">초기화</button>
+            <div class="catseg">
+              <button v-for="c in ['Physical', 'Special', 'Status']" :key="c" :class="{ on: mCats.includes(c) }"
+                      @click="mCats = toggled(mCats, c)">{{ CATEGORY_KO[c] }}</button>
+            </div>
+            <button v-for="t in learnTypes" :key="t" class="ticon" :class="{ on: mTypes.includes(t) }" :title="TYPE_KO[t]"
+                    :style="{ backgroundImage: `url(${img.type(t)})`, '--tc': TYPE_COLOR[t] }"
+                    @click="mTypes = toggled(mTypes, t)" />
+            <button v-if="mTypes.length || mCats.length" class="clear" @click="mTypes = []; mCats = []">초기화</button>
           </div>
           <div class="ltable">
             <div class="lrow head mono"><span>기술</span><span>타입</span><span>분류</span><span>위력</span><span>명중</span><span>PP</span></div>
@@ -505,13 +507,18 @@ const itemIdOf = (form) => toId(form.required_item)
 .act.minus { color: var(--c-primary); }
 .note { font-size: 11px; color: var(--c-faint); text-align: right; }
 .hint { font-size: 12px; color: var(--c-muted); }
-.mtags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.mtags .tag { height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--c-line-strong); background: #fff; font-size: 12px; color: var(--c-text-3); }
-.mtags .tag:hover { border-color: var(--c-primary); }
-.mtags .tag.on { color: #fff; font-weight: 600; }
-.mtags .tag.cat.on { background: var(--c-primary); border-color: var(--c-primary); }
-.mtags .tag.clear { border: 0; background: none; color: var(--c-primary); text-decoration: underline; padding: 0 4px; }
-.mtags .sep { width: 1px; height: 16px; background: var(--c-line-strong); margin: 0 4px; }
+.mtags { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }   /* 보통 화면에선 한 줄, 좁으면 줄바꿈 */
+.catseg { display: flex; border: 1px solid var(--c-line-strong); border-radius: 6px; overflow: hidden; flex: none; margin-right: 6px; }
+.catseg button { border: 0; height: 30px; padding: 0 12px; font-size: 12px; background: #fff; color: var(--c-text-3); }
+.catseg button + button { border-left: 1px solid var(--c-line-strong); }
+.catseg button.on { background: var(--c-primary); color: #fbfbf9; font-weight: 600; }
+/* 타입 배지 그림(가로 3:1)의 왼쪽 아이콘 부분만 동그랗게 */
+.ticon { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; padding: 0;
+  background-color: var(--tc); background-size: 72px 24px; background-position: 2px center; background-repeat: no-repeat;
+  opacity: .35; filter: grayscale(.4); transition: opacity .12s, transform .12s; }
+.ticon:hover { opacity: .75; }
+.ticon.on { opacity: 1; filter: none; border-color: var(--c-text); transform: scale(1.08); }
+.mtags .clear { flex: none; border: 0; background: none; color: var(--c-primary); text-decoration: underline; font-size: 12px; padding: 0 4px; }
 .msearch { height: 36px; border: 1px solid var(--c-line-strong); border-radius: 6px; padding: 0 12px; font-size: 13px; }
 .hint.on { color: var(--c-primary); }
 .ltable { border: 1px solid var(--c-line); border-radius: 8px; overflow: auto; max-height: 300px; }
