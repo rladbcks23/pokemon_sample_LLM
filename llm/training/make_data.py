@@ -89,7 +89,7 @@ class Dex:
     @staticmethod
     def sample(m) -> dict:
         return {'pokemon': m.pokemon_key, 'item': m.item_key, 'ability': m.ability_key,
-                'nature': norm_nature(m.nature_key), 'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS},
+                'nature': norm_nature(m.nature_key), 'sp': {s: getattr(m, f'sp_{s}') for s in SP_STATS if getattr(m, f'sp_{s}')},
                 'moves': ([*m.moves, '', '', '', ''])[:4]}
 
     def ko(self, kind: str, key: str) -> str:
