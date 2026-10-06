@@ -444,10 +444,20 @@ class Command(BaseCommand):
         self.counts['리플레이 SP 채움 (같은 VGCPastes 팀)'] = f'{teams}팀 / {len(updated)}마리'
 
     def check_moves(self) -> None:
-        """배울 수 없는 기술이 있는 파티는 is_legal=False (예: 단애의칼을 든 액슬루미온). 목록에서 숨김."""
+        """배울 수 없는 기술이 있는 파티는 is_legal=False (예: 단애의칼을 든 액슬루미온). 목록에서 숨김.
+
+        OP.GG 샘플은 숨김 표시가 없으므로 지운다 (예: 사이드체인지를 든 메타그로스).
+        """
         learn = defaultdict(set)
         for rid, p, m in Learnset.objects.values_list('pokemon__ruleset_id', 'pokemon__showdown_id', 'move__showdown_id'):
             learn[(rid, p)].add(m)
+        drop = []
+        for s in PokemonSet.objects.filter(source='opgg_sample'):
+            illegal = [x for x in s.moves if x not in learn[(s.ruleset_id, s.pokemon_key)]]
+            if illegal:
+                drop.append(s.pk)
+                self.skipped[f'배울 수 없는 기술 → 샘플 제외 ({s.format_key} {s.pokemon_key})'] = ', '.join(illegal)
+        PokemonSet.objects.filter(pk__in=drop).delete()
         bad, ok = [], []
         for t in Team.objects.prefetch_related('members'):
             illegal = [f'{m.pokemon_key}:{x}' for m in t.members.all() for x in m.moves
