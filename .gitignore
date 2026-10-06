@@ -30,3 +30,7 @@ db.sqlite3
 
 # DB 확인 페이지 정적 파일 (assets/로 연결되는 링크, 자동 생성)
 back/ui/static
+
+# LLM 파인튜닝 결과물·학습 데이터 (llm/training)
+llm/training/outputs/
+llm/training/*.jsonl
