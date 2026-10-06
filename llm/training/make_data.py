@@ -18,26 +18,14 @@
 import argparse
 import asyncio
 import json
-import os
 import random
 import re
-import sys
 from collections import Counter
 from pathlib import Path
 
 LLM = Path(__file__).resolve().parents[1]
-ROOT = LLM.parent
-sys.path[:0] = [str(ROOT / 'back'), str(LLM)]
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = 'true'      # 도구(비동기) 안에서 Django 테스트 클라이언트를 바로 부름
-os.chdir(ROOT / 'back')
 
-import django  # noqa: E402
-
-django.setup()
-
-import httpx  # noqa: E402
-from django.test import Client  # noqa: E402
+from inproc_back import back_client  # noqa: E402  (Django 설정도 여기서)
 
 from agent.prompt import screen_context  # noqa: E402
 from agent.tools import ToolError, Tools  # noqa: E402
@@ -49,22 +37,6 @@ from apps.meta.models import SP_STATS, PokemonSet, Team  # noqa: E402
 
 FMT_KO = {'singles': '싱글', 'doubles': '더블'}
 KINDS = {'sample_top': 15, 'sample_item': 10, 'sample_usage': 15, 'fill': 40, 'fix_weak': 20}
-
-
-# ---------- back 연결 (프로세스 안에서) ----------
-
-_dj = Client(HTTP_HOST='localhost')
-
-
-def _handler(req: httpx.Request) -> httpx.Response:
-    path = req.url.raw_path.decode()
-    r = (_dj.post(path, data=req.content, content_type='application/json') if req.method == 'POST'
-         else _dj.get(path))
-    return httpx.Response(r.status_code, content=r.content, headers={'content-type': r.get('Content-Type', '')})
-
-
-def back_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.MockTransport(_handler), base_url='http://localhost/api/')
 
 
 # ---------- DB에서 재료 ----------
