@@ -29,9 +29,11 @@ CHART = {  # 공격 → 방어 → 배율 (테스트에 필요한 것만)
     'Ice': {'Dragon': 2, 'Ground': 2, 'Flying': 2},
     'Electric': {'Ground': 0, 'Water': 2, 'Flying': 2},
     'Fighting': {'Dark': 2},
+    'Fire': {'Dragon': 0.5, 'Water': 0.5},
 }
 OPTIONS = {'typechart': CHART, 'types': [{'id': 'Ice', 'name_ko': '얼음'}, {'id': 'Electric', 'name_ko': '전기'},
-                                         {'id': 'Fighting', 'name_ko': '격투'}]}
+                                         {'id': 'Fighting', 'name_ko': '격투'},
+                                         {'id': 'Fire', 'name_ko': '불꽃'}]}
 
 
 def back(request: httpx.Request) -> httpx.Response:
@@ -40,6 +42,14 @@ def back(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=POKEMON)
     if path == '/api/options/':
         return httpx.Response(200, json=OPTIONS)
+    if path == '/api/samples/':      # size만큼만 돌려줌
+        member = {'pokemon': {'name_ko': '한카리아스'}, 'item': {'name_ko': '생명의구슬'}, 'ability': {'name_ko': '까칠한피부'},
+                  'nature': {'name_ko': '명랑'}, 'sp': {'hp': 2, 'atk': 32, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 32},
+                  'moves': [{'name_ko': '지진'}, None]}
+        sample = {**SAMPLE, 'sp': member['sp']}
+        n = int(request.url.params['size'])
+        return httpx.Response(200, json={'results': [{'name': f'샘플{i}', 'source_label': 'OP.GG 샘플', 'sample': sample,
+                                                      'member': member} for i in range(n)]})
     if path == '/api/pokemon/nope/':
         return httpx.Response(404, json={'detail': 'nope: 이 레귤레이션에 없는 포켓몬'})
     if path == '/api/validate/':
@@ -145,6 +155,16 @@ class LoopTest(unittest.TestCase):
         self.assertEqual(out['by_attack_type']['얼음']['weak'], 1)       # 한카리아스 ×4, 메가갸라도스는 비행이 빠짐
         self.assertEqual(out['by_attack_type']['전기'], {'weak': 1, 'resist': 0, 'immune': 1})
         self.assertIn('얼음×4', out['members'][0]['weak_to'])
+        self.assertNotIn('불꽃', out['by_attack_type'])       # 반감뿐이고 약점 0마리인 타입은 뺌 (결과를 짧게)
+
+    def test_search_samples_short(self):
+        async def go():
+            async with client() as c:
+                return await Tools(c).run('search_samples', {'pokemon': '한카'})
+        out = asyncio.run(go())
+        self.assertEqual(len(out), 3)
+        self.assertEqual(out[0]['sample']['sp'], {'hp': 2, 'atk': 32, 'spe': 32})     # 0인 SP는 생략
+        self.assertEqual(out[0]['readable'], '한카리아스 @ 생명의구슬 / 까칠한피부 / 명랑 / SP hp2 atk32 spe32 / 지진')
 
     def test_propose_party_only_when_legal(self):
         bad = {**SAMPLE, 'moves': ['splash', 'earthquake', 'protect', 'roar']}

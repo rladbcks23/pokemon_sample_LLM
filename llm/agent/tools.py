@@ -47,7 +47,7 @@ TOOLS = [
     },
     {
         'name': 'search_samples',
-        'description': '공개 포켓몬 샘플(실제로 쓰인 육성형)을 찾는다. 결과의 sample은 propose_party에 그대로 넣을 수 있다.',
+        'description': '공개 포켓몬 샘플(실제로 쓰인 육성형)을 3개까지 찾는다. 결과의 sample은 propose_party에 그대로 넣을 수 있다.',
         'input_schema': {'type': 'object', 'properties': {
             'pokemon': {'type': 'string', 'description': '포켓몬 이름(한글/영문) 일부'}, 'format': FORMAT,
             'source': {'type': 'string', 'enum': ['opgg_sample', 'vgcpastes_team', 'opgg_team']}},
@@ -67,7 +67,7 @@ TOOLS = [
     },
     {
         'name': 'analyze_party',
-        'description': '파티의 방어 상성: 멤버별 타입과 18타입 공격에 대한 약점(×2 이상)·반감·무효 마리 수. '
+        'description': '파티의 방어 상성: 멤버별 타입·약점, 그리고 약점(×2 이상)이 1마리 이상인 공격 타입별 약점·반감·무효 마리 수. '
                        '메가스톤을 든 멤버는 메가 폼 타입으로 계산한다.',
         'input_schema': {'type': 'object', 'properties': {'members': {
             'type': 'array', 'items': {'type': 'object', 'properties': {
@@ -115,6 +115,11 @@ def _top(rows: list[dict], n: int, keys=('id', 'name_ko', 'pct')) -> list[dict]:
 
 def _sp_text(sp: dict) -> str:
     return ' '.join(f'{k}{v}' for k, v in sp.items() if v) or '없음'
+
+
+def compact_sample(s: dict) -> dict:
+    """모델에게 보여 줄 샘플: SP는 0이 아닌 것만 (도구 결과·화면 상황을 짧게. 빠진 SP는 0으로 읽힘)."""
+    return {**s, 'sp': {k: v for k, v in (s.get('sp') or {}).items() if v}}
 
 
 class Tools:
@@ -193,12 +198,12 @@ class Tools:
                            'name_ko': r['pokemon']['name_ko']} for r in d['items']]}
 
     async def tool_search_samples(self, pokemon: str, format: str | None = None, source: str | None = None) -> list[dict]:
-        d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source, 'size': 5})
+        d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source, 'size': 3})
         out = []
         for s in d['results']:
             m = s['member']
             out.append({
-                'name': s['name'], 'source': s['source_label'], 'sample': s['sample'],
+                'source': s['source_label'], 'sample': compact_sample(s['sample']),
                 'readable': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
                             f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
                             f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
@@ -242,11 +247,11 @@ class Tools:
             form = next((x for x in p['megas'] if x['item'] and x['item'] == m.get('item')), None) or p
             rows.append({'name_ko': form['name_ko'], 'types': form['types'],
                          'cells': {a: _mul(chart, a, form['types']) for a in chart}})
-        summary = {}
-        for a in chart:
+        summary = {}      # 약점이 1마리 이상인 타입만, 약점 많은 순 (결과를 짧게)
+        for a in sorted(chart, key=lambda a: -sum(r['cells'][a] > 1 for r in rows)):
             cnt = {'weak': sum(r['cells'][a] > 1 for r in rows), 'resist': sum(0 < r['cells'][a] < 1 for r in rows),
                    'immune': sum(r['cells'][a] == 0 for r in rows)}
-            if any(cnt.values()):
+            if cnt['weak']:
                 summary[type_ko.get(a, a)] = cnt
         return {
             'members': [{'name_ko': r['name_ko'], 'types': [type_ko.get(t, t) for t in r['types']],

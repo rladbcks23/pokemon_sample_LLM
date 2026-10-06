@@ -35,8 +35,9 @@ def screen_context(format: str, party: list[dict | None]) -> str:
     if members:
         lines.append(f'현재 파티 {len(members)}마리 (영문 ID):')
         for i, m in enumerate(members, 1):
-            lines.append(f"{i}. " + json.dumps({k: m.get(k) for k in ('pokemon', 'item', 'ability', 'nature', 'sp', 'moves')},
-                                                ensure_ascii=False))
+            s = {k: m.get(k) for k in ('pokemon', 'item', 'ability', 'nature', 'sp', 'moves')}
+            s['sp'] = {k: v for k, v in (s['sp'] or {}).items() if v}       # 0은 생략 (짧게)
+            lines.append(f"{i}. " + json.dumps(s, ensure_ascii=False))
     else:
         lines.append('현재 파티: 비어 있음')
     return '\n'.join(lines)
