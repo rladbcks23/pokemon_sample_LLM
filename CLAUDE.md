@@ -38,7 +38,8 @@
   - 테스트는 `llm`에서 `..\.venv\Scripts\python -m unittest` (모델·back은 가짜라 API 키·DB 없이 돈다)
 - 3단계 LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0)로 정함
   - 학습은 집 PC(RTX 3060 12GB, RAM 16GB)에서 WSL2 + Unsloth, bf16 LoRA(약 10GB)
-  - 노트북(RTX 4050 6GB)은 4bit QLoRA·길이 2048로 소량 데이터 동작 확인용. 본 학습은 집 PC나 Colab
+  - 노트북(RTX 4050 6GB)은 4bit QLoRA·길이 2048. 대화가 2048토큰 안이면 본 학습도 가능 (품질은 Colab과 같은 방식)
+  - 노트북은 GPU별로 따로: `llm/training/finetune_laptop`(4050)·`finetune_home`(3060)·`finetune_colab`(T4). 설정 셀만 다름
   - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가.
     4B가 부족할 때만 시간제 GPU로 학습하고, 추론(4bit 약 6~7GB)은 집 PC에서 가능
   - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
