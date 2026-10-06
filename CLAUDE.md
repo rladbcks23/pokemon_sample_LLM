@@ -47,7 +47,7 @@
   - 노트북은 GPU별로 따로: `llm/training/finetune_laptop`(4050)·`finetune_home`(3060)·`finetune_colab`(T4). 설정 셀만 다름
     - 집 PC(RTX 3060 12GB)·Colab(T4): 4bit QLoRA, 길이 8192 → 전부 학습
     - 노트북(RTX 4050 6GB): 4bit QLoRA, 길이 4096 → 샘플 대화만 들어감
-    - Colab은 `llm/training/pack_colab.py`로 만든 `colab_bundle.zip`(back 코드·DB·도구·학습 데이터) 하나만 올린다
+    - Colab은 `llm/training/pack_colab.py`로 만든 `colab_bundle.zip`(back 코드·DB·도구·학습 데이터)을 드라이브 `MyDrive/pokemon_coach/`에 두고, 체크포인트·어댑터도 거기 저장 (끊기면 이어서 학습)
     - 노트북 끝의 채팅방(gradio)은 `inproc_back.py`로 back을 프로세스 안에서 불러 실제 도구를 실행한다
   - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가
   - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
