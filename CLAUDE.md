@@ -32,18 +32,23 @@
 - 기술·특성·도구 한글 설명은 나무위키 기준(`scripts/collect_namuwiki.py`), 기술 이름은 최신 게임 이름
 
 ## LLM (다음 단계)
-- 1단계: API 모델 + 도구 호출. 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
+- **유료 API는 쓰지 않는다** (쓴 만큼 요금이 나가는 Claude API 등). 학습 데이터는 DB로 만들고, 코치 채팅도 로컬 Qwen으로 옮길 예정
+- 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
 - 서버는 Django와 분리 (`llm/`, FastAPI + SSE, 포트 8001). 파티 빌딩의 CoachChat이 `/llm/chat`에 붙어 있다
-  - 1단계 모델은 `claude-opus-5-5`(effort medium, `LLM_MODEL`/`LLM_EFFORT`로 변경). 도구는 `llm/agent/tools.py`
+  - 지금 provider는 Claude API(`llm/providers/claude.py`, 키가 있어야 동작). 로컬 Qwen provider로 바꿀 것. 도구는 `llm/agent/tools.py`
+  - 도구 결과는 짧게 유지한다 (로컬 4B 모델의 문맥 길이·학습 길이 때문). 샘플 검색 3개, SP는 0 생략, 상성은 약점 있는 타입만
   - 테스트는 `llm`에서 `..\.venv\Scripts\python -m unittest` (모델·back은 가짜라 API 키·DB 없이 돈다)
-- 3단계 LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0)로 정함
-  - 학습은 집 PC(RTX 3060 12GB, RAM 16GB)에서 WSL2 + Unsloth, bf16 LoRA(약 10GB)
-  - 노트북(RTX 4050 6GB)은 4bit QLoRA·길이 2048. 대화가 2048토큰 안이면 본 학습도 가능 (품질은 Colab과 같은 방식)
+- LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0). 이미지도 받는 모델이라 Unsloth `FastModel`로 불러온다
+  - 학습 데이터: `llm/training/make_data.py` (back을 프로세스 안에서 직접 불러 실제 도구 결과로 대화 생성, 서버 불필요)
+    - 1순위는 파티 빌딩·샘플 제작. 정답은 OP.GG 상위 파티·VGCPastes 대회 팀·OP.GG/대회 샘플
+    - Showdown 리플레이는 쓰지 않는다 (평균 레이팅 약 1100~1200, 인게임 메타와 다름)
+    - 답변 숫자는 도구 결과에 있는 것만 (없으면 버림). `train.jsonl`/`eval.jsonl`은 git 제외
+  - 길이: 시스템 프롬프트+도구 설명만 약 2,400토큰, 샘플 대화 약 3,100~4,500, 파티 빌딩 대화 약 5,500토큰
   - 노트북은 GPU별로 따로: `llm/training/finetune_laptop`(4050)·`finetune_home`(3060)·`finetune_colab`(T4). 설정 셀만 다름
-  - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가.
-    4B가 부족할 때만 시간제 GPU로 학습하고, 추론(4bit 약 6~7GB)은 집 PC에서 가능
+    - 집 PC(RTX 3060 12GB)·Colab(T4): 4bit QLoRA, 길이 8192 → 전부 학습
+    - 노트북(RTX 4050 6GB): 4bit QLoRA, 길이 4096 → 샘플 대화만 들어감
+  - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가
   - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
   - EXAONE 제외: 라이선스가 연구 목적 전용이라 무료 공개 서비스·외부 배포도 막힘
-  - 파인튜닝은 사실 암기가 아니라 도구 호출 방식과 파티 판단을 가르치는 용도.
-    데이터 후보: DB로 만든 합성 도구 호출 문답, 리플레이 선출·선봉, 대회·OP.GG 팀 완성
-- API 키는 `llm/.env`에 두고 git에 올리지 않는다
+  - 파인튜닝은 사실 암기가 아니라 도구 호출 방식과 파티 판단을 가르치는 용도
+- API 키·설정은 `llm/.env`에 두고 git에 올리지 않는다
