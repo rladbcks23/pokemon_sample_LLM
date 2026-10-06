@@ -34,3 +34,4 @@ back/ui/static
 # LLM 파인튜닝 결과물·학습 데이터 (llm/training)
 llm/training/outputs/
 llm/training/*.jsonl
+llm/training/*.zip
