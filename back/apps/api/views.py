@@ -423,20 +423,26 @@ def validate_set(request):
                          'stats': None})
     base_p = Pokemon.objects.get(ruleset=rs, showdown_id=to_id(p.base_species)) if p.is_mega else p
 
-    abilities = {pa.ability.showdown_id: pa.ability for pa in base_p.ability_slots.select_related('ability')}
-    ability = body.get('ability') or ''
-    if not ability:
-        add('warn', '특성이 비어 있음')
-    elif ability not in abilities:
-        add('error', f'{base_p.name_ko}은(는) 이 특성을 가질 수 없음')
-
     item_key = body.get('item') or ''
     item = Item.objects.filter(ruleset=rs, showdown_id=item_key).first() if item_key else None
+    # 자기 메가스톤을 들었으면 메가 폼 특성도 허용 (OP.GG 샘플은 메가진화 후 특성으로 기록됨)
+    mega = item and item.mega_to and to_id(item.mega_from) == base_p.showdown_id and \
+        Pokemon.objects.filter(ruleset=rs, showdown_id=to_id(item.mega_to)).first()
+    mega_ab = (mega_ability(mega) or {}).get('id') if mega else None
+
+    abilities = {pa.ability.showdown_id: pa.ability for pa in base_p.ability_slots.select_related('ability')}
+    ability = body.get('ability') or ''
+    ability_ok = ability in abilities or ability == mega_ab
+    if not ability:
+        add('warn', '특성이 비어 있음')
+    elif not ability_ok:
+        add('error', f'{base_p.name_ko}은(는) 이 특성을 가질 수 없음')
+
     if item_key and not item:
         add('error', '이 레귤레이션에서 쓸 수 없는 도구')
     elif item and item.mega_from and to_id(item.mega_from) != base_p.showdown_id:
         add('error', f'{item.name_ko}은(는) {base_p.name_ko}의 메가스톤이 아님')
-    if not ability or ability in abilities:
+    if not ability or ability_ok:
         if not checks or all(c['level'] != 'error' for c in checks):
             add('ok', '특성 · 도구 조합 합법')
 

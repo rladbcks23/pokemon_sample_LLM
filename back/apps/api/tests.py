@@ -26,10 +26,12 @@ class ApiTests(APITestCase):
         rs = cls.rs = Ruleset.objects.create(id='champions_mc', name='Regulation M-C', showdown_mod='champions',
                                             start_date=date(2026, 9, 9))
         g = mon(rs, 'garchomp', 'Garchomp', '한카리아스', ['Dragon', 'Ground'], (108, 130, 95, 80, 85, 102))
-        mon(rs, 'garchompmegaz', 'Garchomp-Mega-Z', '한카리아스-메가Z', ['Dragon'], (108, 130, 85, 141, 85, 151),
-            base='Garchomp', forme='Mega-Z', is_mega=True, required_item='Garchompite Z')
+        gz = mon(rs, 'garchompmegaz', 'Garchomp-Mega-Z', '한카리아스-메가Z', ['Dragon'], (108, 130, 85, 141, 85, 151),
+                 base='Garchomp', forme='Mega-Z', is_mega=True, required_item='Garchompite Z')
         rough = Ability.objects.create(ruleset=rs, showdown_id='roughskin', name='Rough Skin', name_ko='까칠한피부')
         PokemonAbility.objects.create(pokemon=g, ability=rough, slot='H')
+        lev = Ability.objects.create(ruleset=rs, showdown_id='levitate', name='Levitate', name_ko='부유')
+        PokemonAbility.objects.create(pokemon=gz, ability=lev, slot='0')
         eq = Move.objects.create(ruleset=rs, showdown_id='earthquake', name='Earthquake', name_ko='지진',
                                  type='Ground', category='Physical', power=100, accuracy=100, pp=10,
                                  target='allAdjacent')
@@ -110,3 +112,15 @@ class ApiTests(APITestCase):
                   if c['level'] == 'error']
         self.assertIn('팬텀나이트은(는) 한카리아스의 메가스톤이 아님', errors)
         self.assertIn('공격 SP 33: 스탯당 0~32', errors)
+
+    def test_validate_mega_ability(self):
+        """메가스톤을 들면 메가 폼 특성(OP.GG 샘플 기록 방식)도 합법, 메가스톤이 없으면 오류."""
+        s = {'pokemon': 'garchomp', 'item': 'garchompitez', 'ability': 'levitate', 'nature': 'jolly',
+             'sp': {'hp': 2, 'atk': 32, 'spe': 32}, 'moves': ['earthquake']}
+
+        def errors(body):
+            return [c['message'] for c in self.client.post('/api/validate/', body, format='json').json()['checks']
+                    if c['level'] == 'error']
+        self.assertEqual(errors(s), ['기술 칸 3개가 비어 있음'])
+        self.assertIn('한카리아스은(는) 이 특성을 가질 수 없음', errors({**s, 'item': ''}))
+        self.assertIn('한카리아스은(는) 이 특성을 가질 수 없음', errors({**s, 'item': 'gengarite'}))
