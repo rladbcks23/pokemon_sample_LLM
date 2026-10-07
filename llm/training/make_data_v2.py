@@ -172,7 +172,7 @@ class Dialogue:
 
     def answer(self, text: str, derived: list | None = None) -> None:
         """derived: 도구 결과에서 계산한 숫자 (예: 메가 종족값 변화 +50). 근거 검사에서 허용."""
-        self.turns[-1]['final'] = text.strip()
+        self.turns[-1]['final'] = text.replace('**', '').strip()       # 채팅창은 글자 그대로 보여 줌 (굵게 X)
         self.turns[-1]['derived'] = [str(x) for x in derived or []]
 
     def records(self) -> list[list[dict]]:
@@ -939,31 +939,44 @@ def clip(v, n=260) -> str:
     return s if len(s) <= n else s[:n] + ' …'
 
 
-def to_markdown(rows: list[dict]) -> str:
-    out = ['# 파인튜닝 데이터 v2 검수용\n',
-           '각 대화의 **코치 답변**이 원하는 행동인지 봐 주세요. 도구 결과는 앞부분만 보입니다 (전체는 review.jsonl).\n']
+def quote(text: str) -> str:
+    """채팅 말풍선처럼: 인용 블록, 줄바꿈 그대로."""
+    return '\n'.join('> ' + (line + '  ' if line else '') for line in text.split('\n'))
+
+
+def to_markdown(rows: list[dict], tools: bool = False) -> str:
+    """검수용. tools=False면 채팅창처럼 질문·답변·추천 파티만, True면 도구 호출 과정도."""
+    out = ['# 파인튜닝 데이터 v2 검수용' + (' (도구 과정 포함)' if tools else '') + '\n',
+           '도구 호출과 결과 앞부분까지 보입니다 (전체는 review.jsonl).\n' if tools else
+           '실제 채팅창처럼 질문과 코치 답변만 보입니다. 도구 과정은 review_tools.md에 있어요.\n']
     for r in rows:
         c = r['auto_checks']
-        mark = '✅' if c['ok'] else '⚠'
-        out.append(f"\n---\n\n## {r['id']} · {r['scenario']} · {FORMAT_KO[r['format']]} {mark}\n")
-        out.append(f"- 행동: {', '.join(r['behaviors'])}\n- 묶음: `{r['group']}`  원본: `{json.dumps(r['sources'], ensure_ascii=False)}`")
-        fixed = r['conditions'].get('fixed')
-        if fixed:
-            out.append('- 고정 멤버: ' + ', '.join(short(m) for m in fixed))
+        mark = '' if c['ok'] else ' ⚠'
+        user_q = ' · 주신 질문' if r['group'].startswith('user:') else ''
+        out.append(f"\n---\n\n## {r['id']} · {r['scenario']} · {FORMAT_KO[r['format']]}{user_q}{mark}\n")
+        if tools:
+            out.append(f"- 행동: {', '.join(r['behaviors'])}\n"
+                       f"- 묶음: `{r['group']}`  원본: `{json.dumps(r['sources'], ensure_ascii=False)}`")
         problems = [k for k in ('fixed_kept', 'no_duplicates', 'excluded_respected', 'mega_stones_le_2') if not c[k]]
         if c['tool_errors'] or c['ungrounded_numbers'] or problems or c['odd_samples']:
             out.append(f"- 자동 검사 문제: {problems} 도구 오류 {c['tool_errors']} 근거 없는 숫자 {c['ungrounded_numbers']}"
                        f" 이상한 샘플 {c['odd_samples']}")
-        for k, t in enumerate(r['turns'], 1):
-            party = ', '.join(short(m) for m in t['party']) or '비어 있음'
-            out.append(f"\n### 턴 {k}\n**사용자**: {t['user']}  \n<sub>화면 파티: {party}</sub>\n")
-            for s in t['steps']:
-                if s.get('tool_calls'):
-                    f = s['tool_calls'][0]['function']
-                    out.append(f"- 🔧 `{f['name']}` {clip(f['arguments'], 160)}")
-                else:
-                    out.append(f"  - ↳ {clip(s['content'])}")
-            out.append(f"\n**코치**:\n\n{t['final']}\n")
+        first = ', '.join(short(m) for m in r['turns'][0]['party']) or '비어 있음'
+        out.append(f"<sub>화면 파티: {first}</sub>\n")
+        for t in r['turns']:
+            out.append(f"**🧑 사용자**: {t['user']}\n")
+            if tools:
+                for s_ in t['steps']:
+                    if s_.get('tool_calls'):
+                        f = s_['tool_calls'][0]['function']
+                        out.append(f"- 🔧 `{f['name']}` {clip(f['arguments'], 160)}")
+                    else:
+                        out.append(f"  - ↳ {clip(s_['content'])}")
+                out.append('')
+            out.append('**🤖 코치**\n\n' + quote(t['final']))
+            if t['proposed']:
+                out.append('>\n> 📋 추천 파티 카드: ' + ', '.join(DEX.ko('pokemon', m['pokemon']) for m in t['proposed']))
+            out.append('')
     return '\n'.join(out)
 
 
@@ -983,6 +996,7 @@ def main():
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + '\n')
     (OUT / 'review.md').write_text(to_markdown(rows), encoding='utf-8')
+    (OUT / 'review_tools.md').write_text(to_markdown(rows, tools=True), encoding='utf-8')
     print(f"대화 {len(rows)}개 (자동 검사 통과 {sum(r['auto_checks']['ok'] for r in rows)}) → {OUT / 'review.md'}")
     print(Counter(r['scenario'] for r in rows))
 
