@@ -113,6 +113,10 @@ const MANUAL_KO = {
 	auraguard: '파동의방호', eelevate: '천정부지', firemane: '불꽃의갈기', // 특성
 	leek: '대파', // 도구
 };
+// PokeAPI 한국어 이름이 틀린 항목 (PokeAPI보다 우선)
+const FIX_KO = {
+	floettite: '플라엣테나이트', // PokeAPI는 '플라베베나이트'
+};
 
 // 메가 폼 한글 이름: 메가 + 포켓몬 + X/Y/Z (메가망나뇽, 메가리자몽Y, 메가냐오닉스(수컷))
 const MEGA_SUFFIX = { 'Mega': '', 'Mega-X': 'X', 'Mega-Y': 'Y', 'Mega-Z': 'Z', 'M-Mega': '(수컷)', 'F-Mega': '(암컷)' };
@@ -218,7 +222,7 @@ function isLegalSpecies(species) {
 	write('items.csv', items.map(i => ({
 		id: i.id,
 		name: i.name,
-		name_ko: koItem.get(i.id) || MANUAL_KO[i.id] || '',
+		name_ko: FIX_KO[i.id] || koItem.get(i.id) || MANUAL_KO[i.id] || '',
 		// 최신 Showdown은 megaStone이 {기본종: 메가폼} 객체 (예전엔 문자열 + megaEvolves)
 		mega_from: (i.megaStone && typeof i.megaStone === 'object' ? Object.keys(i.megaStone)[0] : i.megaEvolves) || '',
 		mega_to: (i.megaStone && typeof i.megaStone === 'object' ? Object.values(i.megaStone)[0] : i.megaStone) || '',
