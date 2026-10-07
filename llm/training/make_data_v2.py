@@ -37,7 +37,7 @@ from agent.prompt import FORMAT_KO, screen_context  # noqa: E402
 from agent.tools import ToolError, Tools, compact_sample  # noqa: E402
 from apps.api.common import names  # noqa: E402
 from apps.api.party import WASTED_SP, party_check  # noqa: E402
-from apps.api.views import norm_nature, rank_board  # noqa: E402
+from apps.api.views import norm_nature, rank_board, shown_key  # noqa: E402
 from apps.dex.models import Ruleset  # noqa: E402
 from apps.meta.models import SP_STATS, PokemonSet, Team  # noqa: E402
 
@@ -137,8 +137,8 @@ def user_party(qid: str) -> tuple[str, list[dict], list[int]]:
 class Dialogue:
     """여러 턴 대화. 턴마다 [화면] 상황 + 질문 → 도구 호출 → 최종 답변. 서버와 같게 지난 턴은 글만 남는다."""
 
-    def __init__(self, tools: Tools, fmt: str, scenario: str, behaviors: list[str]):
-        self.tools, self.fmt = tools, fmt
+    def __init__(self, tools: Tools, fmt: str, scenario: str, behaviors: list[str], rng=None):
+        self.tools, self.fmt, self.rng = tools, fmt, rng or random.Random(0)
         self.meta = {'scenario': scenario, 'behaviors': behaviors, 'format': fmt, 'conditions': {}, 'sources': {}}
         self.turns: list[dict] = []
         self.tool_errors: list[str] = []
@@ -363,8 +363,14 @@ def pick_core(party: list[dict], fmt: str) -> dict:
 
 
 def short(s: dict) -> str:
-    """답변용 짧은 표기: 이름 @ 도구 (육성형 전체는 추천 카드에)."""
-    return f"{DEX.ko('pokemon', s['pokemon'])} @ {DEX.ko('item', s['item']) if s.get('item') else '-'}"
+    """답변용 짧은 표기: 이름 @ 도구. 메가스톤을 들면 메가 폼 이름 (육성형 전체는 추천 카드에)."""
+    shown = shown_key(DEX.rid, s['pokemon'], s.get('item', ''))
+    return f"{DEX.ko('pokemon', shown)} @ {DEX.ko('item', s['item']) if s.get('item') else '-'}"
+
+
+def sp_of(check: dict, key: str) -> str:
+    """check_party 결과의 SP 분배 (예: H2 C32 S32)."""
+    return next((m['sp'] for m in check['members'] if m['pokemon'] == key), '')
 
 
 # ---------------------------------------------------------------- 시나리오
@@ -432,7 +438,8 @@ async def fill_one(rng, tools, fmt, party, question, src):
     if ranking:
         text += f"({josa(core_ko, '과', '와')} 같이 쓰인 포켓몬 중엔 없어서 픽률 상위 30마리에서 찾음)\n"
     text += (f"\n{cand_line(a, after_a, base, core_ko, partners, fmt)}\n{cand_line(b, after_b, base, core_ko, partners, fmt)}\n"
-             f"\n→ **{short(a['sample']['sample'])}** 추천 (화면에 띄움). {why_pick(a, b)}요.".replace('서요.', '서예요.'))
+             f"\n→ **{short(a['sample']['sample'])}** ({sp_of(after_a, a['sample']['sample']['pokemon'])}) 추천 (화면에 띄움). "
+             f"{why_pick(a, b)}요.".replace('서요.', '서예요.'))
     if other_warnings(after_a):
         text += '\n주의: ' + '; '.join(other_warnings(after_a))
     if not ranking and partners['teams'] < 10:
@@ -488,7 +495,7 @@ async def fill_one(rng, tools, fmt, party, question, src):
     await d.call('propose_party', members=party + [c['sample']['sample']])
     lead = (f"{josa(role, '을', '를')} 빼면 {need}는 채울 수 없어서, 대신 상성을 보완하는 쪽으로 봤어요.\n"
             if drop_need else f"{josa(role, '을', '를')} 빼고 다시 보면:\n")
-    text = (lead + f"→ **{short(c['sample']['sample'])}** 추천 (화면에 띄움)\n"
+    text = (lead + f"→ **{short(c['sample']['sample'])}** ({sp_of(after_c, c['sample']['sample']['pokemon'])}) 추천 (화면에 띄움)\n"
             f"{cand_line(c, after_c, base, core_ko, partners, fmt)}")
     if other_warnings(after_c):
         text += '\n주의: ' + '; '.join(other_warnings(after_c))
@@ -533,12 +540,13 @@ def assemble(fixed: list[dict], team: dict) -> list[dict]:
 
 
 def party_lines(check: dict, members: list[dict]) -> str:
-    return '\n'.join(f"- {short(m)} — {role_of(check, m['pokemon'])}" for m in members)
+    """추천 멤버: 이름 @ 도구 (SP 분배). 역할·기술은 추천 카드를 누르면 보임."""
+    return '\n'.join(f"- {short(m)} ({sp_of(check, m['pokemon'])})" for m in members)
 
 
 def party_tail(check: dict) -> str:
     s = check['summary']
-    text = f"구성: {roles_text(s)} / 메가스톤 {s['mega_stones']}개"
+    text = f"구성: {roles_text(s)} / 메가진화 포켓몬 {s['mega_pokemon']}마리"
     if other_warnings(check):
         text += '\n주의: ' + '; '.join(other_warnings(check))
     return text
@@ -600,6 +608,20 @@ async def follow_item(d: Dialogue, party: list[dict], core: dict):
     if skipped:
         text += '\n(' + ', '.join(f"{x['name_ko']}는 {josa(taken[x['id']], '이', '가')} 들고 있어서 제외" for x in skipped) + ')'
     d.answer(text)
+    if not pick:
+        return
+    # 후속: 추천한 도구도 싫다고 하면 다음 후보로 이어 가기
+    d.ask(d.rng.choice([f"{pick['name_ko']} 말고 다른 거 없어?", '다른 템으로 바꾸고 싶어', f"{pick['name_ko']}는 별로야"]), party)
+    info = await d.call('get_pokemon', id=core['pokemon'])
+    items = (info.get('usage') or {}).get('item', [])
+    nxt = next((x for x in items if x['id'] not in (core['item'], pick['id']) and x['id'] not in taken
+                and not DEX.is_stone(x['id'])), None)
+    if not nxt:
+        d.answer(f"{pick['name_ko']} 말고는 사용률 데이터에서 다른 멤버와 안 겹치는 도구가 더 없어요. "
+                 "다른 멤버의 도구를 바꾸는 것까지 같이 볼까요?")
+        return
+    d.answer(f"{pick['name_ko']} 말고 다른 템으로 바꾸고 싶다면 **{nxt['name_ko']}**({nxt['pct']}%)가 다음이에요. "
+             "이것도 지금 파티의 다른 멤버와 안 겹쳐요.")
 
 
 async def follow_best(d: Dialogue, party: list[dict], core: dict):
@@ -675,10 +697,10 @@ async def fill_moves(rng, tools, fmt, party, target_idx, question, src):
     down = [k for k, v in delta.items() if v < 0]
     abil = ', '.join(a['name_ko'] for a in mega['abilities'])
     stone_ko, cur_ko = DEX.ko('item', stone), DEX.ko('item', target['item'])
-    megas = check2['summary']['mega_stones']
+    megas = check2['summary']['mega_pokemon']
     pros = [f"{'·'.join(up)} 상승" if up else None, f"특성 {abil}"]
     cons = [f"{'·'.join(down)} 하락" if down else None, f"{josa(cur_ko, '을', '를')} 못 듦",
-            f"메가스톤 {megas}개 → 선출 제한" if megas > 2 else None]
+            f"메가진화 포켓몬 {megas}마리 → 선출 제한" if megas > 2 else None]
     use = (f"사용률: {stone_ko} {items[stone]}%" if stone in items else f"사용률 상위 6개에 {josa(stone_ko, '은', '는')} 없음")
     use += f", {cur_ko} {items[target['item']]}%" if target['item'] in items else ''
     text = (f"메가진화 변화: {diff}\n- 장점: {', '.join(x for x in pros if x)}\n- 단점: {', '.join(x for x in cons if x)}\n"
@@ -686,7 +708,7 @@ async def fill_moves(rng, tools, fmt, party, target_idx, question, src):
     if megas > 2:
         text += f"이미 메가가 {megas - 1}마리라 지금 파티에서는 **일반 {name} + {cur_ko}**를 추천해요."
     elif stone in items and target['item'] in items and items[stone] > items[target['item']]:
-        text += f"메가스톤이 {megas}개라 부담이 없고 사용률도 메가 쪽이 높아서 **메가 {name}**도 좋아요."
+        text += f"메가진화 포켓몬이 {megas}마리라 부담이 없고 사용률도 메가 쪽이 높아서 **메가 {name}**도 좋아요."
     else:
         text += f"사용률은 일반 쪽이 높아서, 특별한 이유가 없으면 **일반 {name}**가 무난해요."
     d.answer(text, derived=[abs(v) for v in delta.values()] + [megas - 1])
@@ -729,9 +751,16 @@ async def fill_rest(rng, tools, fmt, fixed, question, src):
     lines = []
     for x in th['threats'][:3]:
         types = list(dict.fromkeys(re.findall(r'\((\S+) ×', ' '.join(x['targets']))))
-        lines.append(f"- {x['name_ko']} (픽률 {x['rank']}위) — {x['hits']}마리, {'·'.join(types)} 공격")
-    d.answer(f"픽률 상위 {th['checked_top']}마리 중 많이 쓰는 기술로 우리 파티 {th['need_hits']}마리 이상을 찌르는 포켓몬이에요.\n"
-             + '\n'.join(lines) + '\n(특성에 의한 무효·대미지 크기는 반영 안 함)')
+        line = f"- {x['name_ko']} (픽률 {x['rank']}위) — {x['hits']}마리, {'·'.join(types)} 공격"
+        rare = [re.match(r'\S+←(.+?) (\d+(?:\.\d+)?)%\((\S+) ×', t) for t in x.get('sometimes', [])]
+        rare = list(dict.fromkeys(f"{m.group(1)} {m.group(2)}%" for m in rare if m))
+        if rare:
+            line += f"\n  가끔: {', '.join(rare)}"
+        lines.append(line)
+    d.answer(f"픽률 상위 {th['checked_top']}마리 중 자주 쓰는 기술로 우리 파티 {th['need_hits']}마리 이상을 찌르는 포켓몬이에요.\n"
+             + '\n'.join(lines) + '\n(기술 사용률 10% 이상만 셈'
+             + (', "가끔"은 그보다 드물게 쓰는 기술' if any('가끔' in x for x in lines) else '')
+             + '. 특성에 의한 무효·대미지 크기는 반영 안 함)')
     return d
 
 
