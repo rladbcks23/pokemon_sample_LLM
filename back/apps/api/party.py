@@ -128,6 +128,9 @@ def party_check(rid: str, members: list[dict]) -> dict:
     profiles = [defense_profile(p['_types']) for p in profs]
     weak = {TYPE_KO[a]: sum(x[a] > 1 for x in profiles) for a in TYPES}
     weak = dict(sorted(((k, v) for k, v in weak.items() if v >= 2), key=lambda kv: -kv[1]))   # 2마리 이상만 (짧게)
+    # 겹치는 약점마다 그 공격을 반감·무효로 받아 줄 멤버 (없으면 빈 목록)
+    ko2en = {v: k for k, v in TYPE_KO.items()}
+    cover = {t: [p['name_ko'] for p, x in zip(profs, profiles) if x[ko2en[t]] < 1] for t in weak}
     if weak and max(weak.values()) >= 3:
         warnings.append('약점 3마리 이상: ' + ', '.join(f'{k} {v}마리' for k, v in weak.items() if v >= 3))
     for p in profs:
@@ -136,7 +139,7 @@ def party_check(rid: str, members: list[dict]) -> dict:
         'members': profs,
         'summary': {
             'roles': dict(role_count), 'physical_attackers': phys, 'special_attackers': spec, 'mega_stones': megas,
-            'weak_types_2plus': weak,
+            'weak_types_2plus': weak, 'weak_cover': cover,
         },
         'warnings': warnings,
     }
