@@ -39,3 +39,4 @@ llm/training/*.zip
 # Colab 묶음을 푼 폴더, Unsloth가 학습 중 만드는 캐시
 llm/training/colab_bundle/
 unsloth_compiled_cache/
+llm/training/data_v2/
