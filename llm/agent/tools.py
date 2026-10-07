@@ -1,128 +1,61 @@
 """에이전트 도구: back API를 불러 사실(종족값·기술·사용률·파티)을 조회한다.
 
-도구 결과는 모델이 읽을 만큼만 줄여서 돌려준다 (배우는 기술 전체 같은 긴 목록은 요청할 때만).
+도구 설명·결과는 짧게 유지한다 (로컬 4B 모델의 문맥 길이·학습 길이 때문). 배우는 기술 전체 같은 긴 목록은 요청할 때만.
 """
 import json
 
 import httpx
 
 STATS = ('hp', 'atk', 'def', 'spa', 'spd', 'spe')
-FORMAT = {'type': 'string', 'enum': ['singles', 'doubles'], 'description': '생략하면 지금 화면의 싱글/더블'}
-MEMBER = {'type': 'object', 'properties': {'pokemon': {'type': 'string'}, 'item': {'type': 'string'}}, 'required': ['pokemon']}
+STR = {'type': 'string'}
+INT = {'type': 'integer'}
+FORMAT = {'type': 'string', 'enum': ['singles', 'doubles']}      # 생략하면 화면의 포맷 (시스템 프롬프트에 적음)
+MEMBER = {'type': 'object', 'properties': {'pokemon': STR, 'item': STR}, 'required': ['pokemon']}
 SAMPLE = {
     'type': 'object',
-    'description': '육성형. 모든 값은 영문 ID (도구 결과에 나온 id)',
-    'properties': {
-        'pokemon': {'type': 'string', 'description': '메가진화 전 폼 ID (메가는 메가스톤을 item에)'},
-        'item': {'type': 'string'},
-        'ability': {'type': 'string'},
-        'nature': {'type': 'string'},
-        'sp': {'type': 'object', 'description': 'hp/atk/def/spa/spd/spe. 능력치마다 0~32, 합계 66',
-               'properties': {s: {'type': 'integer'} for s in STATS}},
-        'moves': {'type': 'array', 'items': {'type': 'string'}, 'description': '기술 4개'},
-    },
+    'description': '육성형(영문 ID). 메가는 메가 전 폼+메가스톤. sp는 hp~spe 각 0~32·합 66, moves 4개',
+    'properties': {'pokemon': STR, 'item': STR, 'ability': STR, 'nature': STR, 'sp': {'type': 'object'},
+                   'moves': {'type': 'array', 'items': STR}},
     'required': ['pokemon', 'item', 'ability', 'nature', 'sp', 'moves'],
 }
 
+
+def _tool(name: str, description: str, properties: dict, required: tuple = ()) -> dict:
+    return {'name': name, 'description': description,
+            'input_schema': {'type': 'object', 'properties': properties, **({'required': list(required)} if required else {})}}
+
+
 TOOLS = [
-    {
-        'name': 'search_pokemon',
-        'description': '포켓몬을 이름(한글/영문) 일부로 찾는다. ID·타입·종족값·픽률 순위·메가 폼을 돌려준다. '
-                       '다른 도구에 넣을 포켓몬 ID를 모를 때 먼저 쓴다.',
-        'input_schema': {'type': 'object', 'properties': {'query': {'type': 'string'}, 'format': FORMAT},
-                         'required': ['query']},
-    },
-    {
-        'name': 'get_pokemon',
-        'description': '포켓몬 상세: 폼(기본·메가)별 타입·종족값·특성, 싱글/더블 사용률 상위(기술·도구·특성·성격·SP 배분). '
-                       'include_learnset=true면 배울 수 있는 기술 전체도 준다 (샘플을 새로 짤 때만).',
-        'input_schema': {'type': 'object', 'properties': {
-            'id': {'type': 'string', 'description': '포켓몬 ID (search_pokemon 결과의 id)'},
-            'format': FORMAT, 'include_learnset': {'type': 'boolean'}}, 'required': ['id']},
-    },
-    {
-        'name': 'get_ranking',
-        'description': '인게임 픽률 순위와 직전 스냅샷 대비 변동. 메타에서 많이 쓰이는 포켓몬을 볼 때.',
-        'input_schema': {'type': 'object', 'properties': {
-            'format': FORMAT, 'limit': {'type': 'integer', 'description': '기본 30'}}},
-    },
-    {
-        'name': 'search_samples',
-        'description': '공개 포켓몬 샘플(실제로 쓰인 육성형)을 3개까지 찾는다. 샘플마다 역할(SP 분배·기술로 판정)이 있고, '
-                       'shapes는 그 포켓몬 샘플 전체의 형태 분포(예: 막이형 9·딜러형 6). role로 원하는 형태만 찾을 수 있다. '
-                       '결과의 sample은 propose_party에 그대로 넣을 수 있다.',
-        'input_schema': {'type': 'object', 'properties': {
-            'pokemon': {'type': 'string', 'description': '포켓몬 이름(한글/영문) 일부'}, 'format': FORMAT,
-            'source': {'type': 'string', 'enum': ['opgg_sample', 'vgcpastes_team', 'opgg_team']},
-            'role': {'type': 'string', 'description': '원하는 역할만 (막이, 물리막이, 특수 딜러, 서포터 등)'}},
-            'required': ['pokemon']},
-    },
-    {
-        'name': 'search_teams',
-        'description': '파티 샘플(OP.GG 상위 파티, 대회 팀, 리플레이)을 찾는다. pokemon을 주면 그 포켓몬이 들어간 파티만.',
-        'input_schema': {'type': 'object', 'properties': {
-            'pokemon': {'type': 'string'}, 'format': FORMAT, 'page': {'type': 'integer'},
-            'source': {'type': 'string', 'enum': ['opgg_replica', 'vgcpastes', 'showdown_replay']}}},
-    },
-    {
-        'name': 'get_team',
-        'description': '파티 샘플 상세: 멤버 육성형(sample은 propose_party에 그대로 넣을 수 있음)과 타입별 약점 마리 수. 리플레이는 선출·선봉도.',
-        'input_schema': {'type': 'object', 'properties': {'id': {'type': 'integer'}}, 'required': ['id']},
-    },
-    {
-        'name': 'analyze_party',
-        'description': '파티의 방어 상성: 멤버별 타입·약점, 그리고 약점(×2 이상)이 1마리 이상인 공격 타입별 약점·반감·무효 마리 수. '
-                       '메가스톤을 든 멤버는 메가 폼 타입으로 계산한다.',
-        'input_schema': {'type': 'object', 'properties': {'members': {'type': 'array', 'items': MEMBER}},
-                         'required': ['members']},
-    },
-    {
-        'name': 'check_party',
-        'description': '파티 점검: 멤버별 역할(물리/특수/혼합 딜러·랭크업 딜러·기점잡이(더블은 서포터)·물리/특수막이, '
-                       '내구조정)·공격 형태·스피드 실수치, '
-                       '역할 수·물리/특수 딜러 수·메가스톤 수·2마리 이상 겹치는 약점, 중복·밸런스 경고. '
-                       '빈 포지션·밸런스 판단, 추천 전후 비교에 쓴다. 멤버는 육성형(기술·SP 포함)을 넣는다.',
-        'input_schema': {'type': 'object', 'properties': {'members': {
-            'type': 'array', 'items': {**SAMPLE, 'required': ['pokemon']}, 'description': '1~6마리'}, 'format': FORMAT},
-            'required': ['members']},
-    },
-    {
-        'name': 'find_partners',
-        'description': '실제 상위 파티(OP.GG 상위·대회 팀)에서 주어진 포켓몬이 모두 든 파티 수와, 같이 쓰인 포켓몬 순위(횟수·%). '
-                       '조합 추천의 근거. 파티 수가 적으면 근거가 약하다고 말한다.',
-        'input_schema': {'type': 'object', 'properties': {
-            'pokemon': {'type': 'array', 'items': {'type': 'string'}, 'description': '포켓몬 ID 1~3개'},
-            'format': FORMAT, 'top': {'type': 'integer', 'description': '기본 12'}}, 'required': ['pokemon']},
-    },
-    {
-        'name': 'find_threats',
-        'description': '픽률 상위 포켓몬 중 실제로 많이 쓰는 공격 기술로 파티 여러 마리의 약점을 찌르는 포켓몬과 찌르는 기술. '
-                       '특성에 의한 무효·대미지 크기는 반영하지 않는다.',
-        'input_schema': {'type': 'object', 'properties': {
-            'members': {'type': 'array', 'items': MEMBER}, 'format': FORMAT,
-            'top': {'type': 'integer', 'description': '픽률 상위 몇 마리까지 볼지 (기본 40)'}}, 'required': ['members']},
-    },
-    {
-        'name': 'get_speed_tiers',
-        'description': '픽률 상위 포켓몬의 Lv50 스피드 실수치표 (최속·준속, 스카프·특성·랭크업 보정 포함). '
-                       'min_speed/max_speed로 구간만 볼 수 있다.',
-        'input_schema': {'type': 'object', 'properties': {
-            'format': FORMAT, 'top': {'type': 'integer', 'description': '픽률 상위 몇 마리 (기본 50)'},
-            'min_speed': {'type': 'integer'}, 'max_speed': {'type': 'integer'}}},
-    },
-    {
-        'name': 'validate_set',
-        'description': '육성형이 규칙에 맞는지(특성·도구·기술·SP) 검사하고 Lv50 실수치를 계산한다.',
-        'input_schema': SAMPLE,
-    },
-    {
-        'name': 'propose_party',
-        'description': '사용자 화면에 추천 파티 카드를 띄운다 (사용자가 눌러서 파티에 넣을 수 있음). '
-                       '모든 멤버가 validate_set 기준으로 합법이고 같은 포켓몬·같은 도구가 없어야 표시되고, 아니면 문제를 돌려준다.',
-        'input_schema': {'type': 'object', 'properties': {
-            'members': {'type': 'array', 'items': SAMPLE, 'description': '1~6마리'}}, 'required': ['members']},
-    },
+    _tool('search_pokemon', '이름(한글/영문) 일부로 포켓몬 찾기: ID·타입·종족값·픽률 순위·메가 폼.',
+          {'query': STR, 'format': FORMAT}, ('query',)),
+    _tool('get_pokemon', '포켓몬 상세: 폼별 타입·종족값·특성, 사용률 상위(기술·도구·특성·성격·SP 배분). '
+                         'include_learnset=true면 배울 수 있는 기술 전체 (새로 짤 때만).',
+          {'id': STR, 'format': FORMAT, 'include_learnset': {'type': 'boolean'}}, ('id',)),
+    _tool('get_ranking', '인게임 픽률 순위 (기본 30위까지).', {'format': FORMAT, 'limit': INT}),
+    _tool('search_samples', '공개 샘플 3개: 샘플별 역할(SP·기술로 판정)과 그 포켓몬 샘플의 형태 분포(shapes). '
+                            'role로 원하는 형태(막이, 특수 딜러, 서포터 등)만. sample은 propose_party에 그대로.',
+          {'pokemon': STR, 'format': FORMAT, 'role': STR}, ('pokemon',)),
+    _tool('search_teams', '실제 파티 목록(OP.GG 상위·대회 팀). pokemon을 주면 그 포켓몬이 든 파티만.',
+          {'pokemon': STR, 'format': FORMAT}),
+    _tool('get_team', '파티 상세: 멤버 육성형(sample은 propose_party에 그대로).', {'id': INT}, ('id',)),
+    _tool('check_party', '파티 점검: 멤버별 역할·SP·스피드, 역할 수·물리/특수 딜러 수·메가진화 포켓몬 수, '
+                         '2마리 이상 겹치는 약점과 받아 줄 멤버, 경고. candidates(최대 3)를 주면 한 마리씩 넣어 본 비교.',
+          {'members': {'type': 'array', 'items': SAMPLE}, 'candidates': {'type': 'array', 'items': SAMPLE},
+           'format': FORMAT}, ('members',)),
+    _tool('find_partners', '실제 상위 파티에서 주어진 포켓몬(ID 1~3)이 모두 든 파티 수와 같이 쓰인 포켓몬(횟수·%).',
+          {'pokemon': {'type': 'array', 'items': STR}, 'format': FORMAT}, ('pokemon',)),
+    _tool('find_threats', '픽률 상위 포켓몬 중 자주 쓰는 공격기(사용률 10% 이상)로 파티 여러 마리의 약점을 찌르는 포켓몬. '
+                          '드문 기술은 sometimes.',
+          {'members': {'type': 'array', 'items': MEMBER}, 'format': FORMAT}, ('members',)),
+    _tool('get_speed_tiers', '픽률 상위 포켓몬의 스피드 실수치표 (보정 포함). min_speed/max_speed로 구간만.',
+          {'format': FORMAT, 'min_speed': INT, 'max_speed': INT}),
+    _tool('validate_set', '육성형 규칙 검사(특성·도구·기술·SP)와 Lv50 실수치.', SAMPLE['properties'], SAMPLE['required']),
+    _tool('propose_party', '화면에 추천 파티 카드를 띄운다. 합법이고 같은 포켓몬·도구가 없어야 표시, 아니면 문제를 돌려줌.',
+          {'members': {'type': 'array', 'items': SAMPLE}}, ('members',)),
 ]
+
+# 예전 데이터 생성(make_data.py v1)용으로만 남긴 도구: 실행은 되지만 모델에게는 보이지 않음 (check_party가 대신)
+LEGACY = {'analyze_party'}
 
 # 화면에 보여 줄 진행 상태
 STATUS = {
@@ -204,12 +137,12 @@ class Tools:
             'id': d['id'], 'name_ko': d['name_ko'],
             'forms': [{'id': f['id'], 'name_ko': f['name_ko'], 'types': f['types'], 'stats': f['stats'],
                        'mega_stone': f['required_item'] or None,
-                       'abilities': [{'id': a['id'], 'name_ko': a['name_ko'], 'desc': a['desc']} for a in f['abilities']]}
+                       'abilities': [{'id': a['id'], 'name_ko': a['name_ko']} for a in f['abilities']]}
                       for f in d['forms']],
             'format': fmt,
             'usage': u and {
                 'rank': u['rank'],
-                **{k: _top(u[k], 6) for k in ('move', 'item', 'ability', 'nature')},
+                **{k: _top(u[k], 5) for k in ('move', 'item', 'ability', 'nature')},
                 'spread': [{'sp': _sp_text(s['sp']), 'pct': s['pct']} for s in u['spread'][:4]],
             },
         }
@@ -220,9 +153,9 @@ class Tools:
 
     async def tool_get_ranking(self, format: str | None = None, limit: int = 30) -> dict:
         d = await self._get('ranking/', {'format': self._fmt(format), 'limit': min(max(int(limit or 30), 1), 100)})
-        return {'format': d['format'], 'captured_at': d['captured_at'],
-                'items': [{'rank': r['rank'], 'change': r['change'], 'id': r['pokemon']['id'],
-                           'name_ko': r['pokemon']['name_ko']} for r in d['items']]}
+        # 한 줄씩 짧게: "1. 한카리아스 (garchomp)"
+        return {'format': d['format'],
+                'items': [f"{r['rank']}. {r['pokemon']['name_ko']} ({r['pokemon']['id']})" for r in d['items']]}
 
     async def tool_search_samples(self, pokemon: str, format: str | None = None, source: str | None = None,
                                   role: str | None = None) -> dict | list:
@@ -246,17 +179,16 @@ class Tools:
     async def tool_search_teams(self, pokemon: str | None = None, format: str | None = None,
                                 source: str | None = None, page: int = 1) -> dict:
         d = await self._get('teams/', {'q': pokemon, 'format': self._fmt(format), 'source': source,
-                                       'page': page, 'size': 8})
+                                       'page': page, 'size': 5})
         return {'count': d['count'], 'teams': [{
-            'id': t['id'], 'title': t['title'], 'source': t['source_label'], 'rating': t['rating'],
-            'event': t['event'] or None, 'placement': t['placement'] or None, 'result': t['result'],
+            'id': t['id'], 'title': t['title'], 'source': t['source_label'],
+            **{k: t[k] for k in ('event', 'placement') if t[k]},
             'members': [m['name_ko'] for m in t['members']]} for t in d['results']]}
 
     async def tool_get_team(self, id: int) -> dict:
         t = await self._get(f'teams/{int(id)}/')
-        weak = {k: v for k, v in t['weakness']['weak_count'].items() if v >= 2}
         return {
-            'id': t['id'], 'title': t['title'], 'source': t['source_label'], 'format': t['format'],
+            'id': t['id'], 'title': t['title'], 'source': t['source_label'],
             # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), readable: 답변에 쓰는 한글 한 줄
             'members': [{
                 'sample': compact_sample({
@@ -268,7 +200,6 @@ class Tools:
                             f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
                 **({'brought': m['brought'], 'lead': m['lead']} if m['brought'] is not None else {}),
             } for m in t['members']],
-            'weak_types_2plus': weak,
         }
 
     async def tool_analyze_party(self, members: list[dict]) -> dict:
@@ -312,18 +243,23 @@ class Tools:
         _raise_input_error(r)
         return r.json()
 
-    async def tool_check_party(self, members: list[dict], format: str | None = None) -> dict:
-        return await self._post('party/check/', {'members': members, 'format': self._fmt(format)})
+    async def tool_check_party(self, members: list[dict], candidates: list[dict] | None = None,
+                               format: str | None = None) -> dict:
+        return await self._post('party/check/', {'members': members, 'candidates': candidates or [],
+                                                 'format': self._fmt(format)})
 
-    async def tool_find_partners(self, pokemon: list[str] | str, format: str | None = None, top: int = 12) -> dict:
+    async def tool_find_partners(self, pokemon: list[str] | str, format: str | None = None, top: int = 8) -> dict:
         keys = [pokemon] if isinstance(pokemon, str) else list(pokemon or [])
-        return await self._get('partners/', {'pokemon': ','.join(keys[:3]), 'format': self._fmt(format),
-                                             'top': min(max(int(top or 12), 1), 30)})
+        d = await self._get('partners/', {'pokemon': ','.join(keys[:3]), 'format': self._fmt(format),
+                                          'top': min(max(int(top or 8), 1), 30)})
+        return {'with': d['with'], 'teams': d['teams'],
+                'partners': [{k: p[k] for k in ('name_ko', 'count', 'pct')} for p in d['partners']]}
 
     async def tool_find_threats(self, members: list[dict], format: str | None = None, top: int = 40) -> dict:
-        return await self._post('threats/', {'members': [{'pokemon': m.get('pokemon'), 'item': m.get('item', '')}
-                                                          for m in members or []],
-                                             'format': self._fmt(format), 'top': min(max(int(top or 40), 1), 100)})
+        d = await self._post('threats/', {'members': [{'pokemon': m.get('pokemon'), 'item': m.get('item', '')}
+                                                       for m in members or []],
+                                          'format': self._fmt(format), 'top': min(max(int(top or 40), 1), 100)})
+        return {**d, 'threats': d['threats'][:5]}
 
     async def _validate(self, sample: dict) -> dict:
         r = await self.client.post('validate/', json=sample)

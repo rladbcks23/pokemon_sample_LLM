@@ -52,7 +52,7 @@ async def run_agent(provider, tools: Tools, messages: list[dict]):
             try:
                 out = await tools.run(b.name, b.input)
                 results.append({'type': 'tool_result', 'tool_use_id': b.id,
-                                'content': json.dumps(out, ensure_ascii=False)})
+                                'content': json.dumps(out, ensure_ascii=False, separators=(',', ':'))})
             except (ToolError, TypeError, ValueError) as e:        # 없는 ID, 잘못된 입력
                 results.append({'type': 'tool_result', 'tool_use_id': b.id, 'is_error': True, 'content': str(e)})
             except httpx.HTTPError as e:
