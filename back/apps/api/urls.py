@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.api import speed, views
+from apps.api import party, speed, views
 
 urlpatterns = [
     path('ranking/', views.ranking),
@@ -12,4 +12,7 @@ urlpatterns = [
     path('speed/', speed.speed_tiers),
     path('options/', views.options),
     path('validate/', views.validate_set),
+    path('party/check/', party.check_party),
+    path('partners/', party.partners),
+    path('threats/', party.threats),
 ]

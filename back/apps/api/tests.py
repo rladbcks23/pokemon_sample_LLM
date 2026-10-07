@@ -124,3 +124,76 @@ class ApiTests(APITestCase):
         self.assertEqual(errors(s), ['기술 칸 3개가 비어 있음'])
         self.assertIn('한카리아스은(는) 이 특성을 가질 수 없음', errors({**s, 'item': ''}))
         self.assertIn('한카리아스은(는) 이 특성을 가질 수 없음', errors({**s, 'item': 'gengarite'}))
+
+
+class PartyApiTests(APITestCase):
+    """파티 점검 · 같이 쓰인 포켓몬 · 위협 포켓몬."""
+
+    @classmethod
+    def setUpTestData(cls):
+        names.cache_clear()
+        chart.cache_clear()
+        rs = Ruleset.objects.create(id='champions_mc', name='Regulation M-C', showdown_mod='champions',
+                                    start_date=date(2026, 9, 9))
+        g = mon(rs, 'garchomp', 'Garchomp', '한카리아스', ['Dragon', 'Ground'], (108, 130, 95, 80, 85, 102))
+        y = mon(rs, 'gyarados', 'Gyarados', '갸라도스', ['Water', 'Flying'], (95, 125, 79, 60, 100, 81))
+        b = mon(rs, 'blissey', 'Blissey', '해피너스', ['Normal'], (255, 10, 10, 75, 135, 55))
+        for sid, ko, typ, cat in (('earthquake', '지진', 'Ground', 'Physical'), ('swordsdance', '칼춤', 'Normal', 'Status'),
+                                  ('icebeam', '냉동빔', 'Ice', 'Special'), ('stealthrock', '스텔스록', 'Rock', 'Status'),
+                                  ('toxic', '맹독', 'Poison', 'Status'), ('waterfall', '폭포오르기', 'Water', 'Physical')):
+            mv = Move.objects.create(ruleset=rs, showdown_id=sid, name=sid, name_ko=ko, type=typ, category=cat,
+                                     power=0 if cat == 'Status' else 90, accuracy=100, pp=10, target='normal')
+            for p in (g, y, b):
+                Learnset.objects.create(pokemon=p, move=mv)
+        Item.objects.create(ruleset=rs, showdown_id='lifeorb', name='Life Orb', name_ko='생명의구슬')
+        Nature.objects.create(id='jolly', name='Jolly', name_ko='명랑', plus_stat='spe', minus_stat='spa')
+        for atk, d, m in (('Ice', 'Dragon', 2), ('Ice', 'Ground', 2), ('Ice', 'Flying', 2), ('Ground', 'Flying', 0)):
+            TypeChart.objects.create(attacking=atk, defending=d, multiplier=m)
+        for i, keys in enumerate((['garchomp', 'gyarados'], ['garchomp', 'gyarados', 'blissey'], ['garchomp', 'blissey'])):
+            t = Team.objects.create(ruleset=rs, format_key='champions_mc_singles', source='opgg_replica', is_legal=True)
+            for slot, k in enumerate(keys, 1):
+                TeamMember.objects.create(team=t, slot=slot, pokemon_key=k)
+        # 리플레이 팀은 세지 않음
+        t = Team.objects.create(ruleset=rs, format_key='champions_mc_singles', source='showdown_replay')
+        TeamMember.objects.create(team=t, slot=1, pokemon_key='garchomp')
+        TeamMember.objects.create(team=t, slot=2, pokemon_key='gyarados')
+        # 위협: 갸라도스가 냉동빔을 많이 씀 (픽률 1위)
+        snap = dict(ruleset=rs, format_key='champions_mc_singles', source='opgg', season='m-6')
+        RankSnapshot.objects.create(captured_at=datetime(2026, 10, 1, tzinfo=timezone.utc), pokemon_key='gyarados',
+                                    rank=1, **snap)
+        u = UsageStat.objects.create(snapshot_date=date(2026, 10, 1), pokemon_key='gyarados', rank=1, **snap)
+        UsageDetail.objects.create(usage_stat=u, kind='move', target_key='icebeam', pct=60)
+        UsageDetail.objects.create(usage_stat=u, kind='move', target_key='waterfall', pct=90)
+
+    def check(self, members):
+        r = self.client.post('/api/party/check/', {'members': members}, format='json')
+        self.assertEqual(r.status_code, 200)
+        return r.json()
+
+    def test_roles(self):
+        sweeper = {'pokemon': 'garchomp', 'item': 'lifeorb', 'nature': 'jolly', 'sp': {'atk': 32, 'spe': 32, 'hp': 2},
+                   'moves': ['swordsdance', 'earthquake', 'stealthrock']}
+        wall = {'pokemon': 'blissey', 'item': 'lifeorb', 'sp': {'hp': 32, 'def': 32, 'spd': 2},
+                'moves': ['toxic', 'icebeam']}
+        d = self.check([sweeper, wall])
+        self.assertEqual(d['members'][0]['roles'], ['기점잡이', '랭크업 딜러 (물리)'])
+        self.assertEqual(d['members'][0]['speed'], (102 + 32 + 20) * 110 // 100)
+        self.assertEqual(d['members'][1]['roles'], ['막이 (말려 죽이기)'])
+        self.assertEqual((d['summary']['physical_attackers'], d['summary']['special_attackers']), (1, 0))
+        self.assertIn('같은 도구 중복: 생명의구슬', d['warnings'])
+        self.assertEqual(self.client.post('/api/party/check/', {'members': [{'pokemon': 'zzz'}]},
+                                          format='json').status_code, 400)
+
+    def test_partners(self):
+        d = self.client.get('/api/partners/?pokemon=garchomp&format=singles').json()
+        self.assertEqual(d['teams'], 3)          # 리플레이 팀은 빠짐
+        self.assertEqual([(p['id'], p['count']) for p in d['partners']], [('gyarados', 2), ('blissey', 2)])
+        d = self.client.get('/api/partners/?pokemon=garchomp,gyarados&format=singles').json()
+        self.assertEqual((d['teams'], d['partners'][0]['id']), (2, 'blissey'))
+
+    def test_threats(self):
+        d = self.client.post('/api/threats/', {'format': 'singles', 'members': [
+            {'pokemon': 'garchomp'}, {'pokemon': 'blissey'}, {'pokemon': 'garchomp'}]}, format='json').json()
+        self.assertEqual(d['need_hits'], 2)
+        self.assertEqual(d['threats'][0]['id'], 'gyarados')
+        self.assertIn('한카리아스←냉동빔(얼음 ×4)', d['threats'][0]['targets'])
