@@ -75,11 +75,12 @@ TOOLS = [
     },
     {
         'name': 'check_party',
-        'description': '파티 점검: 멤버별 역할(물리/특수/혼합 딜러·랭크업 딜러·기점잡이·막이)·공격 형태·스피드 실수치, '
+        'description': '파티 점검: 멤버별 역할(물리/특수/혼합 딜러·랭크업 딜러·기점잡이(더블은 서포터)·물리/특수막이, '
+                       '내구조정)·공격 형태·스피드 실수치, '
                        '역할 수·물리/특수 딜러 수·메가스톤 수·2마리 이상 겹치는 약점, 중복·밸런스 경고. '
                        '빈 포지션·밸런스 판단, 추천 전후 비교에 쓴다. 멤버는 육성형(기술·SP 포함)을 넣는다.',
         'input_schema': {'type': 'object', 'properties': {'members': {
-            'type': 'array', 'items': {**SAMPLE, 'required': ['pokemon']}, 'description': '1~6마리'}},
+            'type': 'array', 'items': {**SAMPLE, 'required': ['pokemon']}, 'description': '1~6마리'}, 'format': FORMAT},
             'required': ['members']},
     },
     {
@@ -302,8 +303,8 @@ class Tools:
         _raise_input_error(r)
         return r.json()
 
-    async def tool_check_party(self, members: list[dict]) -> dict:
-        return await self._post('party/check/', {'members': members})
+    async def tool_check_party(self, members: list[dict], format: str | None = None) -> dict:
+        return await self._post('party/check/', {'members': members, 'format': self._fmt(format)})
 
     async def tool_find_partners(self, pokemon: list[str] | str, format: str | None = None, top: int = 12) -> dict:
         keys = [pokemon] if isinstance(pokemon, str) else list(pokemon or [])
