@@ -300,14 +300,24 @@ def role_matches(roles: list[str], want: str) -> bool:
     return False
 
 
-async def candidate_samples(tools: Tools, key: str, party: list[dict]) -> list[dict]:
-    """search_samples 결과(최대 3개) 중 정제 통과·도구 안 겹침·메가 수 안 넘김인 샘플들."""
-    res = await tools.run('search_samples', {'pokemon': DEX.ko('pokemon', key)})
+def search_args(key: str, role: str | None) -> dict:
+    return {'pokemon': DEX.ko('pokemon', key), **({'role': role} if role else {})}
+
+
+async def candidate_samples(tools: Tools, key: str, party: list[dict], role: str | None = None) -> tuple[list[dict], dict]:
+    """search_samples(필요한 역할이 있으면 role로) 결과 중 정제 통과·도구 안 겹침·메가 수 안 넘김인 샘플들, 형태 분포."""
+    res = await tools.run('search_samples', search_args(key, role))
+    if not isinstance(res, dict):
+        return [], {}
     items = {m['item'] for m in party if m.get('item')}
     megas = sum(DEX.is_stone(m.get('item', '')) for m in party)
-    return [r for r in (res if isinstance(res, list) else [])
-            if r.get('sample') and r['sample']['pokemon'] == key and r['sample']['item'] not in items
-            and not DEX.odd(r['sample']) and not (DEX.is_stone(r['sample']['item']) and megas >= 2)]
+    ok = [r for r in res.get('samples', []) if r['sample']['pokemon'] == key and r['sample']['item'] not in items
+          and not DEX.odd(r['sample']) and not (DEX.is_stone(r['sample']['item']) and megas >= 2)]
+    return ok, res.get('shapes') or {}
+
+
+MIN_SHAPE_SHARE = 0.1     # 후보 샘플의 형태가 그 포켓몬 샘플 중 이 비율 이상일 때만
+ROLE_ARG = {'막이': '막이', '물리 딜러': '물리 딜러', '특수 딜러': '특수 딜러', '기점잡이': '기점잡이', '서포터': '서포터'}
 
 
 async def ranked_candidates(tools: Tools, fmt: str, party: list[dict], pool: list[dict], need: str, weak: str | None,
@@ -321,14 +331,24 @@ async def ranked_candidates(tools: Tools, fmt: str, party: list[dict], pool: lis
         if p['id'] in have or len(out) >= limit:
             continue
         best = None
-        for r in await candidate_samples(tools, p['id'], party):
+        role_arg = None if weak else ROLE_ARG.get(need)
+        found, shapes = await candidate_samples(tools, p['id'], party, role_arg)
+        if not found and role_arg:          # 그 역할 샘플이 없으면 일반 검색으로
+            role_arg = None
+            found, shapes = await candidate_samples(tools, p['id'], party)
+        for r in found:
             after = DEX.party_check(party + [r['sample']], fmt)
             roles = after['members'][-1]['roles']
+            # 그 포켓몬에서 잘 안 쓰는 형태(샘플의 10% 미만)는 후보로 안 씀 (예: 막이형 리자몽 1/137)
+            share = shapes.get(roles[0].split(' (')[0], 0) / max(shapes.get('total', 0), 1)
+            if not shapes.get('total') or share < MIN_SHAPE_SHARE:       # 형태 분포를 모르면 근거가 없어 뺌
+                continue
             good, bad = weak_change(base, after)
             fits = (weak in good) if weak else (need == '조합·상성' or role_matches(roles, need))
-            score = p.get('pct', 0) / 20 + (3 if fits else 0) + len(good) - len(bad)
+            score = p.get('pct', 0) / 20 + (3 if fits else 0) + len(good) - len(bad) + share * 2
             score -= 1 if base['summary']['roles'].get(roles[0].split(' (')[0], 0) >= 2 else 0   # 이미 많은 역할
-            c = {'partner': p, 'sample': r, 'roles': roles, 'score': score, 'fits': fits, 'bad': bad}
+            c = {'partner': p, 'sample': r, 'roles': roles, 'score': score, 'fits': fits, 'bad': bad,
+                 'shapes': shapes, 'role_arg': role_arg}
             if best is None or (c['fits'], c['score']) > (best['fits'], best['score']):
                 best = c
         if best:
@@ -358,7 +378,9 @@ def cand_line(c: dict, after: dict, base: dict, core_ko: str, partners: dict, fm
     where = (f"{core_ko} 파티 {partners['teams']}개 중 {p['count']}개" if 'count' in p
              else f"{FORMAT_KO[fmt]} 픽률 {p['rank']}위")
     role = last_role(after).replace(' (', '·').replace(')', '')       # 랭크업 딜러 (물리) → 랭크업 딜러·물리
-    return f"- {p['name_ko']} ({role}) — {where}\n  {pros_cons(base, after)}"
+    shape, sh = c['roles'][0].split(' (')[0], c.get('shapes') or {}
+    share = f", {shape}형 샘플 {sh[shape]}/{sh['total']}" if sh.get(shape) and sh.get('total') else ''
+    return f"- {p['name_ko']} ({role}{share}) — {where}\n  {pros_cons(base, after)}"
 
 
 def last_role(check: dict) -> str:
@@ -390,7 +412,7 @@ async def fill_one(rng, tools, fmt, party, question, src):
     b = next((c for c in fits if c is not a and c['roles'] != a['roles']),
              next((c for c in cands if c is not a), None))
     for c in (a, b):
-        await d.call('search_samples', pokemon=DEX.ko('pokemon', c['partner']['id']))
+        await d.call('search_samples', **search_args(c['partner']['id'], c['role_arg']))
     after_a = await d.call('check_party', members=party + [a['sample']['sample']])
     after_b = await d.call('check_party', members=party + [b['sample']['sample']])
     await d.call('propose_party', members=party + [a['sample']['sample']])
@@ -427,12 +449,18 @@ async def fill_one(rng, tools, fmt, party, question, src):
     drop_need = need != '조합·상성' and not weak and role_matches([need], role)
 
     def ok(c):
-        if role_matches(c['roles'], role) or c['bad']:
+        """빼 달라는 역할이 아니고, 처음 문제였던 약점을 악화시키지 않고, 3마리 이상 겹치는 약점을 새로 만들지 않고,
+        이미 2마리 있는 역할이 아닌 후보."""
+        if role_matches(c['roles'], role) or (weak and weak in c['bad']):
             return False
-        if drop_need:
-            good, _ = weak_change(base, DEX.party_check(party + [c['sample']['sample']], fmt))
-            return bool(good)
-        return c['fits']
+        after = DEX.party_check(party + [c['sample']['sample']], fmt)
+        aw = after['summary']['weak_types_2plus']
+        if any(aw.get(t, 0) >= 3 for t in c['bad']):
+            return False
+        if base['summary']['roles'].get(c['roles'][0].split(' (')[0], 0) >= 2:
+            return False
+        good, _ = weak_change(base, after)
+        return bool(good) if drop_need else c['fits']
     if ranking:                 # 지난 턴 도구 결과는 대화에 남지 않으므로 다시 조회
         await d.call('get_ranking', limit=30)
     else:
@@ -444,22 +472,22 @@ async def fill_one(rng, tools, fmt, party, question, src):
         alt = [c for c in await ranked_candidates(tools, fmt, party, pool, need, weak, limit=30) if ok(c)]
     if not alt:
         if drop_need:
-            what = "약점을 늘리지 않고 상성을 보완하는"
+            what = "상성을 보완하면서 약점이 3마리 이상 겹치지 않는"
         elif weak:
-            what = f"{weak} 공격을 받아 주면서 약점도 안 늘리는"
+            what = f"{weak} 공격을 받아 주면서 약점이 3마리 이상 겹치지 않는"
         else:
-            what = f"{need}에 맞으면서 약점도 안 늘리는"
+            what = f"{need}에 맞으면서 약점이 3마리 이상 겹치지 않는"
         d.answer(f"{josa(role, '을', '를')} 빼면 {what} 후보가 없어요. 억지로 넣으면 오히려 파티가 약해져요.\n"
                  f"- 앞에서 추천한 {josa(a['partner']['name_ko'], '을', '를')} 쓰거나\n"
                  f"- 지금 멤버 한 마리를 바꾸는 것까지 같이 볼 수 있어요 (바꿔도 되는 멤버를 알려 주세요)")
         return d
     alt.sort(key=lambda c: -c['score'])
     c = alt[0]
-    await d.call('search_samples', pokemon=DEX.ko('pokemon', c['partner']['id']))
+    await d.call('search_samples', **search_args(c['partner']['id'], c['role_arg']))
     after_c = await d.call('check_party', members=party + [c['sample']['sample']])
     await d.call('propose_party', members=party + [c['sample']['sample']])
-    lead = (f"{josa(role, '을', '를')} 빼면 {need}는 채울 수 없어서, 약점을 안 늘리고 상성을 보완하는 쪽으로 봤어요.\n"
-            if drop_need else '')
+    lead = (f"{josa(role, '을', '를')} 빼면 {need}는 채울 수 없어서, 대신 상성을 보완하는 쪽으로 봤어요.\n"
+            if drop_need else f"{josa(role, '을', '를')} 빼고 다시 보면:\n")
     text = (lead + f"→ **{short(c['sample']['sample'])}** 추천 (화면에 띄움)\n"
             f"{cand_line(c, after_c, base, core_ko, partners, fmt)}")
     if other_warnings(after_c):
@@ -609,7 +637,8 @@ async def fill_moves(rng, tools, fmt, party, target_idx, question, src):
     d.ask(question.format(name=name), screen)
     info = await d.call('get_pokemon', id=key)
     res = await d.call('search_samples', pokemon=name)
-    mine = [r for r in res if isinstance(r, dict) and r.get('sample', {}).get('pokemon') == key and not DEX.odd(r['sample'])]
+    rows = res.get('samples', []) if isinstance(res, dict) else []
+    mine = [r for r in rows if r['sample']['pokemon'] == key and not DEX.odd(r['sample'])]
     pick = next((r for r in mine if r['sample']['item'] == target['item']), None) or (mine[0] if mine else None)
     if not pick:
         raise Skip('샘플 없음')
