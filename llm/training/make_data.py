@@ -781,7 +781,8 @@ async def fill_rest(rng, tools, fmt, fixed, question, src):
     return d
 
 
-CLARIFY_Q = ['파티 짜줘', '좋은 파티 하나 만들어줘', '파티 추천해줘']
+# 정말 막연한 요청만 되묻는다 ("더블 파티 하나 짜줘"처럼 짜 달라는 요청은 meta_team으로 바로 짬)
+CLARIFY_Q = ['파티 짜는 거 좀 도와줘', '파티 처음 짜보는데 어떻게 해야 해?', '파티 구성 고민 중이야']
 
 
 async def clarify(rng, tools, fmt, question, core_key, src):
@@ -802,6 +803,36 @@ async def clarify(rng, tools, fmt, question, core_key, src):
     await d.call('propose_party', members=party)
     d.answer(f"{josa(name, '이', '가')} 든 상위 파티 '{t['title']}'를 바탕으로 했어요 (화면에 띄움).\n"
              + party_lines(check, party) + '\n\n' + party_tail(check))
+    return d
+
+
+META_Q = ['{fmt} 파티 하나 짜줘', '아무 파티나 하나 짜줘', '요즘 메타 파티 하나 추천해줘', '{fmt}에서 쓸 파티 알아서 짜줘',
+          '파티 하나 만들어줘']
+
+
+async def meta_team(rng, tools, fmt, question, pick, src):
+    """핵심 포켓몬 없이 "파티 짜줘": 픽률 상위에서 핵심을 골라 실제 상위 파티를 바탕으로 짠다.
+    포켓몬 이름은 get_ranking 결과에서만 가져온다 (이름을 지어내지 않게)."""
+    d = Dialogue(tools, fmt, 'meta_team', ['픽률 근거', '조합 근거', '이름은 도구 결과에서'], rng)
+    d.meta['sources'] = src
+    d.ask(question.format(fmt=FORMAT_KO[fmt]), [])
+    ranking = await d.call('get_ranking', limit=10)
+    pool = ranking_pool(ranking)
+    if len(pool) <= pick:
+        raise Skip('순위 부족')
+    core = pool[pick]
+    partners = await d.call('find_partners', pokemon=[core['id']])
+    t, team = await team_from_search(d, tools, fmt, [], core['id'], partners)
+    d.meta['sources']['team_ids'] = [t['id']]
+    party = assemble([], team)
+    if len(party) < 6:
+        raise Skip('6마리가 안 됨')
+    check = await d.call('check_party', members=party)
+    await d.call('propose_party', members=party)
+    d.answer(f"핵심 포켓몬을 정하지 않아서 {FORMAT_KO[fmt]} 픽률 {core['rank']}위 {josa(core['name_ko'], '을', '를')} 중심으로, "
+             f"{josa(core['name_ko'], '이', '가')} 든 상위 파티 '{t['title']}'를 바탕으로 짰어요 (화면에 띄움).\n"
+             + party_lines(check, party) + '\n\n' + party_tail(check)
+             + '\n\n다른 핵심 포켓몬이나 컨셉(막이 사이클, 스윕 등)을 원하면 말해 주세요.')
     return d
 
 
@@ -841,10 +872,11 @@ async def not_found(rng, tools, fmt, name, src):
 
 # ---------------------------------------------------------------- 검수용 묶음
 
-REVIEW_PLAN = {'fill_one': 3, 'core_team': 3, 'fill_moves': 2, 'fill_rest': 2, 'clarify': 2, 'full_party': 1, 'not_found': 2}
+REVIEW_PLAN = {'fill_one': 3, 'core_team': 3, 'fill_moves': 2, 'fill_rest': 2, 'meta_team': 2, 'clarify': 2, 'full_party': 1,
+               'not_found': 2}
 # 학습용 비율 (파티 빌딩·샘플 제작 위주, 확인 질문·한계 설명은 조금)
-EXPORT_SHARE = {'fill_one': .30, 'core_team': .25, 'fill_moves': .15, 'fill_rest': .15, 'clarify': .06,
-                'full_party': .04, 'not_found': .05}
+EXPORT_SHARE = {'fill_one': .27, 'core_team': .22, 'fill_moves': .14, 'fill_rest': .14, 'meta_team': .10,
+                'clarify': .05, 'full_party': .04, 'not_found': .04}
 
 
 async def build(plan: dict[str, int], seed: int, user_questions: bool = True) -> list[Dialogue]:
@@ -907,6 +939,10 @@ async def build(plan: dict[str, int], seed: int, user_questions: bool = True) ->
                     two = sorted(rng.sample(range(6), 2))
                     ok = await add(fill_rest(rng, T(fmt), fmt, [team[i] for i in two], rng.choice(REST_Q),
                                              {'team_ids': [tid]}), group, (kind, tid, *two))
+                elif kind == 'meta_team':
+                    pick, q = rng.randrange(5), rng.choice(META_Q)
+                    ok = await add(meta_team(rng, T(fmt), fmt, q, pick, {'ranking_pick': pick}),
+                                   f'meta:{fmt}:{pick}', (kind, fmt, pick, q))
                 elif kind == 'clarify':
                     core = min(team, key=lambda m: DEX.rank[fmt].get(m['pokemon'], 999))['pokemon']
                     ok = await add(clarify(rng, T(fmt), fmt, rng.choice(CLARIFY_Q), core, {'team_ids': [tid]}),
