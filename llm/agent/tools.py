@@ -124,7 +124,7 @@ class Tools:
                              'rank': p['rank'],
                              'megas': [{'id': m['id'], 'name_ko': m['name_ko'], 'types': m['types'],
                                         'stats': m['stats'], 'stone': m['item']} for m in p['megas']]})
-        return hits[:10] or [{'result': f'"{query}"에 맞는 포켓몬 없음'}]
+        return hits[:10] or [{'result': f'"{query}"는 이번 레귤레이션 포켓몬 목록에 없음'}]
 
     async def tool_get_pokemon(self, id: str, format: str | None = None, include_learnset: bool = False) -> dict:
         d = await self._get(f'pokemon/{id}/', cache=True)
@@ -154,9 +154,21 @@ class Tools:
         return {'format': d['format'],
                 'items': [f"{r['rank']}. {r['pokemon']['name_ko']} ({r['pokemon']['id']})" for r in d['items']]}
 
-    async def tool_search_samples(self, pokemon: str, format: str | None = None, source: str | None = None,
+    async def _known_name(self, name: str) -> bool:
+        """이번 레귤레이션 포켓몬 이름(한글/영문/ID) 중 하나에 들어맞는지 (지어낸 이름을 걸러 내려고)."""
+        q = (name or '').strip().lower()
+        items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
+        return bool(q) and any(q in n for p in items for n in [p['id'], p['name'].lower(), p['name_ko']]
+                               + [m['name_ko'] for m in p['megas']])
+
+    async def tool_search_samples(self, pokemon: str | None = None, format: str | None = None, source: str | None = None,
                                   role: str | None = None) -> dict | list:
         """샘플 3개 + 그 포켓몬 샘플 전체의 형태 분포. role을 주면 그 역할(예: 막이, 특수 딜러) 샘플만."""
+        if not (pokemon or '').strip():
+            raise ToolError('pokemon(포켓몬 이름)이 필요함. 후보 이름은 화면 파티나 get_ranking·find_partners 결과에서 고를 것')
+        if not await self._known_name(pokemon):
+            raise ToolError(f'"{pokemon}"는 이번 레귤레이션 포켓몬 목록에 없는 이름. '
+                            '지어낸 이름을 쓰지 말고 화면·get_ranking·find_partners·search_pokemon 결과의 이름을 쓸 것')
         d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source,
                                          'size': 30 if role else 3})
         rows = [s for s in d['results'] if not role or any(role in r for r in s.get('roles', []))][:3]

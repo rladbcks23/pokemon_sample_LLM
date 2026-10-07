@@ -150,6 +150,22 @@ class LoopTest(unittest.TestCase):
         self.assertEqual(out[0]['sample']['sp'], {'hp': 2, 'atk': 32, 'spe': 32})     # 0인 SP는 생략
         self.assertEqual(out[0]['readable'], '한카리아스 @ 생명의구슬 / 까칠한피부 / 명랑 / SP hp2 atk32 spe32 / 지진')
 
+    def test_search_samples_guards(self):
+        """이름 없이 부르거나 지어낸 이름이면 모델에게 고칠 방법을 알려 주는 오류."""
+        async def go():
+            async with client() as c:
+                t = Tools(c)
+                out = []
+                for args in ({'role': '서포터'}, {'pokemon': '지코이르'}):
+                    try:
+                        await t.run('search_samples', args)
+                    except ToolError as e:
+                        out.append(str(e))
+                return out
+        missing, fake = asyncio.run(go())
+        self.assertIn('get_ranking', missing)
+        self.assertIn('목록에 없는 이름', fake)
+
     def test_search_samples_by_role(self):
         async def go():
             async with client() as c:
