@@ -1,4 +1,6 @@
 """프론트(Vue)용 조회 API."""
+from collections import Counter
+
 from django.db.models import Case, IntegerField, Value, When
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound
@@ -356,15 +358,25 @@ def sample_list(request):
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
     if q := request.query_params.get('q', '').strip():
         qs = qs.filter(pokemon_key__in=pokemon_keys(rs, q))
+    from apps.api.party import member_profile        # party가 views를 import하므로 여기서
+
+    def as_sample(s):
+        return {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': norm_nature(s.nature_key),
+                'sp': {st: getattr(s, f'sp_{st}') for st in SP_STATS}, 'moves': ([*s.moves, '', '', '', ''])[:4]}
+
+    role_fmt = get_format(request) if request.query_params.get('format') else 'singles'
     pager = SamplePagination()
     page = pager.paginate_queryset(qs, request)
-    return pager.get_paginated_response([{
+    resp = pager.get_paginated_response([{
         'id': s.pk, 'name': s.name, 'source': s.source, 'source_label': SET_SOURCES.get(s.source, s.source),
-        'sample': {'pokemon': s.pokemon_key, 'item': s.item_key, 'ability': s.ability_key, 'nature': norm_nature(s.nature_key),
-                   'sp': {st: getattr(s, f'sp_{st}') for st in SP_STATS},
-                   'moves': ([*s.moves, '', '', '', ''])[:4]},
-        'member': member_detail(s, s),
+        'sample': as_sample(s), 'member': member_detail(s, s),
+        'roles': member_profile(rs.id, as_sample(s), role_fmt)['roles'],      # SP 분배·기술 배치로 본 역할
     } for s in page])
+    # 포켓몬을 찾을 때는 그 포켓몬 샘플 전체의 형태(첫 역할) 분포도: 같은 포켓몬이라도 딜러형·막이형이 갈림
+    if q and qs.values('pokemon_key').distinct().count() == 1:
+        shapes = Counter(member_profile(rs.id, as_sample(s), role_fmt)['roles'][0].split(' (')[0] for s in qs)
+        resp.data['shapes'] = {'total': sum(shapes.values()), **dict(shapes.most_common())}
+    return resp
 
 
 def weakness_table(members: list[dict]) -> dict:
