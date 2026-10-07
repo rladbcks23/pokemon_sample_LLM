@@ -4,7 +4,7 @@ Colab 노트북은 이 zip 하나만 올리면 된다 (학습 + 마지막 채팅
 저장소와 같은 폴더 구조로 넣으므로 Colab에서도 back 설정(data/pokemon.db 경로)이 그대로 맞는다.
 
     cd llm
-    ..\\.venv\\Scripts\\python training\\make_data.py --n 1000
+    ..\\.venv\\Scripts\\python training\\make_data_v2.py --export 220
     ..\\.venv\\Scripts\\python training\\pack_colab.py
 """
 import zipfile
@@ -19,15 +19,15 @@ FILES = [
     *[p for p in (ROOT / 'llm/agent').rglob('*.py') if '__pycache__' not in p.parts],
     ROOT / 'llm/training/inproc_back.py',
     ROOT / 'data/pokemon.db',
-    ROOT / 'llm/training/train.jsonl',
-    ROOT / 'llm/training/eval.jsonl',
+    ROOT / 'llm/training/finetuning_data_ver2/train.jsonl',      # make_data_v2.py --export
+    ROOT / 'llm/training/finetuning_data_ver2/eval.jsonl',
 ]
 
 
 def main():
     missing = [str(p.relative_to(ROOT)) for p in FILES if not p.exists()]
     if missing:
-        raise SystemExit(f'없는 파일: {missing} (DB는 load_dex/load_meta, 학습 데이터는 make_data.py로 먼저 만들 것)')
+        raise SystemExit(f'없는 파일: {missing} (DB는 load_dex/load_meta, 학습 데이터는 make_data_v2.py --export로 먼저 만들 것)')
     with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
         for p in FILES:
             z.write(p, p.relative_to(ROOT).as_posix())
