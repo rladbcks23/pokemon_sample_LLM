@@ -57,7 +57,7 @@
   - 메가진화는 배틀마다 한 번. 메가스톤 3개 이상이면 선출 제한·메가 2마리 동시 선출 가능성을 경고
   - 테스트는 `llm`에서 `..\.venv\Scripts\python -m unittest` (모델·back은 가짜라 API 키·DB 없이 돈다)
 - LoRA 파인튜닝: **`Qwen/Qwen3.5-4B`** (Apache 2.0). 이미지도 받는 모델이라 Unsloth `FastModel`로 불러온다
-  - 학습 데이터: `llm/training/make_data.py` (back을 프로세스 안에서 직접 불러 실제 도구 결과로 대화 생성, 서버 불필요)
+  - 학습 데이터: `llm/training/make_data.py --export N` → `finetuning_data_ver2/` (back을 프로세스 안에서 직접 불러 실제 도구 결과로 대화 생성, 서버 불필요)
     - 1순위는 파티 빌딩·샘플 제작. 정답은 OP.GG 상위 파티·VGCPastes 대회 팀·OP.GG/대회 샘플
     - Showdown 리플레이는 쓰지 않는다 (평균 레이팅 약 1100~1200, 인게임 메타와 다름)
     - 답변 숫자는 도구 결과에 있는 것만 (없으면 버림). `train.jsonl`/`eval.jsonl`은 git 제외
