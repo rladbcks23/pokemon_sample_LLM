@@ -564,7 +564,7 @@ def party_lines(check: dict, members: list[dict]) -> str:
 
 def party_tail(check: dict) -> str:
     s = check['summary']
-    text = f"구성: {roles_text(s)} / 메가진화 포켓몬 {s['mega_pokemon']}마리"
+    text = f"구성: {roles_text(s)}" + (f" / 메가진화 포켓몬 {s['mega_pokemon']}마리" if s['mega_pokemon'] else '')
     if other_warnings(check):
         text += '\n주의: ' + '; '.join(other_warnings(check))
     return text
