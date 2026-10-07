@@ -40,3 +40,4 @@ llm/training/*.zip
 llm/training/colab_bundle/
 unsloth_compiled_cache/
 llm/training/data_v2/
+llm/training/finetuning_data_ver2/

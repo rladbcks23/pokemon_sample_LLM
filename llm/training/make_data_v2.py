@@ -842,40 +842,51 @@ async def not_found(rng, tools, fmt, name, src):
 
 # ---------------------------------------------------------------- 검수용 묶음
 
-async def build_review(n: int, seed: int) -> list[Dialogue]:
+REVIEW_PLAN = {'fill_one': 3, 'core_team': 3, 'fill_moves': 2, 'fill_rest': 2, 'clarify': 2, 'full_party': 1, 'not_found': 2}
+# 학습용 비율 (파티 빌딩·샘플 제작 위주, 확인 질문·한계 설명은 조금)
+EXPORT_SHARE = {'fill_one': .30, 'core_team': .25, 'fill_moves': .15, 'fill_rest': .15, 'clarify': .06,
+                'full_party': .04, 'not_found': .05}
+
+
+async def build(plan: dict[str, int], seed: int, user_questions: bool = True) -> list[Dialogue]:
+    """시나리오별 개수만큼 대화를 만든다. 같은 원본 팀·같은 조건은 한 번만."""
     rng = random.Random(seed)
     out: list[Dialogue] = []
+    seen = set()
     async with back_client() as client:
         def T(fmt):
             return Tools(client, fmt)
 
-        async def add(coro, group):
+        async def add(coro, group, key=None):
+            if key is not None and key in seen:      # 같은 원본·같은 조건은 한 번만 (사용자 질문은 key 없음)
+                coro.close()
+                return False
             try:
                 d = await coro
             except Skip as e:
                 print('  건너뜀:', e)
                 return False
+            if key is not None:
+                seen.add(key)
             d.meta['group'] = group
             out.append(d)
             return True
 
-        # 사용자 질문 5개 (그대로)
-        fmt, party, ids = user_party('q1')
-        await add(fill_one(rng, T(fmt), fmt, party, '현재 파티에 어울리는 샘플 하나 추천해줘', {'sample_ids': ids}), 'user:q1')
-        fmt, party, ids = user_party('q2')
-        await add(core_team(rng, T(fmt), fmt, party, '{name_rang} 어울리는 파티 짜줘', 'item', {'sample_ids': ids}), 'user:q2')
-        fmt, party, ids = user_party('q3')
-        await add(fill_moves(rng, T(fmt), fmt, party, 0, '{name} 스킬 뭐 줘야해?', {'sample_ids': ids}), 'user:q3')
-        fmt, party, ids = user_party('q4')
-        await add(fill_rest(rng, T(fmt), fmt, party, '나머지 대충 어울리게 짜줘', {'sample_ids': ids}), 'user:q4')
-        fmt, party, ids = user_party('q5')
-        await add(core_team(rng, T(fmt), fmt, party, '{name_rang} 어울리는 파티 짜줘', 'best', {'sample_ids': ids}), 'user:q5')
+        if user_questions:      # 사용자 질문 5개 (그대로)
+            fmt, party, ids = user_party('q1')
+            await add(fill_one(rng, T(fmt), fmt, party, '현재 파티에 어울리는 샘플 하나 추천해줘', {'sample_ids': ids}), 'user:q1')
+            fmt, party, ids = user_party('q2')
+            await add(core_team(rng, T(fmt), fmt, party, '{name_rang} 어울리는 파티 짜줘', 'item', {'sample_ids': ids}), 'user:q2')
+            fmt, party, ids = user_party('q3')
+            await add(fill_moves(rng, T(fmt), fmt, party, 0, '{name} 스킬 뭐 줘야해?', {'sample_ids': ids}), 'user:q3')
+            fmt, party, ids = user_party('q4')
+            await add(fill_rest(rng, T(fmt), fmt, party, '나머지 대충 어울리게 짜줘', {'sample_ids': ids}), 'user:q4')
+            fmt, party, ids = user_party('q5')
+            await add(core_team(rng, T(fmt), fmt, party, '{name_rang} 어울리는 파티 짜줘', 'best', {'sample_ids': ids}), 'user:q5')
 
-        plan = [('fill_one', 3), ('core_team', 3), ('fill_moves', 2), ('fill_rest', 2), ('clarify', 2),
-                ('full_party', 1), ('not_found', 2)]
-        for kind, count in plan:
+        for kind, count in plan.items():
             made, tries = 0, 0
-            while made < count and tries < 30:
+            while made < count and tries < count * 6 + 10:
                 tries += 1
                 fmt = rng.choice(list(FORMAT_KO))
                 tid, team = rng.choice(DEX.teams[fmt])
@@ -883,32 +894,34 @@ async def build_review(n: int, seed: int) -> list[Dialogue]:
                 if kind == 'fill_one':
                     i = rng.randrange(6)
                     ok = await add(fill_one(rng, T(fmt), fmt, team[:i] + team[i + 1:], rng.choice(FILL_ONE_Q),
-                                            {'team_ids': [tid]}), group)
+                                            {'team_ids': [tid]}), group, (kind, tid, i))
                 elif kind == 'core_team':
-                    core = rng.choice(team)
-                    ok = await add(core_team(rng, T(fmt), fmt, [core], rng.choice(CORE_Q), rng.choice(['item', 'best']),
-                                             {'team_ids': [tid]}), group)
+                    i = rng.randrange(6)
+                    ok = await add(core_team(rng, T(fmt), fmt, [team[i]], rng.choice(CORE_Q), rng.choice(['item', 'best']),
+                                             {'team_ids': [tid]}), group, (kind, tid, i))
                 elif kind == 'fill_moves':
                     megas = [i for i, m in enumerate(team) if (DEX.n['pokemon'].get(m['pokemon'] + 'mega'))]
                     i = rng.choice(megas or list(range(6)))
-                    ok = await add(fill_moves(rng, T(fmt), fmt, team, i, rng.choice(MOVES_Q), {'team_ids': [tid]}), group)
+                    ok = await add(fill_moves(rng, T(fmt), fmt, team, i, rng.choice(MOVES_Q), {'team_ids': [tid]}),
+                                   group, (kind, tid, i))
                 elif kind == 'fill_rest':
-                    two = rng.sample(team, 2)
-                    ok = await add(fill_rest(rng, T(fmt), fmt, two, rng.choice(REST_Q), {'team_ids': [tid]}), group)
+                    two = sorted(rng.sample(range(6), 2))
+                    ok = await add(fill_rest(rng, T(fmt), fmt, [team[i] for i in two], rng.choice(REST_Q),
+                                             {'team_ids': [tid]}), group, (kind, tid, *two))
                 elif kind == 'clarify':
                     core = min(team, key=lambda m: DEX.rank[fmt].get(m['pokemon'], 999))['pokemon']
                     ok = await add(clarify(rng, T(fmt), fmt, rng.choice(CLARIFY_Q), core, {'team_ids': [tid]}),
-                                   f'pokemon:{core}')
+                                   f'pokemon:{core}', (kind, fmt, core))
                 elif kind == 'full_party':
-                    ok = await add(full_party(rng, T(fmt), fmt, team, {'team_ids': [tid]}), group)
+                    ok = await add(full_party(rng, T(fmt), fmt, team, {'team_ids': [tid]}), group, (kind, tid))
                 else:
                     pool = [x for x in NOT_IN_DEX if not any(x == (p['name_ko'] or '') for p in DEX.n['pokemon'].values())]
                     if not pool:
                         break
                     name = rng.choice(pool)
-                    ok = await add(not_found(rng, T(fmt), fmt, name, {'name': name}), f'name:{name}')
+                    ok = await add(not_found(rng, T(fmt), fmt, name, {'name': name}), f'name:{name}', (kind, fmt, name))
                 made += ok
-    return out[:n]
+    return out
 
 
 # ---------------------------------------------------------------- 저장
@@ -980,16 +993,57 @@ def to_markdown(rows: list[dict], tools: bool = False) -> str:
     return '\n'.join(out)
 
 
+EXPORT_DIR = LLM / 'training/finetuning_data_ver2'
+
+
+def export(rows: list[dict], out: Path, eval_ratio: float, seed: int) -> None:
+    """학습용 내보내기: 자동 검사 통과한 대화만, 원본(group) 단위로 학습/평가를 나눔.
+    사용자가 준 질문 5개(user:*)는 평가로 (그 질문에 대한 학습 전후 비교용). 한 대화의 턴마다 한 줄(지난 턴은 글만)."""
+    ok = [r for r in rows if r['auto_checks']['ok']]
+    groups = sorted({r['group'] for r in ok if not r['group'].startswith('user:')})
+    random.Random(seed).shuffle(groups)
+    eval_groups = set(groups[:max(1, int(len(groups) * eval_ratio))]) | {r['group'] for r in ok if r['group'].startswith('user:')}
+    out.mkdir(parents=True, exist_ok=True)
+    counts = Counter()
+    with open(out / 'train.jsonl', 'w', encoding='utf-8') as tr, open(out / 'eval.jsonl', 'w', encoding='utf-8') as ev, \
+            open(out / 'meta.jsonl', 'w', encoding='utf-8') as meta:
+        for r in ok:
+            split = 'eval' if r['group'] in eval_groups else 'train'
+            for k, rec in enumerate(r['records'], 1):
+                line = {'id': f"{r['id']}-t{k}", 'kind': r['scenario'], 'format': r['format'], 'group': r['group'],
+                        'turn': k, 'messages': rec}
+                (ev if split == 'eval' else tr).write(json.dumps(line, ensure_ascii=False) + '\n')
+                counts[split] += 1
+            meta.write(json.dumps({
+                'id': r['id'], 'split': split, 'scenario': r['scenario'], 'behaviors': r['behaviors'], 'format': r['format'],
+                'group': r['group'], 'sources': r['sources'], 'turns': len(r['records']),
+                'conditions': {k: ([m['pokemon'] for m in v] if k == 'fixed' else v) for k, v in r['conditions'].items()},
+                'data_version': r['data_version'], 'review': r['review'], 'auto_checks': r['auto_checks'],
+            }, ensure_ascii=False) + '\n')
+    (out / 'review.md').write_text(to_markdown(ok), encoding='utf-8')
+    print(f"대화 {len(rows)}개 중 자동 검사 통과 {len(ok)}개 → 학습 {counts['train']}턴 / 평가 {counts['eval']}턴 "
+          f"(평가 묶음 {len(eval_groups)}개) → {out}")
+    print(Counter(r['scenario'] for r in ok))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('--review', type=int, default=20, help='검수용 대화 수')
+    ap.add_argument('--review', type=int, default=20, help='검수용 대화 수 (--export가 없을 때)')
+    ap.add_argument('--export', type=int, default=0, help='학습용 대화 수 → training/finetuning_data_ver2/')
+    ap.add_argument('--eval', type=float, default=0.1, help='평가로 떼는 원본(group) 비율')
     ap.add_argument('--seed', type=int, default=0)
     args = ap.parse_args()
 
     global DEX
     DEX = Dex()
-    dialogues = asyncio.run(build_review(args.review, args.seed))
     version = data_version()
+    if args.export:
+        plan = {k: max(1, round(args.export * v)) for k, v in EXPORT_SHARE.items()}
+        dialogues = asyncio.run(build(plan, args.seed))
+        rows = [to_row(i, d, version) for i, d in enumerate(dialogues, 1)]
+        export(rows, EXPORT_DIR, args.eval, args.seed)
+        return
+    dialogues = asyncio.run(build(REVIEW_PLAN, args.seed))[:args.review]
     rows = [to_row(i, d, version) for i, d in enumerate(dialogues, 1)]
     OUT.mkdir(parents=True, exist_ok=True)
     with open(OUT / 'review.jsonl', 'w', encoding='utf-8') as f:
