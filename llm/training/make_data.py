@@ -122,6 +122,8 @@ def numbers_grounded(msgs: list[dict]) -> bool:
 
 def matching(results, pokemon: str, avoid_items=(), avoid_mega=False) -> list[dict]:
     """search_samples 결과 중 그 포켓몬 자신의 샘플 (도구 겹침·메가 둘 피함)."""
+    if isinstance(results, dict):          # search_samples는 {'shapes', 'samples'}
+        results = results.get('samples', [])
     if not isinstance(results, list):
         return []
     return [r for r in results if 'sample' in r and r['sample']['pokemon'] == pokemon

@@ -48,8 +48,9 @@ def back(request: httpx.Request) -> httpx.Response:
                   'moves': [{'name_ko': '지진'}, None]}
         sample = {**SAMPLE, 'sp': member['sp']}
         n = int(request.url.params['size'])
-        return httpx.Response(200, json={'results': [{'name': f'샘플{i}', 'source_label': 'OP.GG 샘플', 'sample': sample,
-                                                      'member': member} for i in range(n)]})
+        return httpx.Response(200, json={'shapes': {'total': n, '물리 딜러': n}, 'results': [
+            {'name': f'샘플{i}', 'source_label': 'OP.GG 샘플', 'sample': sample, 'member': member, 'roles': ['물리 딜러']}
+            for i in range(n)]})
     if path == '/api/partners/':
         return httpx.Response(200, json={'teams': 3, 'with': request.url.params['pokemon'].split(','), 'partners': []})
     if path == '/api/party/check/':
@@ -167,10 +168,21 @@ class LoopTest(unittest.TestCase):
         async def go():
             async with client() as c:
                 return await Tools(c).run('search_samples', {'pokemon': '한카'})
-        out = asyncio.run(go())
+        out = asyncio.run(go())['samples']
         self.assertEqual(len(out), 3)
         self.assertEqual(out[0]['sample']['sp'], {'hp': 2, 'atk': 32, 'spe': 32})     # 0인 SP는 생략
         self.assertEqual(out[0]['readable'], '한카리아스 @ 생명의구슬 / 까칠한피부 / 명랑 / SP hp2 atk32 spe32 / 지진')
+
+    def test_search_samples_by_role(self):
+        async def go():
+            async with client() as c:
+                t = Tools(c)
+                return (await t.run('search_samples', {'pokemon': '한카', 'role': '물리 딜러'}),
+                        await t.run('search_samples', {'pokemon': '한카', 'role': '막이'}))
+        hit, miss = asyncio.run(go())
+        self.assertEqual(hit['shapes'], {'total': 30, '물리 딜러': 30})      # role을 주면 30개를 받아 거름
+        self.assertEqual(len(hit['samples']), 3)
+        self.assertIn('막이 샘플 없음', miss[0]['result'])
 
     def test_propose_party_only_when_legal(self):
         bad = {**SAMPLE, 'moves': ['splash', 'earthquake', 'protect', 'roar']}

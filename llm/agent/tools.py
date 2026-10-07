@@ -48,10 +48,13 @@ TOOLS = [
     },
     {
         'name': 'search_samples',
-        'description': '공개 포켓몬 샘플(실제로 쓰인 육성형)을 3개까지 찾는다. 결과의 sample은 propose_party에 그대로 넣을 수 있다.',
+        'description': '공개 포켓몬 샘플(실제로 쓰인 육성형)을 3개까지 찾는다. 샘플마다 역할(SP 분배·기술로 판정)이 있고, '
+                       'shapes는 그 포켓몬 샘플 전체의 형태 분포(예: 막이형 9·딜러형 6). role로 원하는 형태만 찾을 수 있다. '
+                       '결과의 sample은 propose_party에 그대로 넣을 수 있다.',
         'input_schema': {'type': 'object', 'properties': {
             'pokemon': {'type': 'string', 'description': '포켓몬 이름(한글/영문) 일부'}, 'format': FORMAT,
-            'source': {'type': 'string', 'enum': ['opgg_sample', 'vgcpastes_team', 'opgg_team']}},
+            'source': {'type': 'string', 'enum': ['opgg_sample', 'vgcpastes_team', 'opgg_team']},
+            'role': {'type': 'string', 'description': '원하는 역할만 (막이, 물리막이, 특수 딜러, 서포터 등)'}},
             'required': ['pokemon']},
     },
     {
@@ -221,18 +224,24 @@ class Tools:
                 'items': [{'rank': r['rank'], 'change': r['change'], 'id': r['pokemon']['id'],
                            'name_ko': r['pokemon']['name_ko']} for r in d['items']]}
 
-    async def tool_search_samples(self, pokemon: str, format: str | None = None, source: str | None = None) -> list[dict]:
-        d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source, 'size': 3})
+    async def tool_search_samples(self, pokemon: str, format: str | None = None, source: str | None = None,
+                                  role: str | None = None) -> dict | list:
+        """샘플 3개 + 그 포켓몬 샘플 전체의 형태 분포. role을 주면 그 역할(예: 막이, 특수 딜러) 샘플만."""
+        d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source,
+                                         'size': 30 if role else 3})
+        rows = [s for s in d['results'] if not role or any(role in r for r in s.get('roles', []))][:3]
         out = []
-        for s in d['results']:
+        for s in rows:
             m = s['member']
             out.append({
-                'source': s['source_label'], 'sample': compact_sample(s['sample']),
+                'source': s['source_label'], 'roles': s.get('roles', []), 'sample': compact_sample(s['sample']),
                 'readable': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
                             f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
                             f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
             })
-        return out or [{'result': f'"{pokemon}" 샘플 없음'}]
+        if not out:
+            return [{'result': f'"{pokemon}" ' + (f'{role} ' if role else '') + '샘플 없음'}]
+        return {'shapes': d.get('shapes'), 'samples': out}
 
     async def tool_search_teams(self, pokemon: str | None = None, format: str | None = None,
                                 source: str | None = None, page: int = 1) -> dict:
