@@ -216,6 +216,8 @@ class PartyApiTests(APITestCase):
         self.assertIn('갸라도스: 공격 SP를 줬는데 그쪽 공격기가 없음', r['warnings'])
 
     def test_high_base_offense_is_dealer(self):
-        """SP를 내구에 몰아도 공격 종족값이 높고 공격기가 2개 이상이면 딜러 (내구조정)."""
-        bulky_chomp = {'pokemon': 'garchomp', 'sp': {'hp': 32, 'def': 32}, 'moves': ['earthquake', 'waterfall']}
+        """SP를 내구에 몰아도 공격 종족값이 높고 공격기가 3개 이상이면 딜러 (내구조정), 2개면 막이."""
+        bulky_chomp = {'pokemon': 'garchomp', 'sp': {'hp': 32, 'def': 32}, 'moves': ['earthquake', 'waterfall', 'icebeam']}
         self.assertEqual(self.check([bulky_chomp])['members'][0]['roles'], ['물리 딜러 (내구조정)'])
+        wall = {**bulky_chomp, 'moves': ['earthquake', 'waterfall', 'toxic']}
+        self.assertEqual(self.check([wall])['members'][0]['roles'], ['물리막이 (말려 죽이기)'])

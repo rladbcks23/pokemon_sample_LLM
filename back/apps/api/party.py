@@ -78,8 +78,8 @@ def member_profile(rid: str, m: dict, fmt: str = 'singles') -> dict:
     bulky = (bulk >= BULK_SP and offense <= LOW_OFFENSE_SP) if has_sp else bulk >= offense * 3 + src['spe']
     # 내구조정: 딜러인데 공격 외에 HP·방어·특방에도 SP를 나눠 준 형태
     tuned = has_sp and not bulky and offense >= 12 and bulk >= TUNED_BULK_SP
-    # SP는 내구 위주여도 공격 종족값이 높고 공격기가 2개 이상이면 딜러 (예: 내구에 몰아 준 메가리자몽Y)
-    if bulky and has_sp and max(base['atk'], base['spa']) >= HIGH_OFFENSE_BASE and len(phys) + len(spec) >= 2:
+    # SP는 내구 위주여도 공격 종족값이 높고 공격기가 3개 이상이면 딜러 (예: 내구에 몰아 준 메가리자몽Y)
+    if bulky and has_sp and max(base['atk'], base['spa']) >= HIGH_OFFENSE_BASE and len(phys) + len(spec) >= 3:
         bulky, tuned = False, True
         src = {**sp, 'atk': base['atk'], 'spa': base['spa']}      # 물리/특수는 종족값으로 가름
 
