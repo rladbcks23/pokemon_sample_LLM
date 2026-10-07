@@ -25,23 +25,12 @@ POKEMON = {'ruleset': 'champions_mc', 'format': 'singles', 'items': [
      'megas': [{'id': 'gyaradosmega', 'name_ko': '메가갸라도스', 'types': ['Water', 'Dark'],
                 'stats': {}, 'item': 'gyaradosite'}]},
 ]}
-CHART = {  # 공격 → 방어 → 배율 (테스트에 필요한 것만)
-    'Ice': {'Dragon': 2, 'Ground': 2, 'Flying': 2},
-    'Electric': {'Ground': 0, 'Water': 2, 'Flying': 2},
-    'Fighting': {'Dark': 2},
-    'Fire': {'Dragon': 0.5, 'Water': 0.5},
-}
-OPTIONS = {'typechart': CHART, 'types': [{'id': 'Ice', 'name_ko': '얼음'}, {'id': 'Electric', 'name_ko': '전기'},
-                                         {'id': 'Fighting', 'name_ko': '격투'},
-                                         {'id': 'Fire', 'name_ko': '불꽃'}]}
 
 
 def back(request: httpx.Request) -> httpx.Response:
     path = request.url.path
     if path == '/api/pokemon/':
         return httpx.Response(200, json=POKEMON)
-    if path == '/api/options/':
-        return httpx.Response(200, json=OPTIONS)
     if path == '/api/samples/':      # size만큼만 돌려줌
         member = {'pokemon': {'name_ko': '한카리아스'}, 'item': {'name_ko': '생명의구슬'}, 'ability': {'name_ko': '까칠한피부'},
                   'nature': {'name_ko': '명랑'}, 'sp': {'hp': 2, 'atk': 32, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 32},
@@ -151,18 +140,6 @@ class LoopTest(unittest.TestCase):
         result = asyncio.run(go())
         self.assertTrue(result['is_error'])
         self.assertIn('back API', result['content'])
-
-    def test_analyze_party_uses_mega_types(self):
-        async def go():
-            async with client() as c:
-                return await Tools(c).run('analyze_party', {'members': [
-                    {'pokemon': 'garchomp', 'item': 'lifeorb'}, {'pokemon': 'gyarados', 'item': 'gyaradosite'}]})
-        out = asyncio.run(go())
-        self.assertEqual(out['members'][1]['name_ko'], '메가갸라도스')
-        self.assertEqual(out['by_attack_type']['얼음']['weak'], 1)       # 한카리아스 ×4, 메가갸라도스는 비행이 빠짐
-        self.assertEqual(out['by_attack_type']['전기'], {'weak': 1, 'resist': 0, 'immune': 1})
-        self.assertIn('얼음×4', out['members'][0]['weak_to'])
-        self.assertNotIn('불꽃', out['by_attack_type'])       # 반감뿐이고 약점 0마리인 타입은 뺌 (결과를 짧게)
 
     def test_search_samples_short(self):
         async def go():

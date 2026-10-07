@@ -54,14 +54,11 @@ TOOLS = [
           {'members': {'type': 'array', 'items': SAMPLE}}, ('members',)),
 ]
 
-# 예전 데이터 생성(make_data.py v1)용으로만 남긴 도구: 실행은 되지만 모델에게는 보이지 않음 (check_party가 대신)
-LEGACY = {'analyze_party'}
-
 # 화면에 보여 줄 진행 상태
 STATUS = {
     'search_pokemon': '포켓몬 찾는 중', 'get_pokemon': '포켓몬 정보 확인 중', 'get_ranking': '픽률 순위 확인 중',
     'search_samples': '샘플 찾는 중', 'search_teams': '파티 샘플 찾는 중', 'get_team': '파티 확인 중',
-    'analyze_party': '약점 계산 중', 'get_speed_tiers': '스피드표 확인 중', 'validate_set': '육성형 검사 중',
+    'get_speed_tiers': '스피드표 확인 중', 'validate_set': '육성형 검사 중',
     'propose_party': '추천 파티 검사 중', 'check_party': '파티 점검 중', 'find_partners': '같이 쓰인 포켓몬 찾는 중',
     'find_threats': '위협 포켓몬 찾는 중',
 }
@@ -200,32 +197,6 @@ class Tools:
             } for m in t['members']],
         }
 
-    async def tool_analyze_party(self, members: list[dict]) -> dict:
-        opts = await self._get('options/', cache=True)
-        chart = opts['typechart']
-        type_ko = {t['id']: t['name_ko'] for t in opts['types']}
-        by_id = {p['id']: p for p in (await self._get('pokemon/', {'format': self.format}, cache=True))['items']}
-        rows = []
-        for m in members[:6]:
-            p = by_id.get(m.get('pokemon', ''))
-            if not p:
-                raise ToolError(f"없는 포켓몬 ID: {m.get('pokemon')}")
-            form = next((x for x in p['megas'] if x['item'] and x['item'] == m.get('item')), None) or p
-            rows.append({'name_ko': form['name_ko'], 'types': form['types'],
-                         'cells': {a: _mul(chart, a, form['types']) for a in chart}})
-        summary = {}      # 약점이 1마리 이상인 타입만, 약점 많은 순 (결과를 짧게)
-        for a in sorted(chart, key=lambda a: -sum(r['cells'][a] > 1 for r in rows)):
-            cnt = {'weak': sum(r['cells'][a] > 1 for r in rows), 'resist': sum(0 < r['cells'][a] < 1 for r in rows),
-                   'immune': sum(r['cells'][a] == 0 for r in rows)}
-            if cnt['weak']:
-                summary[type_ko.get(a, a)] = cnt
-        return {
-            'members': [{'name_ko': r['name_ko'], 'types': [type_ko.get(t, t) for t in r['types']],
-                         'weak_to': [type_ko.get(a, a) + f"×{r['cells'][a]:g}" for a in chart if r['cells'][a] > 1]}
-                        for r in rows],
-            'by_attack_type': summary,
-        }
-
     async def tool_get_speed_tiers(self, format: str | None = None, top: int = 50,
                                    min_speed: int | None = None, max_speed: int | None = None) -> list[str]:
         d = await self._get('speed/', {'format': self._fmt(format), 'top': min(max(int(top or 50), 1), 200)})
@@ -302,10 +273,3 @@ def _raise_input_error(r: httpx.Response) -> None:
             detail = r.text
         raise ToolError(detail.get('detail', detail) if isinstance(detail, dict) and 'detail' in detail else str(detail))
     r.raise_for_status()
-
-
-def _mul(chart: dict, attack: str, types: list[str]) -> float:
-    out = 1.0
-    for d in types:
-        out *= chart[attack].get(d, 1)
-    return out
