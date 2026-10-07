@@ -357,7 +357,12 @@ def sample_list(request):
     if request.query_params.get('format'):
         qs = qs.filter(format_key=format_key(rs, get_format(request)))
     if q := request.query_params.get('q', '').strip():
-        qs = qs.filter(pokemon_key__in=pokemon_keys(rs, q))
+        keys = pokemon_keys(rs, q)
+        n = names(rs.id)['pokemon']
+        exact = [k for k in keys if q == n[k]['name_ko'] or q.lower() == n[k]['name'].lower()]
+        # 이름이 딱 맞는 포켓몬의 샘플이 있으면 그 포켓몬만 (라이츄 ≠ 라이츄-알로라), 없으면 이름 일부로 (로토무 → 폼들)
+        exact_qs = qs.filter(pokemon_key__in=exact)
+        qs = exact_qs if exact and exact_qs.exists() else qs.filter(pokemon_key__in=keys)
     from apps.api.party import member_profile        # party가 views를 import하므로 여기서
 
     def as_sample(s):

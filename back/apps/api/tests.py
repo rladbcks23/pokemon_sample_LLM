@@ -7,7 +7,7 @@ from apps.dex.models import Ability, Item, Learnset, Move, Nature, Pokemon, Poke
 from apps.dex.typechart import chart
 from datetime import datetime, timezone
 
-from apps.meta.models import RankSnapshot, Team, TeamMember, UsageDetail, UsageStat
+from apps.meta.models import PokemonSet, RankSnapshot, Team, TeamMember, UsageDetail, UsageStat
 
 
 def mon(rs, sid, name, name_ko, types, stats, **kw):
@@ -221,3 +221,25 @@ class PartyApiTests(APITestCase):
         self.assertEqual(self.check([bulky_chomp])['members'][0]['roles'], ['물리 딜러 (내구조정)'])
         wall = {**bulky_chomp, 'moves': ['earthquake', 'waterfall', 'toxic']}
         self.assertEqual(self.check([wall])['members'][0]['roles'], ['물리막이 (말려 죽이기)'])
+
+
+class SampleSearchTests(APITestCase):
+    """샘플 검색: 이름이 딱 맞는 포켓몬 우선, 샘플별 역할과 형태 분포."""
+
+    @classmethod
+    def setUpTestData(cls):
+        names.cache_clear()
+        rs = Ruleset.objects.create(id='champions_mc', name='M-C', showdown_mod='champions', start_date=date(2026, 9, 9))
+        mon(rs, 'raichu', 'Raichu', '라이츄', ['Electric'], (60, 90, 55, 90, 80, 110))
+        mon(rs, 'raichualola', 'Raichu-Alola', '라이츄-알로라', ['Electric', 'Psychic'], (60, 85, 50, 95, 85, 110))
+        for key in ('raichu', 'raichualola'):
+            PokemonSet.objects.create(ruleset=rs, format_key='champions_mc_singles', pokemon_key=key, source='opgg_sample',
+                                      sp_hp=32, sp_def=32)
+
+    def test_exact_name_first(self):
+        d = self.client.get('/api/samples/?q=라이츄&format=singles').json()
+        self.assertEqual([r['sample']['pokemon'] for r in d['results']], ['raichu'])
+        self.assertEqual(d['shapes']['total'], 1)
+        self.assertIn('roles', d['results'][0])
+        d = self.client.get('/api/samples/?q=라이&format=singles').json()      # 일부만 맞으면 둘 다
+        self.assertEqual(d['count'], 2)
