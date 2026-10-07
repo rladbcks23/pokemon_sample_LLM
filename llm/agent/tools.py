@@ -8,6 +8,7 @@ import httpx
 
 STATS = ('hp', 'atk', 'def', 'spa', 'spd', 'spe')
 FORMAT = {'type': 'string', 'enum': ['singles', 'doubles'], 'description': '생략하면 지금 화면의 싱글/더블'}
+MEMBER = {'type': 'object', 'properties': {'pokemon': {'type': 'string'}, 'item': {'type': 'string'}}, 'required': ['pokemon']}
 SAMPLE = {
     'type': 'object',
     'description': '육성형. 모든 값은 영문 ID (도구 결과에 나온 id)',
@@ -69,10 +70,33 @@ TOOLS = [
         'name': 'analyze_party',
         'description': '파티의 방어 상성: 멤버별 타입·약점, 그리고 약점(×2 이상)이 1마리 이상인 공격 타입별 약점·반감·무효 마리 수. '
                        '메가스톤을 든 멤버는 메가 폼 타입으로 계산한다.',
+        'input_schema': {'type': 'object', 'properties': {'members': {'type': 'array', 'items': MEMBER}},
+                         'required': ['members']},
+    },
+    {
+        'name': 'check_party',
+        'description': '파티 점검: 멤버별 역할(물리/특수/혼합 딜러·랭크업 딜러·기점잡이·막이)·공격 형태·스피드 실수치, '
+                       '역할 수·물리/특수 딜러 수·메가스톤 수·2마리 이상 겹치는 약점, 중복·밸런스 경고. '
+                       '빈 포지션·밸런스 판단, 추천 전후 비교에 쓴다. 멤버는 육성형(기술·SP 포함)을 넣는다.',
         'input_schema': {'type': 'object', 'properties': {'members': {
-            'type': 'array', 'items': {'type': 'object', 'properties': {
-                'pokemon': {'type': 'string'}, 'item': {'type': 'string'}}, 'required': ['pokemon']}}},
+            'type': 'array', 'items': {**SAMPLE, 'required': ['pokemon']}, 'description': '1~6마리'}},
             'required': ['members']},
+    },
+    {
+        'name': 'find_partners',
+        'description': '실제 상위 파티(OP.GG 상위·대회 팀)에서 주어진 포켓몬이 모두 든 파티 수와, 같이 쓰인 포켓몬 순위(횟수·%). '
+                       '조합 추천의 근거. 파티 수가 적으면 근거가 약하다고 말한다.',
+        'input_schema': {'type': 'object', 'properties': {
+            'pokemon': {'type': 'array', 'items': {'type': 'string'}, 'description': '포켓몬 ID 1~3개'},
+            'format': FORMAT, 'top': {'type': 'integer', 'description': '기본 12'}}, 'required': ['pokemon']},
+    },
+    {
+        'name': 'find_threats',
+        'description': '픽률 상위 포켓몬 중 실제로 많이 쓰는 공격 기술로 파티 여러 마리의 약점을 찌르는 포켓몬과 찌르는 기술. '
+                       '특성에 의한 무효·대미지 크기는 반영하지 않는다.',
+        'input_schema': {'type': 'object', 'properties': {
+            'members': {'type': 'array', 'items': MEMBER}, 'format': FORMAT,
+            'top': {'type': 'integer', 'description': '픽률 상위 몇 마리까지 볼지 (기본 40)'}}, 'required': ['members']},
     },
     {
         'name': 'get_speed_tiers',
@@ -90,7 +114,7 @@ TOOLS = [
     {
         'name': 'propose_party',
         'description': '사용자 화면에 추천 파티 카드를 띄운다 (사용자가 눌러서 파티에 넣을 수 있음). '
-                       '모든 멤버가 validate_set 기준으로 합법이어야 표시되고, 아니면 문제를 돌려준다.',
+                       '모든 멤버가 validate_set 기준으로 합법이고 같은 포켓몬·같은 도구가 없어야 표시되고, 아니면 문제를 돌려준다.',
         'input_schema': {'type': 'object', 'properties': {
             'members': {'type': 'array', 'items': SAMPLE, 'description': '1~6마리'}}, 'required': ['members']},
     },
@@ -101,7 +125,8 @@ STATUS = {
     'search_pokemon': '포켓몬 찾는 중', 'get_pokemon': '포켓몬 정보 확인 중', 'get_ranking': '픽률 순위 확인 중',
     'search_samples': '샘플 찾는 중', 'search_teams': '파티 샘플 찾는 중', 'get_team': '파티 확인 중',
     'analyze_party': '약점 계산 중', 'get_speed_tiers': '스피드표 확인 중', 'validate_set': '육성형 검사 중',
-    'propose_party': '추천 파티 검사 중',
+    'propose_party': '추천 파티 검사 중', 'check_party': '파티 점검 중', 'find_partners': '같이 쓰인 포켓몬 찾는 중',
+    'find_threats': '위협 포켓몬 찾는 중',
 }
 
 
@@ -136,9 +161,7 @@ class Tools:
         if cache and key in self._cache:
             return self._cache[key]
         r = await self.client.get(path, params={k: v for k, v in (params or {}).items() if v not in (None, '')})
-        if r.status_code == 404:
-            raise ToolError(r.json().get('detail', '없음'))
-        r.raise_for_status()
+        _raise_input_error(r)
         if cache:
             self._cache[key] = r.json()
         return r.json()
@@ -270,6 +293,24 @@ class Tools:
             lines.append(f"{row['speed']}: " + ', '.join(f"{e['pokemon']['name_ko']}({e['label']})" for e in row['entries']))
         return lines[:80] or ['해당 구간에 포켓몬 없음']
 
+    async def _post(self, path: str, body: dict) -> dict:
+        r = await self.client.post(path, json=body)
+        _raise_input_error(r)
+        return r.json()
+
+    async def tool_check_party(self, members: list[dict]) -> dict:
+        return await self._post('party/check/', {'members': members})
+
+    async def tool_find_partners(self, pokemon: list[str] | str, format: str | None = None, top: int = 12) -> dict:
+        keys = [pokemon] if isinstance(pokemon, str) else list(pokemon or [])
+        return await self._get('partners/', {'pokemon': ','.join(keys[:3]), 'format': self._fmt(format),
+                                             'top': min(max(int(top or 12), 1), 30)})
+
+    async def tool_find_threats(self, members: list[dict], format: str | None = None, top: int = 40) -> dict:
+        return await self._post('threats/', {'members': [{'pokemon': m.get('pokemon'), 'item': m.get('item', '')}
+                                                          for m in members or []],
+                                             'format': self._fmt(format), 'top': min(max(int(top or 40), 1), 100)})
+
     async def _validate(self, sample: dict) -> dict:
         r = await self.client.post('validate/', json=sample)
         r.raise_for_status()
@@ -282,6 +323,11 @@ class Tools:
         if not 1 <= len(members or []) <= 6:
             raise ToolError('멤버는 1~6마리')
         problems = []
+        for kind, key in (('포켓몬', 'pokemon'), ('도구', 'item')):          # 같은 포켓몬·같은 도구는 하나씩
+            seen = [m.get(key) for m in members if m.get(key)]
+            dup = sorted({x for x in seen if seen.count(x) > 1})
+            if dup:
+                problems.append({'slot': 'party', 'errors': [f'같은 {kind} 중복: {", ".join(dup)}']})
         for i, m in enumerate(members, 1):
             v = await self._validate(m)
             errs = [c['message'] for c in v['checks'] if c['level'] == 'error']
@@ -295,6 +341,17 @@ class Tools:
             'moves': ([*(m.get('moves') or []), '', '', '', ''])[:4],
         } for m in members]
         return {'shown': True, 'count': len(members)}
+
+
+def _raise_input_error(r: httpx.Response) -> None:
+    """back이 404(없는 ID)·400(잘못된 입력)을 주면 모델에게 돌려줄 오류로."""
+    if r.status_code in (400, 404):
+        try:
+            detail = r.json()
+        except ValueError:
+            detail = r.text
+        raise ToolError(detail.get('detail', detail) if isinstance(detail, dict) and 'detail' in detail else str(detail))
+    r.raise_for_status()
 
 
 def _mul(chart: dict, attack: str, types: list[str]) -> float:

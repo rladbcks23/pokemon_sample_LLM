@@ -12,7 +12,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from agent.loop import build_messages, run_agent
-from agent.tools import Tools
+from agent.tools import ToolError, Tools
 from server import app as server
 
 POKEMON = {'ruleset': 'champions_mc', 'format': 'singles', 'items': [
@@ -50,6 +50,12 @@ def back(request: httpx.Request) -> httpx.Response:
         n = int(request.url.params['size'])
         return httpx.Response(200, json={'results': [{'name': f'샘플{i}', 'source_label': 'OP.GG 샘플', 'sample': sample,
                                                       'member': member} for i in range(n)]})
+    if path == '/api/partners/':
+        return httpx.Response(200, json={'teams': 3, 'with': request.url.params['pokemon'].split(','), 'partners': []})
+    if path == '/api/party/check/':
+        if not json.loads(request.content).get('members'):
+            return httpx.Response(400, json={'members': '멤버가 비어 있음'})
+        return httpx.Response(200, json={'members': [], 'summary': {}, 'warnings': []})
     if path == '/api/pokemon/nope/':
         return httpx.Response(404, json={'detail': 'nope: 이 레귤레이션에 없는 포켓몬'})
     if path == '/api/validate/':
@@ -180,6 +186,29 @@ class LoopTest(unittest.TestCase):
         self.assertEqual(len(parties), 1)
         self.assertEqual(parties[0][0]['moves'], SAMPLE['moves'])
         self.assertEqual(parties[0][0]['sp'], {'hp': 2, 'atk': 32, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 32})
+
+    def test_propose_party_rejects_duplicates(self):
+        async def go():
+            async with client() as c:
+                t = Tools(c)
+                return await t.run('propose_party', {'members': [SAMPLE, {**SAMPLE, 'pokemon': 'gyarados'}]}), t.proposed
+        out, proposed = asyncio.run(go())
+        self.assertFalse(out['shown'])
+        self.assertIsNone(proposed)
+        self.assertIn('같은 도구 중복: garchompite', out['problems'][0]['errors'])
+
+    def test_new_party_tools(self):
+        async def go():
+            async with client() as c:
+                t = Tools(c, 'doubles')
+                partners = await t.run('find_partners', {'pokemon': ['rillaboom', 'incineroar']})
+                try:
+                    await t.run('check_party', {'members': []})
+                except ToolError as e:
+                    return partners, str(e)
+        partners, err = asyncio.run(go())
+        self.assertEqual(partners['with'], ['rillaboom', 'incineroar'])
+        self.assertIn('멤버가 비어 있음', err)        # back의 400은 모델에게 돌려줄 오류로
 
     def test_refusal(self):
         events = collect(FakeProvider(msg(stop='refusal')), [{'role': 'user', 'content': '?'}])
