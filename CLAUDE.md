@@ -64,15 +64,15 @@
   - 길이(v2, Qwen3.5 토크나이저): 시스템 프롬프트+도구 설명 약 2,650토큰, 대화 한 턴 평균 약 5,000·최대 약 7,000토큰.
     줄이는 방법: 도구 설명은 짧게, 결과는 필요한 필드만·JSON 공백 없이, 후보 비교는 check_party(candidates=…) 한 번
   - 모델 학습은 **Colab에서만** 진행한다. 로컬 GPU용 학습 노트북·설정은 유지하지 않는다
-    - 현재 실행 파일은 `llm/training/finetune_colab_rebuilt.ipynb`. 재구성 ZIP과 함께 사용한다
-    - `finetune_colab.ipynb`는 기존 데이터 형식의 Colab 노트북이며 `make_rebuilt_notebook.py`가 참조하는 기본 파일이다
+    - 실행 파일은 `llm/training/finetune_colab.ipynb` + `colab_bundle.zip` 한 쌍이다. 사용법은 `llm/training/README.md`
+    - 보조 코드는 `scripts/`, 이전 ZIP·중간 결과는 `archive/`에 둔다. 현재 데이터·보고서는 ZIP에 포함하고 로컬 `outputs/` 복사본은 유지하지 않는다. 예전 실행 노트북과 중복 노트북 생성기는 유지하지 않는다
     - 데이터 생성·검증·묶음 제작 스크립트와 back/DB/도구는 Colab 학습·채팅에 필요하므로 유지한다
     - 묶음 ZIP은 드라이브 `MyDrive/pokemon_coach/` 또는 Colab 파일 탭에 올린다. 재구성판 결과는 `pokemon_coach/outputs_rebuilt_20261007/`에 저장한다
     - 노트북 끝의 채팅방(gradio)은 `inproc_back.py`로 back을 프로세스 안에서 불러 실제 도구를 실행한다
-  - Colab 데이터 재구성판: `rebuild_colab_data.py`는 현재/v1 ZIP의 동일 DB를 확인하고 v2 대화를 실제 도구로 재검증, v1 샘플 유형은 현재 도구로 재생성한다. 원본 파일을 덮어쓰거나 학습하지 않는다
-    - `compact_context.py`로 중복 육성형 원문을 한 번만 제공하고 각 assistant 행동을 분리해 4096 이내로 만든다. 도구 호출 정답의 필드는 그대로, 마지막 응답만 학습한다
+  - Colab 데이터 재구성: `llm/training/scripts/rebuild_colab_data.py`는 현재/v1 ZIP의 동일 DB를 확인하고 v2 대화를 실제 도구로 재검증, v1 샘플 유형은 현재 도구로 재생성한다. 원본 파일을 덮어쓰거나 학습하지 않는다
+    - `scripts/compact_context.py`로 중복 육성형 원문을 한 번만 제공하고 각 assistant 행동을 분리해 4096 이내로 만든다. 도구 호출 정답의 필드는 그대로, 마지막 응답만 학습한다
     - 원본 팀·추천 육성형·변형의 연결 묶음으로 train/eval 분리. DB/도구/입력 버전·제외 사유·사람 검수 대기를 기록한다
-    - `colab_bundle_rebuilt_20261007.zip` + `finetune_colab_rebuilt.ipynb`를 함께 사용. r=8, T4 float32 경로, 먼저 가장 긴 입력 2개로 2스텝 점검. 실제 GPU 학습·추천 품질은 실행 후 확인
+    - r=8, 최대 길이 4096, T4 float32 경로. 먼저 가장 긴 입력 2개로 2스텝 점검. 실제 GPU 학습·추천 품질은 실행 후 확인
     - 재구성 모델을 서버에 붙일 때도 같은 `compact_context` 입력 표현을 적용해야 한다
   - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 무료 Colab(T4)에서 불가
   - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`

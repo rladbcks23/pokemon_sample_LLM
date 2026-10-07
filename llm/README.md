@@ -9,15 +9,16 @@
 
 ## 모델 학습 (Colab 전용)
 
-모델 학습은 Colab에서만 진행한다. 사용할 파일은 `training/finetune_colab_rebuilt.ipynb`와
-`training/colab_bundle_rebuilt_20261007.zip`이다. ZIP을 드라이브 `MyDrive/pokemon_coach/` 또는
+모델 학습은 Colab에서만 진행한다. 사용할 파일은 `training/finetune_colab.ipynb`와
+`training/colab_bundle.zip`이다. ZIP을 드라이브 `MyDrive/pokemon_coach/` 또는
 Colab 파일 탭에 올리고 전용 노트북을 순서대로 실행한다.
 
 먼저 `SMOKE_TEST=True`로 가장 긴 입력 2개를 2스텝 점검한다. 성공하면 런타임을 다시 시작하고
 `SMOKE_TEST=False`로 바꿔 전체 학습을 실행한다. 학습률·loss 그래프와 마지막 채팅방도 이 노트북에 있다.
 
-`training/finetune_colab.ipynb`는 기존 형식과 재구성 노트북 생성에 쓰는 기본 파일이다.
-데이터 생성·검증·ZIP 제작 스크립트, back API와 DB, 에이전트 도구는 Colab에서도 사용한다.
+자세한 사용법과 데이터 생성 명령은 [training/README.md](training/README.md)에 있다.
+현재 데이터·보고서는 ZIP 안에 있고, 보조 코드는 `training/scripts/`,
+이전 파일은 `training/archive/`에 모았다. 로컬 `outputs/` 복사본은 두지 않는다.
 
 ## 실행 (Windows 기준, 리눅스는 `../.venv/bin/`)
 ```bash

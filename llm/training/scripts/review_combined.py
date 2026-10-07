@@ -1,7 +1,7 @@
 """v1 샘플 유형 + v2 파티 대화를 현재 도구로 재생성하는 검수용 실행기.
 
 기존 데이터에 덧붙이지 않고 새 폴더에 대화 20개만 만든다. 학습/평가 내보내기나
-모델 학습은 하지 않는다. 실행: python training/review_combined.py --tokenizer-dir DIR
+모델 학습은 하지 않는다. 실행: python training/scripts/review_combined.py --tokenizer-dir DIR
 tokenizer-dir은 Qwen3.5-4B의 tokenizer.json과 chat_template.jinja가 있는 폴더.
 추가 의존성: tokenizers, jinja2, jsonschema (GPU·모델 가중치·유료 API 불필요).
 """
@@ -170,8 +170,11 @@ async def generate(g, seed):
 
 
 def main():
+    import sys
+    training_dir = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(training_dir))
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parent / 'outputs/review_combined_20261007')
+    parser.add_argument('--out', type=Path, default=training_dir / 'build/review_combined')
     parser.add_argument('--tokenizer-dir', type=Path, required=True)
     parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
@@ -185,7 +188,7 @@ def main():
     version = {**g.data_version(), 'tokenizer': tokenizer_meta,
                'code_sha256': {p: hashlib.sha256((g.ROOT / p).read_bytes()).hexdigest()
                                for p in ('llm/agent/tools.py', 'llm/agent/prompt.py',
-                                         'llm/training/make_data.py', 'llm/training/review_combined.py')}}
+                                         'llm/training/make_data.py', 'llm/training/scripts/review_combined.py')}}
     ds = asyncio.run(generate(g, args.seed))
     rows = [g.to_row(i, d, version) for i, d in enumerate(ds, 1)]
     lengths = []

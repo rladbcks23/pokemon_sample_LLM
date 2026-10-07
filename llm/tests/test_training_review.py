@@ -2,8 +2,8 @@
 import unittest
 
 from agent.tools import TOOLS
-from training.review_combined import sample_key, schema_errors
-from training.compact_context import action_records, mask_last_response, prepare_messages, system_prompt
+from training.scripts.review_combined import sample_key, schema_errors
+from training.scripts.compact_context import action_records, mask_last_response, prepare_messages, system_prompt
 
 
 class ReviewValidationTest(unittest.TestCase):
@@ -65,7 +65,7 @@ class ReviewValidationTest(unittest.TestCase):
         self.assertIn('search_samples(pokemon:string,format?', prompt)
 
     def test_common_origin_is_never_split(self):
-        from training.rebuild_colab_data import split_sources
+        from training.scripts.rebuild_colab_data import split_sources
         a = {'pokemon': 'garchomp', 'item': 'lifeorb', 'ability': 'roughskin',
              'nature': 'jolly', 'sp': {'atk': 32, 'spe': 32, 'hp': 2}, 'moves': ['earthquake']}
         def row(id, group, sample):
@@ -80,7 +80,7 @@ class ReviewValidationTest(unittest.TestCase):
         self.assertEqual(report['eval_missing_kinds'], [])
 
     def test_completing_empty_moves_does_not_change_fixed_build(self):
-        from training.rebuild_colab_data import fixed_kept
+        from training.scripts.rebuild_colab_data import fixed_kept
         s = {'pokemon': 'garchomp', 'item': 'lifeorb', 'ability': 'roughskin',
              'nature': 'jolly', 'sp': {'hp': 2, 'atk': 32, 'spe': 32}, 'moves': []}
         full = {**s, 'moves': ['earthquake', 'protect', 'rockslide', 'dragonclaw']}

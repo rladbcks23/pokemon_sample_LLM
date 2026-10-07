@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 import random
+import sys
 import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -16,7 +17,10 @@ else:
     from compact_context import action_records, system_prompt
     from review_combined import length_counter, sample_dialogue, sample_key, schema_errors
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
+for directory in (ROOT / 'llm', ROOT / 'llm/training'):
+    if str(directory) not in sys.path:
+        sys.path.insert(0, str(directory))
 
 
 def digest(data):
@@ -269,13 +273,14 @@ def main():
             r['tokens'] = n
         lengths[split] = {'max': max(r['tokens'] for r in rs),
                           'mean': round(sum(r['tokens'] for r in rs) / len(rs)), 'over_4096': 0}
+    notebook_path = ROOT / 'llm/training/finetune_colab.ipynb'
     version = {'db_sha256': digest((ROOT / 'data/pokemon.db').read_bytes()),
+               'notebook_sha256': digest(notebook_path.read_bytes()),
                'input_archives': {p.name: digest(p.read_bytes()) for p in (args.current, args.v1)},
                'system_sha256': digest(prompt.encode()), 'tokenizer': tokenizer_info,
                'code_sha256': {str(p.relative_to(ROOT)): digest(p.read_bytes()) for p in
-                               [ROOT / 'llm/training/compact_context.py', Path(__file__),
-                                ROOT / 'llm/training/review_combined.py', ROOT / 'llm/agent/tools.py',
-                                ROOT / 'llm/training/make_rebuilt_notebook.py']}}
+                               [ROOT / 'llm/training/scripts/compact_context.py', Path(__file__),
+                                ROOT / 'llm/training/scripts/review_combined.py', ROOT / 'llm/agent/tools.py']}}
     report = {'status': 'ready_for_colab_validation_not_trained', 'human_review': 'pending',
               'input_current_turns': len(current), 'input_v1_turns': len(old),
               'retained_current_turns': sum(r['source_archive'] == 'colab_bundle (2).zip' for r in rows),
@@ -290,10 +295,10 @@ def main():
             (args.out / filename).write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rs), encoding='utf-8')
     (args.out / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     (args.out / 'system.txt').write_text(prompt, encoding='utf-8')
-    from make_rebuilt_notebook import create_notebook
-    notebook = create_notebook()
-    notebook_path = ROOT / 'llm/training/finetune_colab_rebuilt.ipynb'
-    notebook_path.write_text(json.dumps(notebook, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    notebook = json.loads(notebook_path.read_text(encoding='utf-8'))
+    for cell in notebook['cells']:
+        if cell['cell_type'] == 'code':
+            compile(''.join(cell['source']), '<Colab cell>', 'exec')
     lines = ['# 재구성한 Colab 데이터', '',
              f"현재 {len(current)}턴 중 {report['retained_current_turns']}턴 유지. 총 {len(rows)}턴.",
              'ver1의 샘플 조회·아이템 조건·사용률 조합을 현재 도구로 새로 생성했습니다.',
@@ -308,27 +313,29 @@ def main():
               'report.json에 제외 사유·종류별 수·도구/DB/입력 버전 기록. 자연어 설명의 정확성은 사람 검수 대기입니다.',
               '원래 ZIP·데이터·모델은 덮어쓰지 않았습니다. 실제 T4 학습/OOM/추천 성능은 아직 검증하지 않았습니다.', '',
               '## 사용', '', '1. Colab 런타임을 다시 시작합니다.',
-              '2. colab_bundle_rebuilt_20261007.zip을 MyDrive/pokemon_coach/ 또는 Colab 파일 탭에 업로드합니다.',
-              '3. finetune_colab_rebuilt.ipynb를 열고 순서대로 실행합니다.',
+              '2. colab_bundle.zip을 MyDrive/pokemon_coach/ 또는 Colab 파일 탭에 업로드합니다.',
+              '3. finetune_colab.ipynb를 열고 순서대로 실행합니다.',
               '4. 처음에는 설정의 SMOKE_TEST=True로 2스텝만 확인합니다.',
               '5. 성공하면 런타임을 다시 시작하고 SMOKE_TEST=False로 바꾼 뒤 전체를 다시 실행합니다.',
               '6. 마지막 채팅에서 “더블 파티 하나 짜줘”, “더블 한카리아스 샘플 짜줘” 등을 비교합니다.', '',
               '이 데이터는 재구성판 전용 입력 표현을 씁니다. 기존 노트북과 섞지 마세요. 서버에 붙일 때도 compact_context를 적용해야 합니다.']
     (args.out / 'README.md').write_text('\n'.join(lines), encoding='utf-8')
-    output_zip = ROOT / 'llm/training/colab_bundle_rebuilt_20261007.zip'
+    output_zip = args.out / 'colab_bundle.zip'
     if output_zip.exists():
         raise ValueError('ZIP 출력이 이미 있음. 기존 결과를 먼저 다른 이름으로 보존할 것')
     data_prefix = 'llm/training/finetuning_data_ver2/'
     # 현재 사용 중인 묶음의 back/agent/DB를 기본으로 삼고 별도 표현·데이터·노트북만 추가한다.
     with zipfile.ZipFile(args.current) as source, zipfile.ZipFile(output_zip, 'x', zipfile.ZIP_DEFLATED) as dest:
         for name in source.namelist():
-            if not name.endswith('/') and not name.startswith(data_prefix):
+            if not name.endswith('/') and not name.startswith('llm/training/'):
                 dest.writestr(name, source.read(name))
         for file in args.out.iterdir():
-            if file.is_file():
+            if file.is_file() and file.suffix in ('.jsonl', '.json', '.md', '.txt'):
                 dest.write(file, data_prefix + file.name)
-        dest.write(ROOT / 'llm/training/compact_context.py', 'llm/training/compact_context.py')
-        dest.write(notebook_path, 'llm/training/finetune_colab_rebuilt.ipynb')
+        dest.write(ROOT / 'llm/training/scripts/compact_context.py', 'llm/training/scripts/compact_context.py')
+        dest.write(ROOT / 'llm/training/inproc_back.py', 'llm/training/inproc_back.py')
+        dest.write(notebook_path, 'llm/training/finetune_colab.ipynb')
+        dest.write(ROOT / 'llm/training/README.md', 'llm/training/README.md')
     with zipfile.ZipFile(output_zip) as z:
         assert z.testzip() is None
         assert digest(z.read('data/pokemon.db')) == version['db_sha256']
