@@ -6,7 +6,7 @@ LLM 코치가 "어떤 포지션이 비었는지", "누구와 같이 쓰이는지
 - 기점잡이(싱글)·서포터(더블): 벽·스텔스록·순풍·배턴터치, 더블은 속이기·날따름·트릭룸 등으로 판을 깔아 주는 역할
 - 랭크업 딜러: 용의춤·칼춤·나쁜음모 등으로 랭크를 올리는 메인 딜러
 - 물리/특수/혼합 딜러: 공격·특공(과 스피드) 위주
-- 막이: HP·방어·특방 위주. 방어 쪽이면 물리막이, 특방 쪽이면 특수막이. 상태이상·회복 기술이 있으면 "말려 죽이기"
+- 막이: HP·방어·특방 위주. 방어 쪽이면 물리막이, 특방 쪽이면 특수막이
 - 내구조정: 딜러인데 HP·방어·특방에도 SP를 나눠 준 형태
 """
 import math
@@ -40,7 +40,8 @@ BULK_SP = 40          # HP+방어+특방 SP가 이 이상이고
 LOW_OFFENSE_SP = 16   # 공격·특공 SP가 각각 이 이하면 막이
 TUNED_BULK_SP = 16    # 딜러인데 HP+방어+특방 SP가 이 이상이면 내구조정
 WASTED_SP = 8         # 공격(특공) SP가 이 이상인데 물리(특수)기가 없으면 경고
-MAX_MEGA = 2          # 메가스톤 3개 이상이면 경고 (배틀마다 메가진화는 한 번)
+MAX_MEGA = 2          # 메가진화 포켓몬 3마리 이상이면 경고 (배틀마다 메가진화는 한 번)
+COMMON_MOVE_PCT = 10  # 위협 계산: 이 사용률 이상인 기술만 찌르는 기술로 셈
 STAT_KO = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
 
 
@@ -109,7 +110,7 @@ def member_profile(rid: str, m: dict, fmt: str = 'singles') -> dict:
             wall = '특수막이'
         else:
             wall = '막이'
-        roles.append(wall + (' (말려 죽이기)' if set(moves) & STALL else ''))
+        roles.append(wall)
     elif style:
         tag = ', 내구조정' if tuned else ''
         if set(moves) & BOOST:
@@ -153,7 +154,7 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
         warnings.append('같은 도구 중복: ' + ', '.join((n['item'].get(k) or {}).get('name_ko') or k for k in dup_i))
     megas = sum(p['mega'] for p in profs)
     if megas > MAX_MEGA:
-        warnings.append(f'메가스톤 {megas}개: 배틀마다 메가진화는 한 번이라 선출이 제한되고 메가 2마리를 같이 낼 수 있음')
+        warnings.append(f'메가진화 포켓몬 {megas}마리: 배틀마다 메가진화는 한 번이라 선출이 제한되고 메가 2마리를 같이 낼 수 있음')
     if len(members) >= 4 and (phys == 0 or spec == 0):
         warnings.append(('특수 딜러 없음 (물리 쪽만)' if phys else '물리 딜러 없음 (특수 쪽만)') if phys or spec else '딜러가 없음')
     profiles = [defense_profile(p['_types']) for p in profs]
@@ -171,7 +172,7 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
     return {
         'members': profs,
         'summary': {
-            'roles': dict(role_count), 'physical_attackers': phys, 'special_attackers': spec, 'mega_stones': megas,
+            'roles': dict(role_count), 'physical_attackers': phys, 'special_attackers': spec, 'mega_pokemon': megas,
             'weak_types_2plus': weak, 'weak_cover': cover,
         },
         'warnings': warnings,
@@ -255,19 +256,26 @@ def threats(request):
         u = usage.get(key)
         if not u or key in {m['pokemon'] for m in members}:
             continue
-        moves = [d.target_key for d in sorted(u.details.all(), key=lambda d: -d.pct) if d.kind == 'move'][:10]
-        attacks = [(x, n['move'][x]) for x in moves if x in n['move'] and n['move'][x]['category'] != 'Status']
-        hits = []
+        moves = [(d.target_key, d.pct) for d in sorted(u.details.all(), key=lambda d: -d.pct) if d.kind == 'move'][:10]
+        attacks = [(n['move'][x], pct) for x, pct in moves if x in n['move'] and n['move'][x]['category'] != 'Status']
+        hits, rare = [], []
         for name_ko, types in member_types:
-            best = max(attacks, key=lambda a: _mult(a[1]['type'], types), default=None)
-            if best and _mult(best[1]['type'], types) >= 2:
-                hits.append(f"{name_ko}←{best[1]['name_ko']}({TYPE_KO.get(best[1]['type'])} ×{_mult(best[1]['type'], types):g})")
+            supers = [(mv, pct) for mv, pct in attacks if _mult(mv['type'], types) >= 2]
+            common = [a for a in supers if a[1] >= COMMON_MOVE_PCT]
+            # 기술 사용률 10% 이상이면 찌름으로 셈, 그보다 낮으면 '가끔'으로 따로 (사용률 표시)
+            pick = max(common or supers, key=lambda a: (_mult(a[0]['type'], types), a[1]), default=None)
+            if not pick:
+                continue
+            mv, pct = pick
+            line = f"{name_ko}←{mv['name_ko']} {pct:g}%({TYPE_KO.get(mv['type'])} ×{_mult(mv['type'], types):g})"
+            (hits if common else rare).append(line)
         if len(hits) >= need:
             out.append({'id': key, 'name_ko': n['pokemon'][key]['name_ko'], 'rank': r['rank'],
-                        'hits': len(hits), 'targets': hits})
+                        'hits': len(hits), 'targets': hits, **({'sometimes': rare} if rare else {})})
     out.sort(key=lambda x: (-x['hits'], x['rank']))
     return Response({'format': fmt, 'checked_top': top, 'need_hits': need, 'threats': out[:8],
-                     'note': '사용률 상위 공격 기술의 타입 기준. 특성에 의한 무효·대미지 크기는 반영하지 않음'})
+                     'note': f'기술 사용률 {COMMON_MOVE_PCT:g}% 이상인 공격기로 찌르는 멤버 수 (sometimes: 그보다 드물게 쓰는 기술). '
+                             '특성에 의한 무효·대미지 크기는 반영하지 않음'})
 
 
 def _mult(attack: str, types: list[str]) -> float:

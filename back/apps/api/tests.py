@@ -179,7 +179,7 @@ class PartyApiTests(APITestCase):
         d = self.check([sweeper, wall])
         self.assertEqual(d['members'][0]['roles'], ['기점잡이', '랭크업 딜러 (물리)'])
         self.assertEqual(d['members'][0]['speed'], (102 + 32 + 20) * 110 // 100)
-        self.assertEqual(d['members'][1]['roles'], ['물리막이 (말려 죽이기)'])
+        self.assertEqual(d['members'][1]['roles'], ['물리막이'])
         self.assertEqual((d['summary']['physical_attackers'], d['summary']['special_attackers']), (1, 0))
         self.assertIn('같은 도구 중복: 생명의구슬', d['warnings'])
         self.assertEqual(self.client.post('/api/party/check/', {'members': [{'pokemon': 'zzz'}]},
@@ -197,7 +197,7 @@ class PartyApiTests(APITestCase):
             {'pokemon': 'garchomp'}, {'pokemon': 'blissey'}, {'pokemon': 'garchomp'}]}, format='json').json()
         self.assertEqual(d['need_hits'], 2)
         self.assertEqual(d['threats'][0]['id'], 'gyarados')
-        self.assertIn('한카리아스←냉동빔(얼음 ×4)', d['threats'][0]['targets'])
+        self.assertIn('한카리아스←냉동빔 60%(얼음 ×4)', d['threats'][0]['targets'])
 
     def test_weak_cover(self):
         """겹치는 약점마다 그 공격을 반감·무효로 받아 줄 멤버."""
@@ -220,7 +220,7 @@ class PartyApiTests(APITestCase):
         bulky_chomp = {'pokemon': 'garchomp', 'sp': {'hp': 32, 'def': 32}, 'moves': ['earthquake', 'waterfall', 'icebeam']}
         self.assertEqual(self.check([bulky_chomp])['members'][0]['roles'], ['물리 딜러 (내구조정)'])
         wall = {**bulky_chomp, 'moves': ['earthquake', 'waterfall', 'toxic']}
-        self.assertEqual(self.check([wall])['members'][0]['roles'], ['물리막이 (말려 죽이기)'])
+        self.assertEqual(self.check([wall])['members'][0]['roles'], ['물리막이'])
 
 
 class SampleSearchTests(APITestCase):
