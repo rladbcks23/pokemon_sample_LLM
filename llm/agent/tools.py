@@ -189,15 +189,13 @@ class Tools:
         t = await self._get(f'teams/{int(id)}/')
         return {
             'id': t['id'], 'title': t['title'], 'source': t['source_label'],
-            # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), readable: 답변에 쓰는 한글 한 줄
+            # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), name: 답변에 쓰는 "이름 @ 도구" (짧게)
             'members': [{
                 'sample': compact_sample({
                     'pokemon': m['base'], 'item': (m['item'] or {}).get('id', ''), 'ability': m['base_ability'],
                     'nature': (m['nature'] or {}).get('id', ''), 'sp': m['sp'],
                     'moves': [x['id'] for x in m['moves'] if x]}),
-                'readable': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
-                            f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
-                            f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
+                'name': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')}",
                 **({'brought': m['brought'], 'lead': m['lead']} if m['brought'] is not None else {}),
             } for m in t['members']],
         }
@@ -245,8 +243,10 @@ class Tools:
 
     async def tool_check_party(self, members: list[dict], candidates: list[dict] | None = None,
                                format: str | None = None) -> dict:
-        return await self._post('party/check/', {'members': members, 'candidates': candidates or [],
-                                                 'format': self._fmt(format)})
+        d = await self._post('party/check/', {'members': members, 'candidates': candidates or [],
+                                              'format': self._fmt(format)})
+        # 후보 비교를 부를 때는 지금 파티 점검은 이미 본 것이므로 비교 결과만 (짧게)
+        return {'candidates': d['candidates']} if candidates and 'candidates' in d else d
 
     async def tool_find_partners(self, pokemon: list[str] | str, format: str | None = None, top: int = 8) -> dict:
         keys = [pokemon] if isinstance(pokemon, str) else list(pokemon or [])

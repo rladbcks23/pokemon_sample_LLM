@@ -80,6 +80,12 @@ class Dex:
         return (sp.get('atk', 0) >= WASTED_SP and 'Physical' not in cats) or \
             (sp.get('spa', 0) >= WASTED_SP and 'Special' not in cats)
 
+    def id_of(self, name_ko: str) -> str | None:
+        """한글 이름 → 포켓몬 ID (메가 폼 제외)."""
+        if not hasattr(self, '_ids'):
+            self._ids = {p['name_ko']: k for k, p in self.n['pokemon'].items() if not p['is_mega'] and p['name_ko']}
+        return self._ids.get(name_ko)
+
     def ko(self, kind: str, key: str) -> str:
         row = self.n[kind].get(key) or {}
         return row.get('name_ko') or row.get('name') or key
@@ -156,7 +162,7 @@ class Dialogue:
             self.tool_errors.append(f'{name}: {e}')
         turn['steps'].append({'role': 'assistant', 'content': '',
                               'tool_calls': [{'type': 'function', 'function': {'name': name, 'arguments': args}}]})
-        turn['steps'].append({'role': 'tool', 'content': out if isinstance(out, str) else json.dumps(out, ensure_ascii=False)})
+        turn['steps'].append({'role': 'tool', 'content': out if isinstance(out, str) else json.dumps(out, ensure_ascii=False, separators=(',', ':'))})
         if name == 'propose_party':
             if not (isinstance(out, dict) and out.get('shown')):
                 raise Skip(f'propose_party 실패: {out}')
@@ -264,7 +270,7 @@ def decide_need(check: dict) -> tuple[str, str, str | None]:
     if top_weak and s['weak_types_2plus'][top_weak] >= 3:
         n, c = s['weak_types_2plus'][top_weak], len(s['weak_cover'][top_weak])
         return (f'{top_weak} 받아 줄 포켓몬',
-                f'{top_weak} 약점이 {n}마리인데 받아 줄 멤버는 {c}마리예요', top_weak)
+                f'{top_weak} 약점이 {n}마리인데 ' + (f'받아 줄 멤버는 {c}마리예요' if c else '받아 줄 멤버가 없어요'), top_weak)
     return '조합·상성', '역할은 이미 고르게 있어요', None
 
 
@@ -379,23 +385,39 @@ FILL_ONE_Q = ['현재 파티에 어울리는 샘플 하나 추천해줘', '한 �
               '이 파티에 부족한 포지션 채워줘']
 
 
-def cand_line(c: dict, after: dict, base: dict, core_ko: str, partners: dict, fmt: str) -> str:
+def partner_pool(partners: dict) -> list[dict]:
+    """find_partners 결과(이름만) → 후보 풀 (ID는 이름으로 찾음)."""
+    return [{**p, 'id': DEX.id_of(p['name_ko'])} for p in partners['partners'] if DEX.id_of(p['name_ko'])]
+
+
+def ranking_pool(ranking: dict) -> list[dict]:
+    """get_ranking 결과 "1. 한카리아스 (garchomp)" → 후보 풀."""
+    out = []
+    for line in ranking['items']:
+        m = re.match(r'(\d+)\. (.+) \((\w+)\)$', line)
+        if m:
+            out.append({'rank': int(m.group(1)), 'name_ko': m.group(2), 'id': m.group(3)})
+    return out
+
+
+def cand_line(c: dict, row: dict, core_ko: str, partners: dict, fmt: str) -> str:
+    """check_party의 candidates 한 줄 → "- 이름 (역할, 형태 비율) — 근거 / 장점·단점"."""
     p = c['partner']
     where = (f"{core_ko} 파티 {partners['teams']}개 중 {p['count']}개" if 'count' in p
              else f"{FORMAT_KO[fmt]} 픽률 {p['rank']}위")
-    role = last_role(after).replace(' (', '·').replace(')', '')       # 랭크업 딜러 (물리) → 랭크업 딜러·물리
+    role = ', '.join(row['roles']).replace(' (', '·').replace(')', '')       # 랭크업 딜러 (물리) → 랭크업 딜러·물리
     shape, sh = c['roles'][0].split(' (')[0], c.get('shapes') or {}
     share = f", {shape}형 샘플 {sh[shape]}/{sh['total']}" if sh.get(shape) and sh.get('total') else ''
-    return f"- {p['name_ko']} ({role}{share}) — {where}\n  {pros_cons(base, after)}"
-
-
-def last_role(check: dict) -> str:
-    return ', '.join(check['members'][-1]['roles'])
+    pros = f"장점: {', '.join(row['covers'])} 받아 줌" if row['covers'] else '장점: 겹치는 약점을 받아 주진 않음'
+    bad = [w.split(' ')[0] for w in row['new_weak']]
+    cons = f" / 단점: {', '.join(bad)} 약점 늘어남" if bad else ''
+    return f"- {p['name_ko']} ({role}{share}) — {where}\n  {pros}{cons}"
 
 
 async def fill_one(rng, tools, fmt, party, question, src):
-    """1번: 5마리 파티에 빈 포지션을 판단해 후보를 비교하고 1마리 추천 → "그 역할 말고" 후속."""
-    d = Dialogue(tools, fmt, 'fill_one', ['후보 비교', '제약 준수', '장단점', '후속 수정', '한계 설명'])
+    """1번: 5마리 파티에 빈 포지션을 판단해 후보를 비교하고 1마리 추천 → "그 역할 말고" 후속.
+    후보 비교는 check_party(candidates=…) 한 번으로 (도구를 여러 번 부르지 않게)."""
+    d = Dialogue(tools, fmt, 'fill_one', ['후보 비교', '제약 준수', '장단점', '후속 수정', '한계 설명'], rng)
     d.meta['conditions']['fixed'] = party
     d.meta['sources'] = src
     d.ask(question, party)
@@ -405,12 +427,11 @@ async def fill_one(rng, tools, fmt, party, question, src):
     core = pick_core(party, fmt)
     core_ko = DEX.ko('pokemon', core['pokemon'])
     partners = await d.call('find_partners', pokemon=[core['pokemon']])
-    cands = await ranked_candidates(tools, fmt, party, partners['partners'], need, weak)
+    cands = await ranked_candidates(tools, fmt, party, partner_pool(partners), need, weak)
     ranking = None
     if not any(c['fits'] for c in cands):          # 같이 쓰인 후보 중 맞는 게 없으면 픽률 순위에서
         ranking = await d.call('get_ranking', limit=30)
-        pool = [{'id': x['id'], 'name_ko': x['name_ko'], 'rank': x['rank']} for x in ranking['items']]
-        cands = await ranked_candidates(tools, fmt, party, pool, need, weak, limit=30)
+        cands = await ranked_candidates(tools, fmt, party, ranking_pool(ranking), need, weak, limit=30)
     fits = [c for c in cands if c['fits']]
     if not fits or len(cands) < 2:
         raise Skip('맞는 후보 없음')
@@ -419,29 +440,27 @@ async def fill_one(rng, tools, fmt, party, question, src):
              next((c for c in cands if c is not a), None))
     for c in (a, b):
         await d.call('search_samples', **search_args(c['partner']['id'], c['role_arg']))
-    after_a = await d.call('check_party', members=party + [a['sample']['sample']])
-    after_b = await d.call('check_party', members=party + [b['sample']['sample']])
+    cmp = await d.call('check_party', members=party, candidates=[a['sample']['sample'], b['sample']['sample']])
+    row_a, row_b = cmp['candidates']
     await d.call('propose_party', members=party + [a['sample']['sample']])
 
-    def why_pick(a, b) -> str:
+    def why_pick() -> str:
         if not b['fits']:
-            return f"{need}에 맞는 쪽이라서" if need != '조합·상성' else '장점이 더 많아서'
-        if len(a['bad']) < len(b['bad']):
-            return '단점이 더 적어서'
-        return '같이 쓰인 횟수와 장점을 합쳐 더 나아서'
+            return f"{need}에 맞는 쪽이라서예요" if need != '조합·상성' else '장점이 더 많아서예요'
+        if len(row_a['new_weak']) < len(row_b['new_weak']):
+            return '단점이 더 적어서예요'
+        return '같이 쓰인 횟수와 장점을 합쳐 더 나아서예요'
 
-    head = f"**{need}**{josa(need, '을', '를')[len(need):]}" if need != '조합·상성' else ''
     if need == '조합·상성':
         text = f"지금 파티: {roles_text(base['summary'])}. 역할은 고르게 있어서 같이 쓰인 횟수와 상성으로 골랐어요.\n"
     else:
-        text = f"지금 파티: {roles_text(base['summary'])}. {why}. 그래서 {head} 찾았어요.\n"
+        text = f"지금 파티: {roles_text(base['summary'])}. {why}. 그래서 **{need}**{josa(need, '을', '를')[len(need):]} 찾았어요.\n"
     if ranking:
         text += f"({josa(core_ko, '과', '와')} 같이 쓰인 포켓몬 중엔 없어서 픽률 상위 30마리에서 찾음)\n"
-    text += (f"\n{cand_line(a, after_a, base, core_ko, partners, fmt)}\n{cand_line(b, after_b, base, core_ko, partners, fmt)}\n"
-             f"\n→ **{short(a['sample']['sample'])}** ({sp_of(after_a, a['sample']['sample']['pokemon'])}) 추천 (화면에 띄움). "
-             f"{why_pick(a, b)}요.".replace('서요.', '서예요.'))
-    if other_warnings(after_a):
-        text += '\n주의: ' + '; '.join(other_warnings(after_a))
+    text += (f"\n{cand_line(a, row_a, core_ko, partners, fmt)}\n{cand_line(b, row_b, core_ko, partners, fmt)}\n"
+             f"\n→ **{short(a['sample']['sample'])}** ({row_a['sp']}) 추천 (화면에 띄움). {why_pick()}")
+    if row_a.get('warnings'):
+        text += '\n주의: ' + '; '.join(row_a['warnings'])
     if not ranking and partners['teams'] < 10:
         text += f"\n참고: {josa(core_ko, '이', '가')} 든 상위 파티가 {partners['teams']}개뿐이라 같이 쓰인 횟수는 근거가 약해요."
     d.answer(text)
@@ -475,8 +494,7 @@ async def fill_one(rng, tools, fmt, party, question, src):
     alt = [c for c in cands if ok(c)]
     if not alt and not ranking:             # 같이 쓰인 후보에 없으면 픽률 순위까지
         rank2 = await d.call('get_ranking', limit=30)
-        pool = [{'id': x['id'], 'name_ko': x['name_ko'], 'rank': x['rank']} for x in rank2['items']]
-        alt = [c for c in await ranked_candidates(tools, fmt, party, pool, need, weak, limit=30) if ok(c)]
+        alt = [c for c in await ranked_candidates(tools, fmt, party, ranking_pool(rank2), need, weak, limit=30) if ok(c)]
     if not alt:
         if drop_need:
             what = "상성을 보완하면서 약점이 3마리 이상 겹치지 않는"
@@ -491,14 +509,14 @@ async def fill_one(rng, tools, fmt, party, question, src):
     alt.sort(key=lambda c: -c['score'])
     c = alt[0]
     await d.call('search_samples', **search_args(c['partner']['id'], c['role_arg']))
-    after_c = await d.call('check_party', members=party + [c['sample']['sample']])
+    row_c = (await d.call('check_party', members=party, candidates=[c['sample']['sample']]))['candidates'][0]
     await d.call('propose_party', members=party + [c['sample']['sample']])
     lead = (f"{josa(role, '을', '를')} 빼면 {need}는 채울 수 없어서, 대신 상성을 보완하는 쪽으로 봤어요.\n"
             if drop_need else f"{josa(role, '을', '를')} 빼고 다시 보면:\n")
-    text = (lead + f"→ **{short(c['sample']['sample'])}** ({sp_of(after_c, c['sample']['sample']['pokemon'])}) 추천 (화면에 띄움)\n"
-            f"{cand_line(c, after_c, base, core_ko, partners, fmt)}")
-    if other_warnings(after_c):
-        text += '\n주의: ' + '; '.join(other_warnings(after_c))
+    text = (lead + f"→ **{short(c['sample']['sample'])}** ({row_c['sp']}) 추천 (화면에 띄움)\n"
+            f"{cand_line(c, row_c, core_ko, partners, fmt)}")
+    if row_c.get('warnings'):
+        text += '\n주의: ' + '; '.join(row_c['warnings'])
     d.answer(text)
     return d
 
@@ -514,7 +532,7 @@ async def team_from_search(d: Dialogue, tools, fmt, fixed: list[dict], core_key:
         others = [m for m in team['members'] if m['sample']['pokemon'] not in {f['pokemon'] for f in fixed}]
         if any(m['sample']['item'] in fixed_items or DEX.odd(m['sample']) for m in others):
             continue
-        overlap = sum(any(x in m['readable'].split(' @')[0] for x in top) for m in others)
+        overlap = sum(any(x in m['name'].split(' @')[0] for x in top) for m in others)
         if best is None or overlap > best[0]:
             best = (overlap, t, team)
     if not best:
@@ -571,7 +589,7 @@ async def core_team(rng, tools, fmt, fixed, question, follow, src):
         raise Skip('6마리가 안 됨')
     check = await d.call('check_party', members=party)
     await d.call('propose_party', members=party)
-    used = [p for p in partners['partners'][:8] if p['id'] in {m['pokemon'] for m in party}]
+    used = [p for p in partners['partners'][:8] if DEX.id_of(p['name_ko']) in {m['pokemon'] for m in party}]
     text = (f"상위 파티 '{t['title']}'({t['source']})를 바탕으로 짰어요. {name} 육성은 그대로예요 (화면에 띄움).\n"
             + party_lines(check, party[1:]) + '\n\n')
     if used:
@@ -630,7 +648,7 @@ async def follow_best(d: Dialogue, party: list[dict], core: dict):
     partners = await d.call('find_partners', pokemon=[core['pokemon']])
     check = await d.call('check_party', members=party)
     have = {m['pokemon'] for m in party}
-    missing = [p for p in partners['partners'][:6] if p['id'] not in have][:2]
+    missing = [p for p in partners['partners'][:6] if DEX.id_of(p['name_ko']) not in have][:2]
     text = ("최선이라고 단정할 수는 없어요. 제가 가진 데이터는 픽률·같이 쓰인 횟수·상성·역할이고, 승률이나 대미지 계산은 없거든요.\n"
             f"이 기준으로는 {josa(name, '이', '가')} 든 상위 파티 {partners['teams']}개에서 자주 같이 쓰인 포켓몬 위주로, "
             f"{roles_text(check['summary'])} 구성이에요.\n")
