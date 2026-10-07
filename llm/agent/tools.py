@@ -63,7 +63,7 @@ TOOLS = [
     },
     {
         'name': 'get_team',
-        'description': '파티 샘플 상세: 멤버 육성(도구·특성·성격·SP·기술)과 타입별 약점 마리 수. 리플레이는 선출·선봉도.',
+        'description': '파티 샘플 상세: 멤버 육성형(sample은 propose_party에 그대로 넣을 수 있음)과 타입별 약점 마리 수. 리플레이는 선출·선봉도.',
         'input_schema': {'type': 'object', 'properties': {'id': {'type': 'integer'}}, 'required': ['id']},
     },
     {
@@ -247,11 +247,15 @@ class Tools:
         weak = {k: v for k, v in t['weakness']['weak_count'].items() if v >= 2}
         return {
             'id': t['id'], 'title': t['title'], 'source': t['source_label'], 'format': t['format'],
+            # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), readable: 답변에 쓰는 한글 한 줄
             'members': [{
-                'pokemon': m['pokemon']['name_ko'], 'base_id': m['base'],
-                'item': (m['item'] or {}).get('name_ko'), 'ability': (m['ability'] or {}).get('name_ko'),
-                'nature': (m['nature'] or {}).get('name_ko'), 'sp': _sp_text(m['sp']),
-                'moves': [x['name_ko'] for x in m['moves'] if x],
+                'sample': compact_sample({
+                    'pokemon': m['base'], 'item': (m['item'] or {}).get('id', ''), 'ability': m['base_ability'],
+                    'nature': (m['nature'] or {}).get('id', ''), 'sp': m['sp'],
+                    'moves': [x['id'] for x in m['moves'] if x]}),
+                'readable': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
+                            f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
+                            f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
                 **({'brought': m['brought'], 'lead': m['lead']} if m['brought'] is not None else {}),
             } for m in t['members']],
             'weak_types_2plus': weak,
