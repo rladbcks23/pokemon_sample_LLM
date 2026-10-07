@@ -40,6 +40,7 @@ BULK_SP = 40          # HP+방어+특방 SP가 이 이상이고
 LOW_OFFENSE_SP = 16   # 공격·특공 SP가 각각 이 이하면 막이
 TUNED_BULK_SP = 16    # 딜러인데 HP+방어+특방 SP가 이 이상이면 내구조정
 WASTED_SP = 8         # 공격(특공) SP가 이 이상인데 물리(특수)기가 없으면 경고
+HIGH_OFFENSE_BASE = 120   # 공격·특공 종족값이 이 이상이면 내구 SP여도 딜러로 봄 (메가리자몽Y 159는 딜러, 워시로토무 105는 막이)
 MAX_MEGA = 2          # 메가스톤 3개 이상이면 경고 (배틀마다 메가진화는 한 번)
 STAT_KO = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
 
@@ -77,6 +78,10 @@ def member_profile(rid: str, m: dict, fmt: str = 'singles') -> dict:
     bulky = (bulk >= BULK_SP and offense <= LOW_OFFENSE_SP) if has_sp else bulk >= offense * 3 + src['spe']
     # 내구조정: 딜러인데 공격 외에 HP·방어·특방에도 SP를 나눠 준 형태
     tuned = has_sp and not bulky and offense >= 12 and bulk >= TUNED_BULK_SP
+    # SP는 내구 위주여도 공격 종족값이 높고 공격기가 2개 이상이면 딜러 (예: 내구에 몰아 준 메가리자몽Y)
+    if bulky and has_sp and max(base['atk'], base['spa']) >= HIGH_OFFENSE_BASE and len(phys) + len(spec) >= 2:
+        bulky, tuned = False, True
+        src = {**sp, 'atk': base['atk'], 'spa': base['spa']}      # 물리/특수는 종족값으로 가름
 
     # 딜러라면 물리/특수/혼합 (기술 수와 투자로)
     style = None
