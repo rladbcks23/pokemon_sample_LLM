@@ -68,6 +68,11 @@
     - 노트북(RTX 4050 6GB): 4bit QLoRA, 길이 4096 → 샘플 대화만 들어감
     - Colab은 `llm/training/pack_colab.py`로 만든 `colab_bundle.zip`(back 코드·DB·도구·학습 데이터)을 드라이브 `MyDrive/pokemon_coach/`에 두고, 체크포인트·어댑터도 거기 저장 (끊기면 이어서 학습)
     - 노트북 끝의 채팅방(gradio)은 `inproc_back.py`로 back을 프로세스 안에서 불러 실제 도구를 실행한다
+  - Colab 데이터 재구성판: `rebuild_colab_data.py`는 현재/v1 ZIP의 동일 DB를 확인하고 v2 대화를 실제 도구로 재검증, v1 샘플 유형은 현재 도구로 재생성한다. 원본 파일을 덮어쓰거나 학습하지 않는다
+    - `compact_context.py`로 중복 육성형 원문을 한 번만 제공하고 각 assistant 행동을 분리해 4096 이내로 만든다. 도구 호출 정답의 필드는 그대로, 마지막 응답만 학습한다
+    - 원본 팀·추천 육성형·변형의 연결 묶음으로 train/eval 분리. DB/도구/입력 버전·제외 사유·사람 검수 대기를 기록한다
+    - `colab_bundle_rebuilt_20261007.zip` + `finetune_colab_rebuilt.ipynb`를 함께 사용. r=8, T4 float32 경로, 먼저 가장 긴 입력 2개로 2스텝 점검. 실제 GPU 학습·추천 품질은 실행 후 확인
+    - 재구성 모델을 서버에 붙일 때도 같은 `compact_context` 입력 표현을 적용해야 한다
   - `Qwen3.5-9B`는 학습에 VRAM 약 22GB가 필요해 집 PC·무료 Colab(T4)에서 불가
   - 모델은 Apache 2.0만 쓴다. 비교용 후보: `kakaocorp/kanana-2-3b-instruct`(라이선스 확인 필요), `skt/A.X-4.0-Light`
   - EXAONE 제외: 라이선스가 연구 목적 전용이라 무료 공개 서비스·외부 배포도 막힘
