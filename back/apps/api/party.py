@@ -3,10 +3,11 @@
 LLM 코치가 "어떤 포지션이 비었는지", "누구와 같이 쓰이는지", "누가 약점을 찌르는지"를
 지어내지 않고 데이터로 말하게 하려고 만든 것. 역할 기준은 CLAUDE.md의 정의를 따른다.
 
-- 기점잡이: 벽·스텔스록·순풍·배턴터치 등으로 판을 깔아 주는 역할 (랭크업 딜러와 같이 씀)
+- 기점잡이(싱글)·서포터(더블): 벽·스텔스록·순풍·배턴터치, 더블은 속이기·날따름·트릭룸 등으로 판을 깔아 주는 역할
 - 랭크업 딜러: 용의춤·칼춤·나쁜음모 등으로 랭크를 올리는 메인 딜러
 - 물리/특수/혼합 딜러: 공격·특공(과 스피드) 위주
-- 막이: HP·방어·특방 위주. 상태이상·회복 기술이 있으면 "말려 죽이기"
+- 막이: HP·방어·특방 위주. 방어 쪽이면 물리막이, 특방 쪽이면 특수막이. 상태이상·회복 기술이 있으면 "말려 죽이기"
+- 내구조정: 딜러인데 HP·방어·특방에도 SP를 나눠 준 형태
 """
 import math
 from collections import Counter
@@ -30,11 +31,15 @@ BOOST = {'swordsdance', 'dragondance', 'nastyplot', 'calmmind', 'quiverdance', '
 # 말려 죽이기 (상태이상·씨뿌리기·회복·강제 교체)
 STALL = {'toxic', 'willowisp', 'leechseed', 'recover', 'roost', 'slackoff', 'softboiled', 'wish', 'synthesis',
          'moonlight', 'strengthsap', 'haze', 'whirlwind', 'roar'}
-# 더블 보조 (역할을 정하지는 않고 태그로만)
-DOUBLES_SUPPORT = {'fakeout', 'followme', 'ragepowder', 'helpinghand', 'icywind', 'electroweb', 'snarl', 'partingshot'}
+# 더블 서포터 기술 (2개 이상이면 서포터)
+DOUBLES_SUPPORT = {'fakeout', 'followme', 'ragepowder', 'helpinghand', 'icywind', 'electroweb', 'snarl', 'partingshot',
+                   'encore', 'taunt', 'spore', 'sleeppowder', 'thunderwave', 'willowisp', 'coaching', 'wideguard',
+                   'allyswitch', 'lifedew', 'pollenpuff'}
 
 BULK_SP = 40          # HP+방어+특방 SP가 이 이상이고
 LOW_OFFENSE_SP = 16   # 공격·특공 SP가 각각 이 이하면 막이
+TUNED_BULK_SP = 16    # 딜러인데 HP+방어+특방 SP가 이 이상이면 내구조정
+WASTED_SP = 8         # 공격(특공) SP가 이 이상인데 물리(특수)기가 없으면 경고
 MAX_MEGA = 2          # 메가스톤 3개 이상이면 경고 (배틀마다 메가진화는 한 번)
 STAT_KO = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
 
@@ -49,8 +54,8 @@ def _base(rid: str, key: str) -> dict:
     return {'hp': p.hp, 'atk': p.atk, 'def': p.defense, 'spa': p.spa, 'spd': p.spd, 'spe': p.spe}
 
 
-def member_profile(rid: str, m: dict) -> dict:
-    """육성형 하나 → 역할·공격 형태·투자·스피드."""
+def member_profile(rid: str, m: dict, fmt: str = 'singles') -> dict:
+    """육성형 하나 → 역할(하나 또는 딜러+기점잡이)·공격 형태·투자·스피드."""
     n = names(rid)
     key = m.get('pokemon', '')
     if key not in n['pokemon']:
@@ -65,10 +70,13 @@ def member_profile(rid: str, m: dict) -> dict:
     spec = [x for x, i in zip(moves, info) if i.get('category') == 'Special']
 
     # 투자: SP가 비어 있으면 종족값으로 판단
-    src = sp if any(sp.values()) else base
+    has_sp = any(sp.values())
+    src = sp if has_sp else base
     offense = max(src['atk'], src['spa'])
     bulk = src['hp'] + src['def'] + src['spd']
-    bulky = (bulk >= BULK_SP and offense <= LOW_OFFENSE_SP) if any(sp.values()) else bulk >= offense * 3 + src['spe']
+    bulky = (bulk >= BULK_SP and offense <= LOW_OFFENSE_SP) if has_sp else bulk >= offense * 3 + src['spe']
+    # 내구조정: 딜러인데 공격 외에 HP·방어·특방에도 SP를 나눠 준 형태
+    tuned = has_sp and not bulky and offense >= 12 and bulk >= TUNED_BULK_SP
 
     # 딜러라면 물리/특수/혼합 (기술 수와 투자로)
     style = None
@@ -80,18 +88,36 @@ def member_profile(rid: str, m: dict) -> dict:
         else:
             style = '특수'
 
+    # 판을 까는 역할: 싱글은 기점잡이(벽·스텔스록·순풍 등), 더블은 서포터(속이기·날따름·순풍·트릭룸 등 2개 이상)
+    if fmt == 'doubles':
+        support = '서포터' if len(set(moves) & (DOUBLES_SUPPORT | SETUP_SUPPORT)) >= 2 else None
+    else:
+        support = '기점잡이' if set(moves) & SETUP_SUPPORT else None
+
     roles = []
-    if set(moves) & SETUP_SUPPORT:
-        roles.append('기점잡이')
-    if bulky:
-        roles.append('막이' + (' (말려 죽이기)' if set(moves) & STALL else ''))
-    elif style and set(moves) & BOOST:
-        roles.append(f'랭크업 딜러 ({style})')
+    if support:
+        roles.append(support)            # 막이와 같이 붙이지 않음 (판을 까는 쪽이 우선)
+    if bulky and not support:
+        if src['def'] >= src['spd'] + 8:
+            wall = '물리막이'
+        elif src['spd'] >= src['def'] + 8:
+            wall = '특수막이'
+        else:
+            wall = '막이'
+        roles.append(wall + (' (말려 죽이기)' if set(moves) & STALL else ''))
     elif style:
-        roles.append(f'{style} 딜러')
+        tag = ', 내구조정' if tuned else ''
+        if set(moves) & BOOST:
+            roles.append(f'랭크업 딜러 ({style}{tag})')
+        else:
+            roles.append(f'{style} 딜러' + (' (내구조정)' if tuned else ''))
     if not roles:
         roles.append('보조')
     attack = '혼합' if phys and spec else '물리' if phys else '특수' if spec else '변화기만'
+
+    # 공격 SP를 줬는데 그쪽 공격기가 없음 (샘플 정제용 경고)
+    wasted = [label for stat, label, mv in (('atk', '공격', phys), ('spa', '특공', spec))
+              if has_sp and sp[stat] >= WASTED_SP and not mv]
 
     nature = n['nature'].get(norm_nature(m.get('nature', ''))) or {}
     spe = calc_stat('spe', base['spe'], sp['spe'], nature.get('plus_stat') or None, nature.get('minus_stat') or None)
@@ -103,12 +129,12 @@ def member_profile(rid: str, m: dict) -> dict:
         'sp': ' '.join(f'{STAT_KO[s]}{v}' for s, v in sp.items() if v) or '없음 (종족값으로 판단)',
         'speed': spe, 'speed_note': '구애스카프 ×1.5' if m.get('item') == 'choicescarf' else None,
         'item': m.get('item', ''), 'mega': shown != key, 'key_moves': tags,
-        '_types': _types(p), '_style': style,
+        '_types': _types(p), '_style': style, '_wasted': wasted,
     }
 
 
-def party_check(rid: str, members: list[dict]) -> dict:
-    profs = [member_profile(rid, m) for m in members]
+def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
+    profs = [member_profile(rid, m, fmt) for m in members]
     role_count = Counter(r.split(' (')[0] for p in profs for r in p['roles'])
     phys = sum(p['_style'] in ('물리', '혼합') for p in profs)      # 딜러만 셈 (막이·기점잡이의 견제기는 제외)
     spec = sum(p['_style'] in ('특수', '혼합') for p in profs)
@@ -134,7 +160,9 @@ def party_check(rid: str, members: list[dict]) -> dict:
     if weak and max(weak.values()) >= 3:
         warnings.append('약점 3마리 이상: ' + ', '.join(f'{k} {v}마리' for k, v in weak.items() if v >= 3))
     for p in profs:
-        del p['_types'], p['_style']
+        if p['_wasted']:
+            warnings.append(f"{p['name_ko']}: {'·'.join(p['_wasted'])} SP를 줬는데 그쪽 공격기가 없음")
+        del p['_types'], p['_style'], p['_wasted']
     return {
         'members': profs,
         'summary': {
@@ -149,13 +177,14 @@ def party_check(rid: str, members: list[dict]) -> dict:
 def check_party(request):
     """파티 점검: 멤버별 역할·공격 형태·스피드, 역할 수, 물리/특수, 메가 수, 중복, 약점.
 
-    POST /api/party/check/  body: {"members": [육성형 …]}
+    POST /api/party/check/  body: {"members": [육성형 …], "format": "doubles"}  (더블이면 기점잡이 대신 서포터)
     """
     rs = get_ruleset(request)
     members = [m for m in (request.data.get('members') or []) if m and m.get('pokemon')]
     if not members:
         raise ValidationError({'members': '멤버가 비어 있음'})
-    return Response(party_check(rs.id, members[:6]))
+    fmt = request.data.get('format') if request.data.get('format') in ('singles', 'doubles') else 'singles'
+    return Response(party_check(rs.id, members[:6], fmt))
 
 
 def team_queryset(rs, fmt: str | None):

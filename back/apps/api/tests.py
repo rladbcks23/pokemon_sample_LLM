@@ -140,7 +140,8 @@ class PartyApiTests(APITestCase):
         b = mon(rs, 'blissey', 'Blissey', '해피너스', ['Normal'], (255, 10, 10, 75, 135, 55))
         for sid, ko, typ, cat in (('earthquake', '지진', 'Ground', 'Physical'), ('swordsdance', '칼춤', 'Normal', 'Status'),
                                   ('icebeam', '냉동빔', 'Ice', 'Special'), ('stealthrock', '스텔스록', 'Rock', 'Status'),
-                                  ('toxic', '맹독', 'Poison', 'Status'), ('waterfall', '폭포오르기', 'Water', 'Physical')):
+                                  ('toxic', '맹독', 'Poison', 'Status'), ('waterfall', '폭포오르기', 'Water', 'Physical'),
+                                  ('fakeout', '속이기', 'Normal', 'Physical')):
             mv = Move.objects.create(ruleset=rs, showdown_id=sid, name=sid, name_ko=ko, type=typ, category=cat,
                                      power=0 if cat == 'Status' else 90, accuracy=100, pp=10, target='normal')
             for p in (g, y, b):
@@ -178,7 +179,7 @@ class PartyApiTests(APITestCase):
         d = self.check([sweeper, wall])
         self.assertEqual(d['members'][0]['roles'], ['기점잡이', '랭크업 딜러 (물리)'])
         self.assertEqual(d['members'][0]['speed'], (102 + 32 + 20) * 110 // 100)
-        self.assertEqual(d['members'][1]['roles'], ['막이 (말려 죽이기)'])
+        self.assertEqual(d['members'][1]['roles'], ['물리막이 (말려 죽이기)'])
         self.assertEqual((d['summary']['physical_attackers'], d['summary']['special_attackers']), (1, 0))
         self.assertIn('같은 도구 중복: 생명의구슬', d['warnings'])
         self.assertEqual(self.client.post('/api/party/check/', {'members': [{'pokemon': 'zzz'}]},
@@ -203,3 +204,13 @@ class PartyApiTests(APITestCase):
         d = self.check([{'pokemon': 'garchomp'}, {'pokemon': 'gyarados'}, {'pokemon': 'blissey'}])
         self.assertEqual(d['summary']['weak_types_2plus']['얼음'], 2)
         self.assertEqual(d['summary']['weak_cover']['얼음'], [])
+
+    def test_doubles_support_and_tuning(self):
+        """더블은 속이기·스텔스록 등 2개 이상이면 서포터 (막이와 같이 붙이지 않음), 딜러 내구조정, 공격 SP 낭비 경고."""
+        sup = {'pokemon': 'blissey', 'sp': {'hp': 32, 'def': 32}, 'moves': ['fakeout', 'stealthrock', 'toxic']}
+        tuned = {'pokemon': 'garchomp', 'sp': {'hp': 20, 'atk': 24, 'def': 10, 'spe': 12}, 'moves': ['earthquake']}
+        odd = {'pokemon': 'gyarados', 'sp': {'hp': 32, 'atk': 20, 'spd': 14}, 'moves': ['icebeam', 'toxic']}
+        r = self.client.post('/api/party/check/', {'members': [sup, tuned, odd], 'format': 'doubles'}, format='json').json()
+        self.assertEqual(r['members'][0]['roles'], ['서포터'])
+        self.assertEqual(r['members'][1]['roles'], ['물리 딜러 (내구조정)'])
+        self.assertIn('갸라도스: 공격 SP를 줬는데 그쪽 공격기가 없음', r['warnings'])
