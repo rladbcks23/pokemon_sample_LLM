@@ -222,6 +222,17 @@ class PartyApiTests(APITestCase):
         wall = {**bulky_chomp, 'moves': ['earthquake', 'waterfall', 'toxic']}
         self.assertEqual(self.check([wall])['members'][0]['roles'], ['물리막이'])
 
+    def test_candidates(self):
+        """후보 비교: 지금 파티에 한 마리씩 넣었을 때 받아 주는 약점·늘어나는 약점."""
+        party = [{'pokemon': 'garchomp'}, {'pokemon': 'garchomp'}]
+        r = self.client.post('/api/party/check/', {'members': party, 'candidates': [
+            {'pokemon': 'gyarados'}, {'pokemon': 'blissey'}]}, format='json').json()
+        g, b = r['candidates']
+        self.assertEqual(g['name_ko'], '갸라도스')
+        self.assertEqual(g['new_weak'], ['얼음 3마리'])      # 갸라도스도 얼음 약점
+        self.assertEqual(b['new_weak'], [])
+        self.assertNotIn('types', r['members'][0])           # 결과는 짧게
+
 
 class SampleSearchTests(APITestCase):
     """샘플 검색: 이름이 딱 맞는 포켓몬 우선, 샘플별 역할과 형태 분포."""
@@ -243,3 +254,4 @@ class SampleSearchTests(APITestCase):
         self.assertIn('roles', d['results'][0])
         d = self.client.get('/api/samples/?q=라이&format=singles').json()      # 일부만 맞으면 둘 다
         self.assertEqual(d['count'], 2)
+

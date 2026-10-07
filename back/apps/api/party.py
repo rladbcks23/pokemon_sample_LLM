@@ -127,16 +127,15 @@ def member_profile(rid: str, m: dict, fmt: str = 'singles') -> dict:
 
     nature = n['nature'].get(norm_nature(m.get('nature', ''))) or {}
     spe = calc_stat('spe', base['spe'], sp['spe'], nature.get('plus_stat') or None, nature.get('minus_stat') or None)
-    tags = sorted({n['move'][x]['name_ko'] for x in moves if x in DOUBLES_SUPPORT | STALL | BOOST | SETUP_SUPPORT
-                   and x in n['move']})
-    return {
-        'pokemon': key, 'name_ko': p['name_ko'] or p['name'], 'types': [TYPE_KO.get(t, t) for t in _types(p)],
-        'roles': roles, 'attack': f'{attack} (물리기 {len(phys)}·특수기 {len(spec)})',
-        'sp': ' '.join(f'{STAT_KO[s]}{v}' for s, v in sp.items() if v) or '없음 (종족값으로 판단)',
-        'speed': spe, 'speed_note': '구애스카프 ×1.5' if m.get('item') == 'choicescarf' else None,
-        'item': m.get('item', ''), 'mega': shown != key, 'key_moves': tags,
-        '_types': _types(p), '_style': style, '_wasted': wasted,
+    # 모델이 읽는 결과는 짧게: 이름·역할·SP·스피드만 (타입·기술은 화면 상황과 다른 도구에 있음)
+    out = {
+        'pokemon': key, 'name_ko': p['name_ko'] or p['name'], 'roles': roles,
+        'sp': ' '.join(f'{STAT_KO[s]}{v}' for s, v in sp.items() if v) or '없음 (종족값으로 판단)', 'speed': spe,
+        '_types': _types(p), '_style': style, '_wasted': wasted, '_mega': shown != key,
     }
+    if m.get('item') == 'choicescarf':
+        out['speed_note'] = '구애스카프 ×1.5'
+    return out
 
 
 def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
@@ -152,7 +151,7 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
         warnings.append('같은 포켓몬 중복: ' + ', '.join(n['pokemon'][k]['name_ko'] for k in dup_p))
     if dup_i:
         warnings.append('같은 도구 중복: ' + ', '.join((n['item'].get(k) or {}).get('name_ko') or k for k in dup_i))
-    megas = sum(p['mega'] for p in profs)
+    megas = sum(p['_mega'] for p in profs)
     if megas > MAX_MEGA:
         warnings.append(f'메가진화 포켓몬 {megas}마리: 배틀마다 메가진화는 한 번이라 선출이 제한되고 메가 2마리를 같이 낼 수 있음')
     if len(members) >= 4 and (phys == 0 or spec == 0):
@@ -168,7 +167,7 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
     for p in profs:
         if p['_wasted']:
             warnings.append(f"{p['name_ko']}: {'·'.join(p['_wasted'])} SP를 줬는데 그쪽 공격기가 없음")
-        del p['_types'], p['_style'], p['_wasted']
+        del p['_types'], p['_style'], p['_wasted'], p['_mega']
     return {
         'members': profs,
         'summary': {
@@ -179,18 +178,42 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
     }
 
 
+def compare_candidates(rid: str, members: list[dict], candidates: list[dict], fmt: str, base: dict) -> list[dict]:
+    """후보를 지금 파티에 한 마리씩 넣어 봤을 때: 역할·SP, 받아 주게 되는 약점 타입, 새로 늘어나는 약점 타입, 새 경고."""
+    bw, bc = base['summary']['weak_types_2plus'], base['summary']['weak_cover']
+    out = []
+    for c in candidates:
+        after = party_check(rid, members + [c], fmt)
+        aw, ac = after['summary']['weak_types_2plus'], after['summary']['weak_cover']
+        me = after['members'][-1]
+        row = {'name_ko': me['name_ko'], 'roles': me['roles'], 'sp': me['sp'],
+               'covers': [t for t in bw if t not in aw or len(ac[t]) > len(bc[t])],
+               'new_weak': [f'{t} {v}마리' for t, v in aw.items() if v > bw.get(t, 0)]}
+        new_warn = [w for w in after['warnings'] if w not in base['warnings'] and not w.startswith('약점 3마리 이상')]
+        if new_warn:
+            row['warnings'] = new_warn
+        out.append(row)
+    return out
+
+
 @api_view(['POST'])
 def check_party(request):
-    """파티 점검: 멤버별 역할·공격 형태·스피드, 역할 수, 물리/특수, 메가 수, 중복, 약점.
+    """파티 점검: 멤버별 역할·SP·스피드, 역할 수, 물리/특수, 메가 수, 중복, 약점.
+    candidates를 주면 후보를 한 마리씩 넣어 봤을 때의 비교도 (도구를 여러 번 부르지 않게).
 
-    POST /api/party/check/  body: {"members": [육성형 …], "format": "doubles"}  (더블이면 기점잡이 대신 서포터)
+    POST /api/party/check/  body: {"members": [육성형 …], "candidates": [육성형 …], "format": "doubles"}
+    (더블이면 기점잡이 대신 서포터)
     """
     rs = get_ruleset(request)
     members = [m for m in (request.data.get('members') or []) if m and m.get('pokemon')]
     if not members:
         raise ValidationError({'members': '멤버가 비어 있음'})
     fmt = request.data.get('format') if request.data.get('format') in ('singles', 'doubles') else 'singles'
-    return Response(party_check(rs.id, members[:6], fmt))
+    out = party_check(rs.id, members[:6], fmt)
+    cands = [c for c in (request.data.get('candidates') or []) if c and c.get('pokemon')][:3]
+    if cands and len(members) < 6:
+        out['candidates'] = compare_candidates(rs.id, members[:5], cands, fmt, out)
+    return Response(out)
 
 
 def team_queryset(rs, fmt: str | None):
