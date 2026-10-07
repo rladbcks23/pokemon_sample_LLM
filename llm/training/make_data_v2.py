@@ -620,7 +620,7 @@ async def follow_item(d: Dialogue, party: list[dict], core: dict):
         d.answer(f"{pick['name_ko']} 말고는 사용률 데이터에서 다른 멤버와 안 겹치는 도구가 더 없어요. "
                  "다른 멤버의 도구를 바꾸는 것까지 같이 볼까요?")
         return
-    d.answer(f"{pick['name_ko']} 말고 다른 템으로 바꾸고 싶다면 **{nxt['name_ko']}**({nxt['pct']}%)가 다음이에요. "
+    d.answer(f"{pick['name_ko']} 말고 다른 템으로 바꾸고 싶다면 **{nxt['name_ko']}**({nxt['pct']}%){josa(nxt['name_ko'], '이', '가')[len(nxt['name_ko']):]} 다음이에요. "
              "이것도 지금 파티의 다른 멤버와 안 겹쳐요.")
 
 
