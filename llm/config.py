@@ -14,5 +14,12 @@ LLM_MODEL = os.getenv('LLM_MODEL', 'claude-opus-5-5')
 LLM_EFFORT = os.getenv('LLM_EFFORT', 'medium')        # low / medium / high / xhigh / max
 LLM_MAX_TOKENS = int(os.getenv('LLM_MAX_TOKENS', '16000'))
 
+# 모델 provider: claude (API 키 필요) / qwen (로컬 GPU, 파인튜닝 어댑터, requirements-qwen.txt)
+LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'claude')
+QWEN_ADAPTER = os.getenv('QWEN_ADAPTER', str(Path(__file__).resolve().parent / 'models/qwen35-4b-coach-lora'))
+QWEN_BASE = os.getenv('QWEN_BASE', '')               # 비우면 어댑터의 base_model_name_or_path
+QWEN_MAX_SEQ = int(os.getenv('QWEN_MAX_SEQ', '4096'))  # 학습 길이와 같게
+QWEN_MAX_NEW_TOKENS = int(os.getenv('QWEN_MAX_NEW_TOKENS', '1024'))
+
 # 한 번 답할 때 도구 호출을 주고받는 최대 횟수 (무한 루프 방지)
 MAX_TOOL_ROUNDS = int(os.getenv('MAX_TOOL_ROUNDS', '8'))

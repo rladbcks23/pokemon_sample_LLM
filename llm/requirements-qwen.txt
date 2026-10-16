@@ -1,0 +1,7 @@
+# 로컬 Qwen provider (LLM_PROVIDER=qwen). torch는 CUDA 빌드로 먼저 설치:
+#   ..\.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch
+transformers
+peft
+accelerate
+bitsandbytes

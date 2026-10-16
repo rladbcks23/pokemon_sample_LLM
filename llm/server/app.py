@@ -30,7 +30,11 @@ _provider = None
 def get_provider():
     global _provider
     if _provider is None:
-        _provider = ClaudeProvider()
+        if config.LLM_PROVIDER == 'qwen':
+            from providers.qwen import QwenProvider      # torch는 qwen을 쓸 때만
+            _provider = QwenProvider()
+        else:
+            _provider = ClaudeProvider()
     return _provider
 
 
@@ -67,7 +71,13 @@ def api_error_text(e: Exception) -> str:
 
 @app.get('/llm/health')
 async def health():
-    return {'ok': True, 'model': config.LLM_MODEL}
+    return {'ok': True, 'model': 'qwen' if config.LLM_PROVIDER == 'qwen' else config.LLM_MODEL}
+
+
+@app.on_event('startup')
+async def load_local_model():
+    if config.LLM_PROVIDER == 'qwen':                    # 첫 질문에서 기다리지 않게 서버 켤 때 모델을 올림
+        get_provider()
 
 
 @app.post('/llm/chat')

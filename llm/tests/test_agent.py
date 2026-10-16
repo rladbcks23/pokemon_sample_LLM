@@ -227,6 +227,23 @@ class LoopTest(unittest.TestCase):
         self.assertEqual(sum(k == 'status' for k, _ in events), 3)
 
 
+class QwenFormatTest(unittest.TestCase):
+    def test_parse_and_convert(self):
+        from providers.qwen import clean, parse_calls, to_training_format
+        raw = ('<tool_call>\n<function=search_samples>\n<parameter=pokemon>\ngarchomp\n</parameter>\n'
+               '<parameter=format>\n"doubles"\n</parameter>\n</function>\n</tool_call><|im_end|>')
+        self.assertEqual(parse_calls(raw), [('search_samples', {'pokemon': 'garchomp', 'format': 'doubles'})])
+        self.assertEqual(clean(raw), '')
+        msgs = to_training_format([
+            {'role': 'user', 'content': '한카 샘플'},
+            {'role': 'assistant', 'content': [use('q1', 'search_samples', {'pokemon': 'garchomp'})]},
+            {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'q1', 'is_error': True, 'content': '없음'}]},
+        ])
+        self.assertEqual(msgs[1], {'role': 'assistant', 'content': '', 'tool_calls': [
+            {'type': 'function', 'function': {'name': 'search_samples', 'arguments': {'pokemon': 'garchomp'}}}]})
+        self.assertEqual(msgs[2], {'role': 'tool', 'content': '오류: 없음'})
+
+
 class ServerTest(unittest.TestCase):
     def test_chat_streams_sse(self):
         p = FakeProvider(msg(use('t1', 'search_pokemon', {'query': '한카'}), stop='tool_use'), msg(text('한카리아스!')))

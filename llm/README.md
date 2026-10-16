@@ -26,6 +26,15 @@ Colab 파일 탭에 올리고 전용 노트북을 순서대로 실행한다.
 copy .env.example .env          # ANTHROPIC_API_KEY 채우기
 ..\.venv\Scripts\uvicorn server.app:app --port 8001
 ```
+로컬 파인튜닝 모델(Qwen3.5-4B + LoRA, GPU 6GB 이상)로 돌릴 때:
+```bash
+..\.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu128
+..\.venv\Scripts\pip install -r requirements-qwen.txt triton-windows flash-linear-attention
+```
+Colab이 저장한 어댑터 폴더를 `llm/models/qwen35-4b-coach-lora/`에 두고(git 제외) `llm/.env`에
+`LLM_PROVIDER=qwen`. 서버를 켤 때 모델을 올린다(처음엔 기본 모델 약 9GB 다운로드, 이후 약 30초).
+4bit로 VRAM 약 3.5GB. 학습과 같은 `compact_context` 입력 표현을 쓴다. triton·fla가 없으면 같은 답을 내지만 수 배 느리다.
+
 back(8000)과 front(5173)도 같이 띄운다. 화면의 `/llm` 요청은 Vite 프록시가 8001로 넘긴다.
 
 테스트 (모델·back API는 가짜라 API 키·DB 없이 돈다):
@@ -38,7 +47,7 @@ back(8000)과 front(5173)도 같이 띄운다. 화면의 `/llm` 요청은 Vite �
 llm/
   config.py    설정 (llm/.env에서 읽음: 모델, effort, back 주소)
   agent/       에이전트 루프(loop.py), 시스템 프롬프트(prompt.py), 도구(tools.py = back API 호출)
-  providers/   모델 호출. 지금은 Claude API(claude.py), 나중에 로컬 모델(Qwen3.5-4B LoRA)을 같은 모양으로 추가
+  providers/   모델 호출. Claude API(claude.py), 로컬 Qwen3.5-4B LoRA(qwen.py). LLM_PROVIDER로 고름
   server/      채팅 API 서버 (SSE)
   tests/       루프·도구·서버 테스트
   training/    (3단계) LoRA 파인튜닝 데이터 생성·학습

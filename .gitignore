@@ -37,6 +37,7 @@ llm/training/build/
 llm/training/archive/
 llm/training/*.jsonl
 llm/training/*.zip
+llm/models/
 
 # Colab 묶음을 푼 폴더, Unsloth가 학습 중 만드는 캐시
 llm/training/colab_bundle/
