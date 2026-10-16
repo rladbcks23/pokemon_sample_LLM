@@ -1,6 +1,6 @@
 <script setup>
-import { nextTick, ref } from 'vue'
-import { chatStream } from '@/api'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useCoach } from '@/stores/coach'
 import PokemonImg from '@/components/PokemonImg.vue'
 
 // 파티 코치 채팅 (오른쪽 패널). llm 서버(SSE)에 대화와 현재 파티를 보내고 답변을 이어 붙임.
@@ -16,11 +16,13 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'apply', 'open-sample'])
 
 const CHIPS = ['이 파티 약점 알려줘', '메가 누구한테 써?', '선출 추천해줘']
-const messages = ref([
+const coach = useCoach()      // 대화는 store에 (페이지를 나갔다 와도 유지, 답변도 계속 받음)
+// 첫 인사말은 저장하지 않고 화면에서만 (서버의 build_messages도 앞쪽 assistant는 뺌)
+const messages = computed(() => [
   { role: 'bot', text: `${props.formatLabel} 배틀 · ${props.rulesetLabel} 레귤레이션 기준으로 도와드릴게요. 중심으로 쓰고 싶은 포켓몬이나 플레이 스타일을 알려주세요.` },
+  ...coach.messages,
 ])
 const draft = ref('')
-const busy = ref(false)
 const box = ref(null)
 
 async function scroll() {
@@ -28,34 +30,14 @@ async function scroll() {
   if (box.value) box.value.scrollTop = box.value.scrollHeight
 }
 
-async function ask(text) {
+function ask(text) {
   const q = text.trim()
-  if (!q || busy.value) return
+  if (!q || coach.busy) return
   draft.value = ''
-  busy.value = true
-  messages.value.push({ role: 'user', text: q })
-  const history = messages.value.filter((m) => m.role !== 'status' && m.text)
-    .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }))
-  messages.value.push({ role: 'status', text: '답변 준비 중…' }, { role: 'bot', text: '' })
-  const status = messages.value[messages.value.length - 2]
-  const bot = messages.value[messages.value.length - 1]
-  scroll()
-  try {
-    await chatStream({ history, format: props.format, party: JSON.parse(JSON.stringify(props.party)) }, (event, data) => {
-      if (event === 'status') status.text = `${data.text}…`
-      else if (event === 'text') bot.text += data.delta
-      else if (event === 'party') bot.party = data.members
-      else if (event === 'error') bot.text += `${bot.text ? '\n\n' : ''}⚠ ${data.message}`
-      scroll()
-    })
-  } catch {
-    bot.text = '파티 코치 서버(llm)에 연결하지 못했습니다. llm 서버가 켜져 있는지 확인해 주세요.'
-  }
-  messages.value.splice(messages.value.indexOf(status), 1)
-  if (!bot.text && !bot.party) bot.text = '답변을 받지 못했습니다.'
-  busy.value = false
-  scroll()
+  coach.ask(q, props.format, props.party, scroll)
 }
+
+onMounted(scroll)
 </script>
 
 <template>
@@ -66,7 +48,7 @@ async function ask(text) {
     <div v-else class="inner">
       <div class="ch">
         <div><strong>파티 코치</strong><span>{{ formatLabel }} · {{ rulesetLabel }} 기준으로 답변</span></div>
-        <div class="cr"><span class="muted">대화 목록 ▾</span><button class="fold" title="접기" @click="emit('update:open', false)">▶</button></div>
+        <div class="cr"><button class="new" :disabled="coach.busy || !coach.messages.length" @click="coach.reset()">새 대화</button><button class="fold" title="접기" @click="emit('update:open', false)">▶</button></div>
       </div>
       <div ref="box" class="msgs">
         <div v-for="(m, i) in messages" :key="i" class="m" :class="m.role">
@@ -90,7 +72,7 @@ async function ask(text) {
         <div class="chips"><button v-for="c in CHIPS" :key="c" @click="ask(c)">{{ c }}</button></div>
         <div class="input">
           <input v-model="draft" placeholder="파티에 대해 물어보세요" @keydown.enter="ask(draft)">
-          <button :disabled="busy" @click="ask(draft)">전송</button>
+          <button :disabled="coach.busy" @click="ask(draft)">전송</button>
         </div>
       </div>
     </div>
@@ -109,6 +91,8 @@ async function ask(text) {
 .ch strong { font-size: 15px; }
 .ch span { font-size: 12px; color: var(--c-muted); }
 .cr { display: flex; align-items: center; gap: 10px; }
+.new { height: 30px; padding: 0 10px; border: 1px solid var(--c-line-strong); border-radius: 6px; background: #fff; font-size: 12px; }
+.new:disabled { opacity: .5; }
 .fold { width: 30px; height: 30px; border: 1px solid var(--c-line-strong); border-radius: 6px; background: #fff; font-size: 12px; }
 .msgs { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .m { display: flex; }
