@@ -6,8 +6,10 @@ torch 등은 이 provider를 쓸 때만 불러온다 (requirements-qwen.txt).
 """
 import asyncio
 import json
+import logging
 import re
 import threading
+import time
 from itertools import count
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -17,6 +19,7 @@ from training.scripts.compact_context import prepare_messages, system_prompt
 
 TOOL_CALL = re.compile(r'<tool_call>\s*<function=([\w-]+)>(.*?)</function>\s*</tool_call>', re.S)
 PARAM = re.compile(r'<parameter=([\w-]+)>\n?(.*?)\n?</parameter>', re.S)
+log = logging.getLogger(__name__)
 NOISE = (r'<think>.*?</think>', r'<tool_call>.*?</tool_call>', r'<\|im_end\|>.*', r'<\|endoftext\|>')
 
 
@@ -92,9 +95,11 @@ class QwenProvider:
             raise ValueError('대화 문맥이 가득 찼습니다. 새 대화에서 질문을 이어 주세요.')
         limit = min(config.QWEN_MAX_NEW_TOKENS, room)
         with self.lock, self.torch.no_grad():
+            t = time.time()
             out = self.model.generate(**ids, max_new_tokens=limit, do_sample=False, use_cache=True,
                                       eos_token_id=self.stop, pad_token_id=self.stop[0])
         new = out[0][n:]
+        log.info('qwen 입력 %d토큰 → 출력 %d토큰, %.1f초', n, len(new), time.time() - t)
         return self.tok.decode(new, skip_special_tokens=False), len(new) >= limit
 
     async def turn(self, system: str, messages: list, tools: list):
