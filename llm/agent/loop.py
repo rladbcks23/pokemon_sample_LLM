@@ -49,6 +49,7 @@ async def run_agent(provider, tools: Tools, messages: list[dict]):
         results = []
         for b in uses:
             yield 'status', STATUS.get(b.name, b.name)
+            log.info('도구 %s %s', b.name, json.dumps(b.input, ensure_ascii=False)[:200])
             try:
                 out = await tools.run(b.name, b.input)
                 results.append({'type': 'tool_result', 'tool_use_id': b.id,
