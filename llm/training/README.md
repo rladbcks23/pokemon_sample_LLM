@@ -5,7 +5,7 @@
 - `finetune_colab.ipynb`: 현재 학습·loss/학습률 그래프·평가·채팅 노트북
 - `colab_bundle.zip`: 현재 학습 데이터·back 코드·DB·도구 묶음
 
-ZIP을 `MyDrive/pokemon_coach/` 또는 Colab 파일 탭에 올린다. 노트북을 Colab에서 열고
+ZIP(노트북 BUNDLE_NAME과 같은 이름)을 `MyDrive/pokemon_coach/` 또는 Colab 파일 탭에 올린다. 노트북을 Colab에서 열고
 GPU 런타임으로 순서대로 실행한다. 먼저 `SMOKE_TEST=True`로 2스텝 점검한 뒤,
 성공하면 런타임을 다시 시작하고 `False`로 전체 학습을 실행한다.
 
