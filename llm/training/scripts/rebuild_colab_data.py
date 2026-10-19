@@ -27,13 +27,27 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def read_archive(path, prefix):
+def read_archive(path, prefix, check_db=True, names=('train.jsonl', 'eval.jsonl')):
+    """ZIP 또는 폴더(make_data.py --export 결과)에서 대화 행을 읽는다. 폴더는 현재 DB로 막 만든 것이라 DB 확인 생략."""
+    if Path(path).is_dir():
+        return [json.loads(line) for name in names for line in (Path(path) / name).read_text(encoding='utf-8').splitlines() if line]
     with zipfile.ZipFile(path) as z:
-        rows = [json.loads(line) for split in ('train', 'eval')
-                for line in z.read(prefix + split + '.jsonl').decode('utf-8').splitlines() if line]
-        if digest(z.read('data/pokemon.db')) != digest((ROOT / 'data/pokemon.db').read_bytes()):
+        rows = [json.loads(line) for name in names
+                for line in z.read(prefix + name).decode('utf-8').splitlines() if line]
+        if check_db and digest(z.read('data/pokemon.db')) != digest((ROOT / 'data/pokemon.db').read_bytes()):
             raise ValueError(f'{path}: DB 버전이 현재 DB와 다름. 자동 혼합 중단')
     return rows
+
+
+def read_seed_rows(path):
+    """샘플 유형(sample_top·item·usage) 시드: v1 ZIP(llm/training/) 또는 이전 재구성 묶음(source_*.jsonl).
+    유형·포맷·포켓몬만 쓰고 대화는 현재 도구로 새로 만들므로 DB 버전은 따지지 않는다."""
+    with zipfile.ZipFile(path) as z:
+        names = set(z.namelist())
+    if 'llm/training/train.jsonl' in names:
+        return read_archive(path, 'llm/training/', check_db=False)
+    return read_archive(path, 'llm/training/finetuning_data_ver2/', check_db=False,
+                        names=('source_train.jsonl', 'source_eval.jsonl'))
 
 
 def screen_samples(messages):
@@ -225,7 +239,7 @@ async def reconstruct(current, old, g, extras=True):
                     await d.call('get_team', id=team['id'])
                     check = await d.call('check_party', members=party)
                     await d.call('propose_party', members=party)
-                    d.answer(f"{detail['source']}의 '{detail['title']}'를 바탕으로 파티를 띄웠어요.\n"
+                    d.answer(f"{detail['source']}의 {g.team_ref(detail)}를 바탕으로 파티를 띄웠어요.\n"
                              f"구성: {g.roles_text(check['summary'])}.\n"
                              '공개 파티 예시예요. 원하는 핵심 포켓몬이나 컨셉을 알려 주면 수정할게요.')
                     if not g.auto_checks(d)['ok']:
@@ -252,7 +266,7 @@ def main():
     if args.out.exists():
         parser.error('기존 출력 보존을 위해 새 --out 경로 필요')
     current = read_archive(args.current, 'llm/training/finetuning_data_ver2/')
-    old = read_archive(args.v1, 'llm/training/')
+    old = read_seed_rows(args.v1)
     import make_data as g
     from agent.prompt import SYSTEM
     from agent.tools import TOOLS
@@ -276,7 +290,8 @@ def main():
     notebook_path = ROOT / 'llm/training/finetune_colab.ipynb'
     version = {'db_sha256': digest((ROOT / 'data/pokemon.db').read_bytes()),
                'notebook_sha256': digest(notebook_path.read_bytes()),
-               'input_archives': {p.name: digest(p.read_bytes()) for p in (args.current, args.v1)},
+               'input_archives': {p.name: digest(p.read_bytes() if p.is_file() else (p / 'train.jsonl').read_bytes())
+                                  for p in (args.current, args.v1)},
                'system_sha256': digest(prompt.encode()), 'tokenizer': tokenizer_info,
                'code_sha256': {str(p.relative_to(ROOT)): digest(p.read_bytes()) for p in
                                [ROOT / 'llm/training/scripts/compact_context.py', Path(__file__),
@@ -324,11 +339,15 @@ def main():
     if output_zip.exists():
         raise ValueError('ZIP 출력이 이미 있음. 기존 결과를 먼저 다른 이름으로 보존할 것')
     data_prefix = 'llm/training/finetuning_data_ver2/'
-    # 현재 사용 중인 묶음의 back/agent/DB를 기본으로 삼고 별도 표현·데이터·노트북만 추가한다.
-    with zipfile.ZipFile(args.current) as source, zipfile.ZipFile(output_zip, 'x', zipfile.ZIP_DEFLATED) as dest:
-        for name in source.namelist():
-            if not name.endswith('/') and not name.startswith('llm/training/'):
-                dest.writestr(name, source.read(name))
+    # back·도구 코드는 지금 저장소(git에 있는 파일)에서, DB는 지금 DB로 (예전 ZIP의 코드를 쓰면 고친 도구가 빠짐)
+    import subprocess
+    code = subprocess.run(['git', 'ls-files', 'back', 'llm/agent', 'llm/config.py'], cwd=ROOT,
+                          capture_output=True, text=True, check=True).stdout.split()
+    with zipfile.ZipFile(output_zip, 'x', zipfile.ZIP_DEFLATED) as dest:
+        for name in code:
+            if not name.startswith('back/ui/'):
+                dest.write(ROOT / name, name)
+        dest.write(ROOT / 'data/pokemon.db', 'data/pokemon.db')
         for file in args.out.iterdir():
             if file.is_file() and file.suffix in ('.jsonl', '.json', '.md', '.txt'):
                 dest.write(file, data_prefix + file.name)

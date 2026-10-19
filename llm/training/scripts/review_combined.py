@@ -124,9 +124,10 @@ async def sample_dialogue(g, tools, fmt, key, kind):
             d.ask(f'{g.FORMAT_KO[fmt]} {name} 샘플 짜줘', [])
         await d.call('search_samples', pokemon=name)
         await d.call('propose_party', members=[chosen['sample']])
-        role = ' · '.join(chosen.get('roles', []))
+        role = ' · '.join(chosen.get('roles', [])).replace(' (', '·').replace(')', '') or '확인 필요'
+        # 받침에 맞게 "막이이에요"가 아니라 "막이예요"
         d.answer(f"{g.short(chosen['sample'])} 추천 (화면에 띄움).\n"
-                 f"{chosen['source']} 공개 샘플이고, SP·기술 기준 역할은 {role or '확인 필요'}이에요.\n"
+                 f"{g.source_label(chosen['source'])}이고, SP·기술 기준 역할은 {g.josa(role, '이에요', '예요')}.\n"
                  '공개 샘플이라는 근거는 있지만, 다른 육성형보다 강하다고 단정할 수는 없어요.')
         ids = [s.pk for s in g.DEX.sets.get((fmt, key), [])
                if sample_key(g.DEX.sample(s)) == sample_key(chosen['sample'])]

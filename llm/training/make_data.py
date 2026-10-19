@@ -906,6 +906,11 @@ async def not_found(rng, tools, fmt, name, src):
 SP_LETTER = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
 
 
+def source_label(source: str) -> str:
+    """'OP.GG 샘플' → 'OP.GG 공개 샘플', 'VGCPastes 대회 팀' → 'VGCPastes 대회 팀 샘플' ("샘플 공개 샘플" 겹침 방지)."""
+    return source.replace(' 샘플', ' 공개 샘플') if source.endswith('샘플') else source + ' 샘플'
+
+
 def sp_text(sp: dict) -> str:
     return ' '.join(f'{SP_LETTER[k]}{v}' for k, v in (sp or {}).items() if v)
 
@@ -1053,7 +1058,7 @@ async def sample_req(rng, tools, fmt, key, src):
     await d.call('propose_party', members=[pick['sample']])
     sample = d.turns[-1]['proposed'][0]
     d.answer(f"{short(pick['sample'])} ({sp_text(pick['sample']['sp'])}) 추천 (화면에 띄움).\n"
-             f"{pick['source']} 공개 샘플이에요. {name} 샘플 {shapes['total']}개 중 {shape}형이 {shapes[shape]}개라 "
+             f"{source_label(pick['source'])}이에요. {name} 샘플 {shapes['total']}개 중 {shape}형이 {shapes[shape]}개라 "
              "이 형태로 골랐어요.")
     other = 'doubles' if fmt == 'singles' else 'singles'
     kind = rng.choice(['confirm', 'confirm_other', 'complain', 'huh'])
