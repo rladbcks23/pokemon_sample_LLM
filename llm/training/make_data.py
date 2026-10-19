@@ -601,7 +601,8 @@ def party_tail(check: dict) -> str:
     return text
 
 
-CORE_Q = ['{name_rang} 어울리는 파티 짜줘', '{name} 중심으로 파티 만들어줘', '{name} 쓰고 싶은데 파티 짜줘']
+CORE_Q = ['{name_rang} 어울리는 파티 짜줘', '{name} 중심으로 파티 만들어줘', '{name} 쓰고 싶은데 파티 짜줘',
+          '현재 파티에 어울리는 파티 짜줘']
 
 
 async def core_team(rng, tools, fmt, fixed, question, follow, src):
@@ -902,13 +903,262 @@ async def not_found(rng, tools, fmt, name, src):
     return d
 
 
+SP_LETTER = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
+
+
+def sp_text(sp: dict) -> str:
+    return ' '.join(f'{SP_LETTER[k]}{v}' for k, v in (sp or {}).items() if v)
+
+
+def weak_lines(s: dict) -> str:
+    """check_party 요약 → 겹치는 약점마다 약점 멤버와 받아 줄 멤버 (모두 도구 결과의 이름)."""
+    return '\n'.join(f"- {t} {len(ms)}마리: {'·'.join(ms)} / "
+                     + (f"받아 줄 멤버: {'·'.join(s['weak_cover'][t])}" if s['weak_cover'][t] else '받아 줄 멤버 없음')
+                     for t, ms in s['weak_types_2plus'].items())
+
+
+WEAK_Q = ['이 파티 약점 알려줘', '약점 뭐야?', '이 파티 상성 어때?', '겹치는 약점 있어?']
+NOW_Q = ['지금은 어때', '바꿨는데 지금은 어때?', '이렇게 바꾸면 어때?']
+
+
+def replacement(fmt: str, party: list[dict], idx: int, weak: str, rng) -> dict | None:
+    """party[idx] 대신 넣으면 weak 약점 마리 수가 줄어드는 다른 팀의 실제 샘플 ("지금은 어때" 후속용 화면 변경)."""
+    before = len(DEX.party_check(party, fmt)['summary']['weak_types_2plus'].get(weak, []))
+    rest = party[:idx] + party[idx + 1:]
+    mons, items = {m['pokemon'] for m in rest}, {m['item'] for m in rest if m.get('item')}
+    megas = sum(DEX.is_stone(m.get('item', '')) for m in rest)
+    for _, team in rng.sample(DEX.teams[fmt], min(40, len(DEX.teams[fmt]))):
+        for m in team:
+            if m['pokemon'] in mons or m['item'] in items or (DEX.is_stone(m['item']) and megas >= 2):
+                continue
+            new = rest[:idx] + [m] + rest[idx:]
+            if len(DEX.party_check(new, fmt)['summary']['weak_types_2plus'].get(weak, [])) < before:
+                return m
+    return None
+
+
+async def party_weakness(rng, tools, fmt, party, src):
+    """화면 칩 "이 파티 약점 알려줘": check_party의 약점 멤버·받아 줄 멤버 그대로 → 한 마리 바꾼 뒤 "지금은 어때"."""
+    d = Dialogue(tools, fmt, 'party_weakness', ['약점 분석', '이름은 도구 결과에서', '후속 비교'], rng)
+    d.meta['sources'] = src
+    d.ask(rng.choice(WEAK_Q), party)
+    if not party:
+        d.answer('화면 파티가 비어 있어서 약점을 볼 수 없어요. 포켓몬을 넣은 뒤 다시 물어보거나, 파티를 짜 달라고 해 주세요.')
+        return d
+    check = await d.call('check_party', members=party)
+    s = check['summary']
+    if not s['weak_types_2plus']:
+        d.answer('2마리 이상 겹치는 약점은 없어요. 약점이 멤버마다 흩어져 있어서 상성은 고른 편이에요.'
+                 + (f"\n주의: {'; '.join(other_warnings(check))}" if other_warnings(check) else ''))
+        return d
+    top, ms = next(iter(s['weak_types_2plus'].items()))
+    text = '2마리 이상 겹치는 약점이에요.\n' + weak_lines(s)
+    if len(ms) >= 3:
+        text += (f"\n\n{top} 약점이 {len(ms)}마리로 가장 많아요. {top} 공격을 받아 줄 포켓몬을 넣거나 "
+                 f"{'·'.join(ms)} 중 한 마리를 바꾸는 걸 추천해요.")
+    if other_warnings(check):
+        text += f"\n주의: {'; '.join(other_warnings(check))}"
+    d.answer(text, derived=[len(v) for v in s['weak_types_2plus'].values()])     # 마리 수는 목록 길이
+
+    # 후속: 사용자가 화면에서 약점 멤버 하나를 바꾸고 "지금은 어때" → 다시 점검해 바뀐 점만
+    idx = next(i for i, m in enumerate(check['members']) if m['name_ko'] == ms[0])
+    new_m = replacement(fmt, party, idx, top, rng)
+    if not new_m:
+        return d
+    new_party = party[:idx] + [new_m] + party[idx + 1:]
+    d.ask(rng.choice(NOW_Q), new_party)
+    after = await d.call('check_party', members=new_party)
+    bw, aw = s['weak_types_2plus'], after['summary']['weak_types_2plus']
+    old_ko, new_ko = check['members'][idx]['name_ko'], after['members'][idx]['name_ko']
+    lines, worse, counts = [], False, []
+    for t in dict.fromkeys(list(bw) + list(aw)):
+        b, a = len(bw.get(t, [])), len(aw.get(t, []))
+        counts += [b, a]
+        if a < b:
+            lines.append(f"- {t} 약점 {b}마리 → " + (f"{a}마리" if a else '겹침 없어짐'))
+        elif a > b:
+            worse = True
+            lines.append(f"- {t} 약점 " + (f"{b}마리 → {a}마리" if b else f"{a}마리로 새로 겹침") + f" ({'·'.join(aw[t])})")
+    text = f"{old_ko} 대신 {josa(new_ko, '을', '를')} 넣은 파티로 다시 봤어요.\n" + '\n'.join(lines)
+    if worse:
+        text += '\n좋아진 곳과 나빠진 곳이 같이 있어요. 원하면 나빠진 쪽을 받아 줄 포켓몬도 찾아볼게요.'
+    d.answer(text, derived=counts)      # 마리 수는 도구 결과 목록의 길이
+    return d
+
+
+MEGA_Q = ['메가 누구한테 써?', '메가진화 누구 해야 돼?', '메가 누구로 쓸까?']
+
+
+async def mega_choice(rng, tools, fmt, party, src):
+    """화면 칩 "메가 누구한테 써?": 메가스톤을 든 멤버와 그 메가스톤의 사용률 (배틀마다 메가는 한 번)."""
+    d = Dialogue(tools, fmt, 'mega_choice', ['메가 규칙', '사용률 근거', '단정하지 않음'], rng)
+    d.meta['sources'] = src
+    d.ask(rng.choice(MEGA_Q), party)
+    if not party:
+        d.answer('화면 파티가 비어 있어요. 메가스톤을 든 포켓몬을 넣은 뒤 다시 물어봐 주세요.')
+        return d
+    check = await d.call('check_party', members=party)
+    stones = [(i, m) for i, m in enumerate(party) if DEX.is_stone(m.get('item', ''))]
+    if not stones:
+        d.answer('지금 파티에는 메가스톤을 든 포켓몬이 없어서 메가진화를 할 수 없어요. '
+                 '메가로 쓰고 싶은 포켓몬을 알려 주면 그 메가 샘플을 찾아볼게요.')
+        return d
+    if len(stones) == 1:
+        i, m = stones[0]
+        who = check['members'][i]
+        d.answer(f"메가스톤을 든 건 {who['name_ko']}({', '.join(who['roles']).replace(' (', '·').replace(')', '')}) 한 마리라 {josa(who['name_ko'], '이', '가')} 메가진화해요.")
+        return d
+    rows = []
+    for i, m in stones:
+        info = await d.call('get_pokemon', id=m['pokemon'])
+        pct = {x['id']: x['pct'] for x in (info.get('usage') or {}).get('item', [])}.get(m['item'])
+        rows.append((check['members'][i], DEX.ko('pokemon', m['pokemon']), DEX.ko('item', m['item']), pct))
+    text = (f"메가스톤을 든 포켓몬이 {check['summary']['mega_pokemon']}마리예요. 메가진화는 배틀마다 한 번이라 "
+            "같이 선출하면 한 마리만 메가진화할 수 있어요.\n")
+    for who, base, stone, pct in rows:
+        use = f"{base}의 {FORMAT_KO[fmt]} 도구 중 {stone} {pct}%" if pct is not None else f"{base}의 도구 사용률 상위에 {stone} 없음"
+        text += f"- {who['name_ko']} ({', '.join(who['roles']).replace(' (', '·').replace(')', '')}) — {use}\n"
+    known = [r for r in rows if r[3] is not None]
+    if len(known) >= 2 and max(r[3] for r in known) != min(r[3] for r in known):
+        best = max(known, key=lambda r: r[3])
+        text += f"상대에 따라 달라서 정답은 없지만, 사용률로는 {josa(best[0]['name_ko'], '이', '가')} 메가로 더 많이 쓰여요."
+    else:
+        text += '상대 파티에 따라 달라서, 어느 쪽이 낫다고 단정하기 어려워요.'
+    if check['summary']['mega_pokemon'] >= 3:
+        text += '\n메가스톤이 3개 이상이면 선출이 제한돼요.'
+    d.answer(text, derived=[3])
+    return d
+
+
+SAMPLE_Q = ['{name} 샘플 짜줘', '{name} 육성형 추천해줘', '{name} 샘플 하나 띄워줘']
+CONFIRM_Q = ['이거 {fmt} 샘플 맞아?', '{fmt} 샘플 맞지?']
+COMPLAIN_Q = ['안띄워주잖아', '카드 안 보이는데', '화면에 안 나와']
+HUH_Q = ['?', '그래서?', '음?']
+
+
+async def sample_req(rng, tools, fmt, key, src):
+    """샘플 요청 (메가 폼 이름 그대로 검색) → 후속: 포맷 확인 / 카드가 안 보인다 / "?" 중 하나."""
+    d = Dialogue(tools, fmt, 'sample_req', ['메가 이름 검색', '실제 띄운 것만 말함', '후속 대응'], rng)
+    d.meta['sources'] = src
+    name = DEX.ko('pokemon', key)
+    d.ask(rng.choice(SAMPLE_Q).format(name=name), [])
+    res = await d.call('search_samples', pokemon=name)
+    rows = [r for r in (res.get('samples', []) if isinstance(res, dict) else []) if not DEX.odd(r['sample'])]
+    if not rows:
+        raise Skip(f'샘플 없음: {name}')
+    pick, shapes = rows[0], res.get('shapes') or {}
+    shape = pick['roles'][0].split(' (')[0] if pick['roles'] else ''
+    if not shapes.get(shape) or shapes[shape] / max(shapes.get('total', 1), 1) < MIN_SHAPE_SHARE:
+        raise Skip('흔하지 않은 형태')
+    await d.call('propose_party', members=[pick['sample']])
+    sample = d.turns[-1]['proposed'][0]
+    d.answer(f"{short(pick['sample'])} ({sp_text(pick['sample']['sp'])}) 추천 (화면에 띄움).\n"
+             f"{pick['source']} 공개 샘플이에요. {name} 샘플 {shapes['total']}개 중 {shape}형이 {shapes[shape]}개라 "
+             "이 형태로 골랐어요.")
+    other = 'doubles' if fmt == 'singles' else 'singles'
+    kind = rng.choice(['confirm', 'confirm_other', 'complain', 'huh'])
+    if kind.startswith('confirm'):
+        f = fmt if kind == 'confirm' else other
+        d.ask(rng.choice(CONFIRM_Q).format(fmt=FORMAT_KO[f]), [])
+        if f == fmt:
+            d.answer(f"네, 화면이 {FORMAT_KO[fmt]}이라 {FORMAT_KO[fmt]} 샘플에서만 찾았어요.")
+        else:
+            d.answer(f"아니요, 화면이 {FORMAT_KO[fmt]}이라 {FORMAT_KO[fmt]} 샘플이에요. {FORMAT_KO[f]} 샘플이 필요하면 "
+                     f"화면을 {FORMAT_KO[f]}로 바꾸고 다시 물어봐 주세요.")
+    elif kind == 'complain':
+        d.ask(rng.choice(COMPLAIN_Q), [])
+        await d.call('propose_party', members=[sample])
+        d.answer("다시 띄웠어요. 답변 아래 추천 파티 카드에서 '모두 추가하기'를 누르면 파티에 들어가요.")
+    else:
+        d.ask(rng.choice(HUH_Q), [])
+        d.answer('어떤 점이 궁금한지 다시 말해 주세요. 예를 들면:\n- 다른 형태 샘플 (막이형, 특수 딜러형 등)\n'
+                 f'- {name} 도구 바꾸기\n- 이 포켓몬과 어울리는 포켓몬')
+    return d
+
+
+PARTNER_Q = ['얘랑 어울리는 포켓몬 추천해줘', '얘랑 같이 쓸 포켓몬 뭐 있어?', '얘 파트너 추천해줘']
+
+
+async def partner_one(rng, tools, fmt, party, core_key, src):
+    """"얘랑 어울리는 포켓몬": 화면에 1마리일 때만 그 포켓몬. 아니면 누구인지 되묻고 이름을 받아 진행."""
+    d = Dialogue(tools, fmt, 'partner_one', ['지칭 확인', '후보 비교', '장단점'], rng)
+    d.meta['sources'] = src
+    d.ask(rng.choice(PARTNER_Q), party)
+    if len(party) != 1:
+        where = '화면 파티가 비어 있어서' if not party else f'화면에 {len(party)}마리가 있어서'
+        d.answer(f'{where} "얘"가 누구인지 모르겠어요. 어울리는 포켓몬을 찾을 포켓몬 이름을 알려 주세요.', derived=[len(party)])
+        on_screen = next((m for m in party if m['pokemon'] == core_key), None)
+        core = on_screen or {'pokemon': core_key}
+        d.ask(DEX.ko('pokemon', core_key), party)
+        fixed = [on_screen] if on_screen else []     # 화면에 있으면 그 육성형, 없으면 샘플을 찾아서
+    else:
+        core = party[0]
+        fixed = party
+    # 화면에 메가스톤을 든 육성형이면 메가 폼 이름으로 부름
+    core_ko = DEX.ko('pokemon', shown_key(DEX.rid, core['pokemon'], core.get('item', '')))
+    partners = await d.call('find_partners', pokemon=[core['pokemon']])
+    base_party = fixed or []
+    if not base_party:          # 화면에 그 포켓몬이 없으면 샘플부터
+        res = await d.call('search_samples', pokemon=core_ko)
+        rows = [r for r in (res.get('samples', []) if isinstance(res, dict) else []) if not DEX.odd(r['sample'])]
+        if not rows:
+            raise Skip('샘플 없음')
+        base_party = [rows[0]['sample']]
+    cands = await ranked_candidates(tools, fmt, base_party, partner_pool(partners), '조합·상성', None)
+    if len(cands) < 2:
+        raise Skip('후보 부족')
+    a, b = cands[0], cands[1]
+    for c in (a, b):
+        await d.call('search_samples', **search_args(c['partner']['id'], c['role_arg']))
+    cmp = await d.call('check_party', members=base_party, candidates=[a['sample']['sample'], b['sample']['sample']])
+    row_a, row_b = cmp['candidates']
+    await d.call('propose_party', members=base_party + [a['sample']['sample']])
+    def line(c, row):       # 1~2마리 파티라 겹치는 약점이 거의 없음 → 받아 주는 약점이 없으면 장점 줄은 뺌
+        return cand_line(c, row, core_ko, partners, fmt).replace('\n  장점: 겹치는 약점을 받아 주진 않음', '')
+    why = ('같이 쓰인 횟수가 더 많아서예요' if a['partner'].get('count', 0) > b['partner'].get('count', 0)
+           else '같이 쓰인 횟수와 샘플 형태 비율을 합쳐 더 나아서예요')
+    d.answer(f"{josa(core_ko, '과', '와')} 같이 쓰인 포켓몬 중에서 골랐어요.\n\n{line(a, row_a)}\n{line(b, row_b)}\n\n"
+             f"→ {short(a['sample']['sample'])} ({row_a['sp']}) 추천 (화면에 띄움). {why}")
+    return d
+
+
+GIBBERISH = ['ㅁㄴㅇㄹ', 'asdf', '???', '아아아아', 'ㅋㅋㅋㅋ', '음', '그거 해줘', '저거', 'ㅎㅇ']
+OFF_TOPIC = ['오늘 점심 뭐 먹지', '주식 추천해줘', '내일 날씨 어때?', '숙제 좀 해줘', '롤 티어 올리는 법 알려줘']
+CANT_DO = [('이 파티 승률 몇 퍼야?', '승률 계산', '승률'), ('지진 대미지 계산해줘', '대미지 계산', '대미지'),
+           ('선출 추천해줘', '선출 추천', '선출'), ('상대가 뭐 낼지 예측해줘', '상대 선출 예측', '상대 선출')]
+
+
+async def unclear(rng, tools, fmt, party, src):
+    """이해할 수 없는 말·관계없는 요청·데이터가 없어 못 하는 요청 → 도구 없이 정직하게 되묻거나 거절."""
+    d = Dialogue(tools, fmt, 'unclear', ['이해 못함 인정', '범위 밖 거절', '다시 말해 달라고'], rng)
+    d.meta['sources'] = src
+    kind = rng.choice(['gibberish', 'gibberish', 'off', 'cant'])
+    if kind == 'gibberish':
+        d.ask(rng.choice(GIBBERISH), party)
+        d.answer(rng.choice(['무슨 말인지 잘 이해하지 못했어요. 다시 말해 주세요.',
+                             '어떤 걸 원하는지 이해하지 못했어요. 조금 더 자세히 말해 주세요.'])
+                 + "\n예: '(포켓몬 이름) 샘플 짜줘', '이 파티 약점 알려줘', '얘랑 어울리는 포켓몬 추천해줘'")
+    elif kind == 'off':
+        d.ask(rng.choice(OFF_TOPIC), party)
+        d.answer('그건 도와드릴 수 없어요. 저는 포켓몬 챔피언스 파티 빌딩(샘플·파티 추천, 약점·메가 확인)만 도와드려요.')
+    else:
+        q, act, thing = rng.choice(CANT_DO)
+        d.ask(q, party)
+        d.answer(f'{josa(act, "은", "는")} 아직 할 수 없어요. 제가 가진 데이터는 픽률·같이 쓰인 횟수·샘플·상성이라, '
+                 f'{josa(thing, "은", "는")} 지어서 답하지 않을게요. 대신 파티 약점이나 어울리는 포켓몬은 봐 드릴 수 있어요.')
+    return d
+
+
 # ---------------------------------------------------------------- 검수용 묶음
 
-REVIEW_PLAN = {'fill_one': 3, 'core_team': 3, 'fill_moves': 2, 'fill_rest': 2, 'meta_team': 2, 'clarify': 2, 'full_party': 1,
-               'not_found': 2}
-# 학습용 비율 (파티 빌딩·샘플 제작 위주, 확인 질문·한계 설명은 조금)
-EXPORT_SHARE = {'fill_one': .27, 'core_team': .22, 'fill_moves': .14, 'fill_rest': .14, 'meta_team': .10,
-                'clarify': .05, 'full_party': .04, 'not_found': .04}
+REVIEW_PLAN = {'party_weakness': 3, 'mega_choice': 2, 'sample_req': 3, 'partner_one': 3, 'unclear': 3,
+               'fill_one': 1, 'core_team': 1, 'fill_moves': 1, 'fill_rest': 1, 'meta_team': 1, 'not_found': 1}
+# 학습용 비율 (파티 빌딩·샘플 제작 위주, 화면 칩 질문·후속 대응·이해 못함도 포함)
+EXPORT_SHARE = {'fill_one': .15, 'core_team': .13, 'fill_moves': .08, 'fill_rest': .08, 'meta_team': .09,
+                'party_weakness': .12, 'mega_choice': .07, 'sample_req': .10, 'partner_one': .08, 'unclear': .05,
+                'clarify': .02, 'full_party': .02, 'not_found': .02}
+# 메가스톤 → 메가 폼 ID (샘플 요청에서 메가 폼 이름으로 묻기)
+MEGA_OF: dict[str, str] = {}
 
 
 async def build(plan: dict[str, int], seed: int, user_questions: bool = True) -> list[Dialogue]:
@@ -981,6 +1231,28 @@ async def build(plan: dict[str, int], seed: int, user_questions: bool = True) ->
                                    f'pokemon:{core}', (kind, fmt, core))
                 elif kind == 'full_party':
                     ok = await add(full_party(rng, T(fmt), fmt, team, {'team_ids': [tid]}), group, (kind, tid))
+                elif kind == 'party_weakness':
+                    r = rng.random()
+                    party = [] if r < .08 else team if r < .7 else team[:rng.choice([4, 5])]
+                    ok = await add(party_weakness(rng, T(fmt), fmt, party, {'team_ids': [tid]}), group, (kind, tid, len(party)))
+                elif kind == 'mega_choice':
+                    two = [x for x in DEX.teams[fmt] if sum(DEX.is_stone(m['item']) for m in x[1]) >= 2]
+                    if rng.random() < .75 and two:
+                        tid, team = rng.choice(two)
+                        group = f'team:{tid}'
+                    ok = await add(mega_choice(rng, T(fmt), fmt, team, {'team_ids': [tid]}), group, (kind, tid))
+                elif kind == 'sample_req':
+                    m = rng.choice(team)
+                    key = MEGA_OF.get(m['item'], m['pokemon']) if rng.random() < .6 else m['pokemon']
+                    ok = await add(sample_req(rng, T(fmt), fmt, key, {'pokemon': key}), f'pokemon:{key}', (kind, fmt, key))
+                elif kind == 'partner_one':
+                    i, r = rng.randrange(6), rng.random()
+                    party = [team[i]] if r < .6 else [] if r < .8 else team[:3] if i < 3 else team[3:]
+                    ok = await add(partner_one(rng, T(fmt), fmt, party, team[i]['pokemon'], {'team_ids': [tid]}),
+                                   group, (kind, tid, i, len(party)))
+                elif kind == 'unclear':
+                    party = team if rng.random() < .5 else []
+                    ok = await add(unclear(rng, T(fmt), fmt, party, {'team_ids': [tid]}), f'unclear:{made}', None)
                 else:
                     pool = [x for x in NOT_IN_DEX if not any(x == (p['name_ko'] or '') for p in DEX.n['pokemon'].values())]
                     if not pool:
@@ -1104,6 +1376,8 @@ def main():
 
     global DEX
     DEX = Dex()
+    by_name = {p['name']: k for k, p in DEX.n['pokemon'].items()}
+    MEGA_OF.update({i: by_name[r['mega_to']] for i, r in DEX.n['item'].items() if r.get('mega_to') in by_name})
     version = data_version()
     if args.export:
         plan = {k: max(1, round(args.export * v)) for k, v in EXPORT_SHARE.items()}
