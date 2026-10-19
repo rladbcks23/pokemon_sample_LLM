@@ -344,7 +344,7 @@ SET_SOURCES = {'opgg_sample': 'OP.GG 샘플', 'vgcpastes_team': '대회 팀', 'o
 def sample_list(request):
     """공개 샘플(흔한 육성형) 목록. OP.GG 샘플이 먼저. GET /api/samples/?format=doubles&source=vgcpastes_team&q=망나뇽
 
-    source: opgg_sample / vgcpastes_team / opgg_team (생략 시 전체)
+    source: opgg_sample / vgcpastes_team / opgg_team (생략 시 전체), item: 도구 ID (메가스톤으로 메가 폼 샘플만)
 
     sample: 샘플 제작·파티 빌딩에 바로 넣는 모양, member: 화면 표시용 (파티 상세의 멤버와 같은 모양)
     """
@@ -363,6 +363,8 @@ def sample_list(request):
         # 이름이 딱 맞는 포켓몬의 샘플이 있으면 그 포켓몬만 (라이츄 ≠ 라이츄-알로라), 없으면 이름 일부로 (로토무 → 폼들)
         exact_qs = qs.filter(pokemon_key__in=exact)
         qs = exact_qs if exact and exact_qs.exists() else qs.filter(pokemon_key__in=keys)
+    if item := request.query_params.get('item'):      # 메가 폼 샘플 = 메가 전 폼 + 그 메가스톤
+        qs = qs.filter(item_key=item)
     from apps.api.party import member_profile        # party가 views를 import하므로 여기서
 
     def as_sample(s):

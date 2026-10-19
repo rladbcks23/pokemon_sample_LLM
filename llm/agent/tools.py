@@ -158,8 +158,19 @@ class Tools:
         """이번 레귤레이션 포켓몬 이름(한글/영문/ID) 중 하나에 들어맞는지 (지어낸 이름을 걸러 내려고)."""
         q = (name or '').strip().lower()
         items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
-        return bool(q) and any(q in n for p in items for n in [p['id'], p['name'].lower(), p['name_ko']]
-                               + [m['name_ko'] for m in p['megas']])
+        # 메가X/Y/Z처럼 한글 이름에도 영문이 있어 모두 소문자로 비교
+        return bool(q) and any(q in n.lower() for p in items for n in [p['id'], p['name'], p['name_ko']]
+                               + [x for m in p['megas'] for x in (m['id'], m['name_ko'])])
+
+    async def _mega(self, name: str) -> tuple[str, str] | None:
+        """메가 폼 이름이면 (메가 전 폼 ID, 메가스톤 ID). 샘플은 메가 전 폼 + 메가스톤으로 저장돼 있음."""
+        q = (name or '').strip().lower()
+        items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
+        for p in items:
+            for m in p['megas']:
+                if q in (m['id'], m['name_ko'].lower()):
+                    return p['id'], m['item']
+        return None
 
     async def tool_search_samples(self, pokemon: str | None = None, format: str | None = None, source: str | None = None,
                                   role: str | None = None) -> dict | list:
@@ -169,8 +180,9 @@ class Tools:
         if not await self._known_name(pokemon):
             raise ToolError(f'"{pokemon}"는 이번 레귤레이션 포켓몬 목록에 없는 이름. '
                             '지어낸 이름을 쓰지 말고 화면·get_ranking·find_partners·search_pokemon 결과의 이름을 쓸 것')
-        d = await self._get('samples/', {'q': pokemon, 'format': self._fmt(format), 'source': source,
-                                         'size': 30 if role else 3})
+        mega = await self._mega(pokemon)
+        d = await self._get('samples/', {'q': mega[0] if mega else pokemon, 'item': mega[1] if mega else None,
+                                         'format': self._fmt(format), 'source': source, 'size': 30 if role else 3})
         rows = [s for s in d['results'] if not role or any(role in r for r in s.get('roles', []))][:3]
         out = []
         for s in rows:
