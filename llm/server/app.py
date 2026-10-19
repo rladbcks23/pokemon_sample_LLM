@@ -45,6 +45,7 @@ def back_client() -> httpx.AsyncClient:
 class Turn(BaseModel):
     role: str
     text: str = ''
+    party: list[dict] | None = None      # 코치 답변이 띄운 추천 파티 (기록에 한 줄로 붙임)
 
 
 class ChatRequest(BaseModel):

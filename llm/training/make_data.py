@@ -32,7 +32,7 @@ LLM = Path(__file__).resolve().parents[1]
 
 from inproc_back import ROOT, back_client  # noqa: E402  (Django 설정도 여기서)
 
-from agent.prompt import FORMAT_KO, screen_context  # noqa: E402
+from agent.prompt import FORMAT_KO, card_line, screen_context  # noqa: E402
 from agent.tools import ToolError, Tools, compact_sample  # noqa: E402
 from apps.api.common import names  # noqa: E402
 from apps.api.party import WASTED_SP, party_check  # noqa: E402
@@ -179,8 +179,9 @@ class Dialogue:
         out = []
         for i, t in enumerate(self.turns):
             msgs = []
-            for p in self.turns[:i]:
-                msgs += [{'role': 'user', 'content': p['user']}, {'role': 'assistant', 'content': p['final']}]
+            for p in self.turns[:i]:        # 서버 build_messages와 같게 띄운 추천 파티는 한 줄로
+                msgs += [{'role': 'user', 'content': p['user']},
+                         {'role': 'assistant', 'content': p['final'] + card_line(p['proposed'])}]
             party = t['party'] + [None] * (6 - len(t['party']))
             msgs.append({'role': 'user', 'content': screen_context(self.fmt, party) + '\n\n' + t['user']})
             out.append(msgs + t['steps'] + [{'role': 'assistant', 'content': t['final']}])

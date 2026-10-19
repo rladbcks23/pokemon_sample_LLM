@@ -108,6 +108,11 @@ class BuildMessagesTest(unittest.TestCase):
         self.assertIn('garchompite', msgs[0]['content'])
         self.assertTrue(msgs[0]['content'].endswith('약점 알려줘'))
 
+    def test_shown_party_kept_in_history(self):
+        msgs = build_messages([{'role': 'user', 'text': '한카 샘플'}, {'role': 'assistant', 'text': '추천해요', 'party': [SAMPLE]},
+                               {'role': 'user', 'text': '이거 싱글 맞아?'}], 'singles', [])
+        self.assertEqual(msgs[1]['content'], '추천해요\n(띄운 추천 파티: garchomp @ garchompite)')
+
     def test_last_must_be_user(self):
         with self.assertRaises(ValueError):
             build_messages([{'role': 'user', 'text': 'a'}, {'role': 'assistant', 'text': 'b'}], 'singles', [])

@@ -29,7 +29,7 @@ export const useCoach = defineStore('coach', () => {
     busy.value = true
     messages.value.push({ role: 'user', text: q })
     const history = messages.value.filter((m) => m.role !== 'status' && m.text)
-      .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }))
+      .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text, ...(m.party ? { party: m.party } : {}) }))
     messages.value.push({ role: 'status', text: '답변 준비 중…' }, { role: 'bot', text: '' })
     const status = messages.value[messages.value.length - 2]
     const bot = messages.value[messages.value.length - 1]

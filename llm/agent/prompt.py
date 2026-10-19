@@ -38,6 +38,13 @@ SYSTEM = """\
 FORMAT_KO = {'singles': '싱글', 'doubles': '더블'}
 
 
+def card_line(party: list[dict] | None) -> str:
+    """지난 답변이 띄운 추천 파티 카드 (지난 턴은 글만 남으므로 무엇을 띄웠는지 한 줄로 붙임). 학습 데이터와 같은 모양."""
+    if not party:
+        return ''
+    return '\n(띄운 추천 파티: ' + ', '.join(f"{m['pokemon']} @ {m.get('item') or '-'}" for m in party) + ')'
+
+
 def screen_context(format: str, party: list[dict | None]) -> str:
     """사용자 메시지 앞에 붙이는 화면 상황."""
     members = [p for p in party if p]
