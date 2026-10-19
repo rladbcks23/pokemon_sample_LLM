@@ -1,7 +1,5 @@
-# 로컬 Qwen provider (LLM_PROVIDER=qwen). torch는 CUDA 빌드로 먼저 설치:
-#   ..\.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu128
-torch
+# 로컬 Qwen provider (LLM_PROVIDER=qwen). 생성은 llama.cpp의 llama-server가 하고, 여기서는 토크나이저만 씀
 transformers
-peft
-accelerate
-bitsandbytes
+jinja2
+# GGUF 만들기(training/scripts/export_gguf.py)에만 필요. torch는 CUDA 빌드가 아니어도 됨:
+#   ..\.venv\Scripts\pip install torch peft accelerate <llama.cpp 소스>\gguf-py

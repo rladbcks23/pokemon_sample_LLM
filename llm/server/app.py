@@ -31,7 +31,7 @@ def get_provider():
     global _provider
     if _provider is None:
         if config.LLM_PROVIDER == 'qwen':
-            from providers.qwen import QwenProvider      # torch는 qwen을 쓸 때만
+            from providers.qwen import QwenProvider      # transformers는 qwen을 쓸 때만
             _provider = QwenProvider()
         else:
             _provider = ClaudeProvider()
@@ -76,7 +76,7 @@ async def health():
 
 @app.on_event('startup')
 async def load_local_model():
-    if config.LLM_PROVIDER == 'qwen':                    # 첫 질문에서 기다리지 않게 서버 켤 때 모델을 올림
+    if config.LLM_PROVIDER == 'qwen':                    # 어댑터 폴더(토크나이저)가 없으면 켤 때 바로 알림
         get_provider()
 
 

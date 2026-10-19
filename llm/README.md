@@ -26,14 +26,19 @@ Colab 파일 탭에 올리고 전용 노트북을 순서대로 실행한다.
 copy .env.example .env          # ANTHROPIC_API_KEY 채우기
 ..\.venv\Scripts\uvicorn server.app:app --port 8001
 ```
-로컬 파인튜닝 모델(Qwen3.5-4B + LoRA, GPU 6GB 이상)로 돌릴 때:
-```bash
-..\.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu128
-..\.venv\Scripts\pip install -r requirements-qwen.txt triton-windows flash-linear-attention
-```
-Colab이 저장한 어댑터 폴더를 `llm/models/qwen35-4b-coach-lora/`에 두고(git 제외) `llm/.env`에
-`LLM_PROVIDER=qwen`. 서버를 켤 때 모델을 올린다(처음엔 기본 모델 약 9GB 다운로드, 이후 약 30초).
-4bit로 VRAM 약 3.5GB. 학습과 같은 `compact_context` 입력 표현을 쓴다. triton·fla가 없으면 같은 답을 내지만 수 배 느리다.
+로컬 파인튜닝 모델(Qwen3.5-4B + LoRA)로 돌릴 때: 생성은 llama.cpp(`llama-server`, GGUF 4bit)가 한다.
+1. [llama.cpp 릴리스](https://github.com/ggml-org/llama.cpp/releases)에서 `llama-<태그>-bin-win-cuda-12.4-x64.zip`과
+   `cudart-llama-bin-win-cuda-12.4-x64.zip`을 `<dir>/bin`에, 같은 태그의 소스 ZIP을 `<dir>/llama.cpp-<태그>`에 푼다
+2. Colab이 저장한 어댑터 폴더를 `llm/models/qwen35-4b-coach-lora/`에 두고(git 제외) GGUF로 변환 (한 번, RAM 약 12GB):
+   ```bash
+   ..\.venv\Scripts\pip install -r requirements-qwen.txt torch peft accelerate <dir>\llama.cpp-<태그>\gguf-py
+   ..\.venv\Scripts\python training\scripts\export_gguf.py --llama-cpp <dir>     # → models/qwen35-4b-coach-Q4_K_M.gguf
+   ```
+3. `<dir>\bin\llama-server -m models\qwen35-4b-coach-Q4_K_M.gguf -ngl 99 -c 4096 -np 1 --port 8080`
+4. `llm/.env`에 `LLM_PROVIDER=qwen` (llama-server 주소는 `QWEN_SERVER`, 기본 `http://127.0.0.1:8080`)
+
+llm 서버는 어댑터 폴더의 토크나이저로 학습과 같은 `compact_context` 입력을 만들어 llama-server에 보낸다.
+(transformers+bitsandbytes로 직접 돌리면 Windows RTX 4050에서 초당 약 2토큰이라 바꿈)
 
 back(8000)과 front(5173)도 같이 띄운다. 화면의 `/llm` 요청은 Vite 프록시가 8001로 넘긴다.
 
@@ -47,7 +52,7 @@ back(8000)과 front(5173)도 같이 띄운다. 화면의 `/llm` 요청은 Vite �
 llm/
   config.py    설정 (llm/.env에서 읽음: 모델, effort, back 주소)
   agent/       에이전트 루프(loop.py), 시스템 프롬프트(prompt.py), 도구(tools.py = back API 호출)
-  providers/   모델 호출. Claude API(claude.py), 로컬 Qwen3.5-4B LoRA(qwen.py). LLM_PROVIDER로 고름
+  providers/   모델 호출. Claude API(claude.py), 로컬 Qwen3.5-4B LoRA(qwen.py, llama-server에 요청). LLM_PROVIDER로 고름
   server/      채팅 API 서버 (SSE)
   tests/       루프·도구·서버 테스트
   training/    (3단계) LoRA 파인튜닝 데이터 생성·학습

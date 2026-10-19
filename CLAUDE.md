@@ -35,7 +35,9 @@
 - **유료 API는 쓰지 않는다** (쓴 만큼 요금이 나가는 Claude API 등). 학습 데이터는 DB로 만들고, 코치 채팅도 로컬 Qwen으로 옮길 예정
 - 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
 - 서버는 Django와 분리 (`llm/`, FastAPI + SSE, 포트 8001). 파티 빌딩의 CoachChat이 `/llm/chat`에 붙어 있다
-  - 지금 provider는 Claude API(`llm/providers/claude.py`, 키가 있어야 동작). 로컬 Qwen provider로 바꿀 것. 도구는 `llm/agent/tools.py`
+  - provider는 `LLM_PROVIDER`로: `claude`(API 키 필요) / `qwen`(로컬 파인튜닝 모델, `llm/providers/qwen.py`). 도구는 `llm/agent/tools.py`
+  - 로컬 모델은 llama.cpp `llama-server`(GGUF Q4_K_M, 포트 8080)가 생성. 어댑터 → GGUF는 `llm/training/scripts/export_gguf.py`.
+    transformers+bitsandbytes 직접 실행은 Windows에서 초당 약 2토큰이라 쓰지 않음. 입력은 학습과 같은 `compact_context`
   - 도구 결과는 짧게 유지한다 (로컬 4B 모델의 문맥 길이·학습 길이 때문). 샘플 검색 3개, SP는 0 생략, 상성은 약점 있는 타입만
   - 파티 판단 도구 (`back/apps/api/party.py`): `check_party`(역할·밸런스·중복·메가 수), `find_partners`(같이 쓰인 포켓몬:
     OP.GG 상위 파티·VGCPastes만, 리플레이 제외), `find_threats`(픽률 상위가 많이 쓰는 공격기로 약점을 찌르는 포켓몬)
