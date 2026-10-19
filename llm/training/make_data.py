@@ -33,7 +33,7 @@ LLM = Path(__file__).resolve().parents[1]
 from inproc_back import ROOT, back_client  # noqa: E402  (Django 설정도 여기서)
 
 from agent.prompt import FORMAT_KO, card_line, screen_context  # noqa: E402
-from agent.tools import ToolError, Tools, compact_sample  # noqa: E402
+from agent.tools import TOOLS, ToolError, Tools, compact_sample  # noqa: E402
 from apps.api.common import names  # noqa: E402
 from apps.api.party import WASTED_SP, party_check  # noqa: E402
 from apps.api.views import norm_nature, rank_board, shown_key  # noqa: E402
@@ -195,12 +195,36 @@ def numbers_grounded(msgs: list[dict], derived: list[str]) -> list[str]:
     return [x for x in re.findall(r'\d+(?:\.\d+)?', msgs[-1]['content']) if x not in have]
 
 
+# 답변에 쓸 수 있는 글자: 한글·영문·숫자·기본 기호 (일본어·중국어 등이 섞이면 모델이 외국 글자를 섞는 걸 배움)
+FOREIGN = re.compile(r'[^\x00-\x7F가-힣ㄱ-ㆎ·…—–→←×%\s]')
+TOOL_NAMES = re.compile(r'(?<![A-Za-z_])(' + '|'.join(t['name'] for t in TOOLS) + r')(?![A-Za-z_])')   # 한글 조사가 붙어도
+
+
+def names_grounded(msgs: list[dict]) -> list[str]:
+    """마지막 답변의 포켓몬 이름 중 앞선 내용(질문·[화면]·도구 결과·지난 답변)에 이름도 ID도 없는 것 (지어낸 이름)."""
+    if not hasattr(DEX, '_name_ids'):
+        ids = {}
+        for k, p in DEX.n['pokemon'].items():
+            if p['name_ko']:
+                # 메가 폼은 메가 전 폼 ID로도 (화면·카드에는 메가 전 폼 + 메가스톤으로 나옴)
+                ids.setdefault(p['name_ko'], set()).update({k, k.rsplit('mega', 1)[0]} if p['is_mega'] else {k})
+        DEX._name_ids = ids
+        DEX._name_re = re.compile('|'.join(sorted(map(re.escape, ids), key=len, reverse=True)))
+    seen = ' '.join(m['content'] for m in msgs[:-1] if isinstance(m.get('content'), str))
+    return [n for n in dict.fromkeys(DEX._name_re.findall(msgs[-1]['content']))
+            if n not in seen and not any(re.search(rf'(?<![a-z]){i}(?![a-z])', seen) for i in DEX._name_ids[n])]
+
+
 def auto_checks(d: Dialogue) -> dict:
     fixed = d.meta['conditions'].get('fixed', [])
     res = {'tool_errors': d.tool_errors, 'ungrounded_numbers': [], 'fixed_kept': True, 'no_duplicates': True,
-           'excluded_respected': True, 'mega_stones_le_2': True, 'odd_samples': []}
+           'excluded_respected': True, 'mega_stones_le_2': True, 'odd_samples': [],
+           'foreign_chars': [], 'tool_names_in_answer': [], 'ungrounded_names': []}
     for rec, t in zip(d.records(), d.turns):
         res['ungrounded_numbers'] += numbers_grounded(rec, t['derived'])
+        res['foreign_chars'] += FOREIGN.findall(t['final'])
+        res['tool_names_in_answer'] += TOOL_NAMES.findall(t['final'])
+        res['ungrounded_names'] += names_grounded(rec)
     excluded = d.meta['conditions'].get('excluded_role')
     for i, t in enumerate(d.turns):
         p = t['proposed']
@@ -223,7 +247,8 @@ def auto_checks(d: Dialogue) -> dict:
             if role_matches(roles, excluded):
                 res['excluded_respected'] = False
     res['ok'] = (not res['tool_errors'] and not res['ungrounded_numbers'] and res['fixed_kept']
-                 and res['no_duplicates'] and res['excluded_respected'] and not res['odd_samples'])
+                 and res['no_duplicates'] and res['excluded_respected'] and not res['odd_samples']
+                 and not res['foreign_chars'] and not res['tool_names_in_answer'] and not res['ungrounded_names'])
     return res
 
 
@@ -557,6 +582,12 @@ def assemble(fixed: list[dict], team: dict) -> list[dict]:
     return party
 
 
+def team_ref(t: dict) -> str:
+    """답변에서 팀 가리키기: 한글·영문 팀 이름은 그대로, 일본어·중국어 등이면 이름 없이 (답변에 외국 글자가 섞이지 않게)."""
+    title = (t.get('title') or '').strip()
+    return f"상위 파티 '{title}'" if title and not FOREIGN.search(title) else '상위 파티'
+
+
 def party_lines(check: dict, members: list[dict]) -> str:
     """추천 멤버: 이름 @ 도구 (SP 분배). 역할·기술은 추천 카드를 누르면 보임."""
     return '\n'.join(f"- {short(m)} ({sp_of(check, m['pokemon'])})" for m in members)
@@ -590,7 +621,7 @@ async def core_team(rng, tools, fmt, fixed, question, follow, src):
     check = await d.call('check_party', members=party)
     await d.call('propose_party', members=party)
     used = [p for p in partners['partners'][:8] if DEX.id_of(p['name_ko']) in {m['pokemon'] for m in party}]
-    text = (f"상위 파티 '{t['title']}'({t['source']})를 바탕으로 짰어요. {name} 육성은 그대로예요 (화면에 띄움).\n"
+    text = (f"{team_ref(t)}({t['source']})를 바탕으로 짰어요. {name} 육성은 그대로예요 (화면에 띄움).\n"
             + party_lines(check, party[1:]) + '\n\n')
     if used:
         text += (f"{josa(name, '이', '가')} 든 상위 파티 {partners['teams']}개 중 같이 쓰인 비율: "
@@ -756,9 +787,9 @@ async def fill_rest(rng, tools, fmt, fixed, question, src):
     names_fixed = '·'.join(DEX.ko('pokemon', m['pokemon']) for m in fixed)
     if both['teams'] < 5:
         text = (f"{josa(names_fixed, '이', '가')} 같이 든 상위 파티는 {both['teams']}개뿐이라, {josa(core_ko, '이', '가')} 든 "
-                f"상위 파티 '{t['title']}'를 바탕으로 짰어요 (화면에 띄움).\n")
+                f"{team_ref(t)}를 바탕으로 짰어요 (화면에 띄움).\n")
     else:
-        text = f"{josa(names_fixed, '이', '가')} 같이 든 상위 파티 '{t['title']}'를 바탕으로 짰어요 (화면에 띄움).\n"
+        text = f"{josa(names_fixed, '이', '가')} 같이 든 {team_ref(t)}를 바탕으로 짰어요 (화면에 띄움).\n"
     d.answer(text + party_lines(check, party[len(fixed):]) + '\n\n' + party_tail(check))
 
     d.ask('이거 약점 다 찌르는 포켓몬 누가있어?', party)
@@ -802,7 +833,7 @@ async def clarify(rng, tools, fmt, question, core_key, src):
     party = assemble([], team)
     check = await d.call('check_party', members=party)
     await d.call('propose_party', members=party)
-    d.answer(f"{josa(name, '이', '가')} 든 상위 파티 '{t['title']}'를 바탕으로 했어요 (화면에 띄움).\n"
+    d.answer(f"{josa(name, '이', '가')} 든 {team_ref(t)}를 바탕으로 했어요 (화면에 띄움).\n"
              + party_lines(check, party) + '\n\n' + party_tail(check))
     return d
 
@@ -831,7 +862,7 @@ async def meta_team(rng, tools, fmt, question, pick, src):
     check = await d.call('check_party', members=party)
     await d.call('propose_party', members=party)
     d.answer(f"핵심 포켓몬을 정하지 않아서 {FORMAT_KO[fmt]} 픽률 {core['rank']}위 {josa(core['name_ko'], '을', '를')} 중심으로, "
-             f"{josa(core['name_ko'], '이', '가')} 든 상위 파티 '{t['title']}'를 바탕으로 짰어요 (화면에 띄움).\n"
+             f"{josa(core['name_ko'], '이', '가')} 든 {team_ref(t)}를 바탕으로 짰어요 (화면에 띄움).\n"
              + party_lines(check, party) + '\n\n' + party_tail(check)
              + '\n\n다른 핵심 포켓몬이나 컨셉(막이 사이클, 스윕 등)을 원하면 말해 주세요.')
     return d
@@ -1007,9 +1038,10 @@ def to_markdown(rows: list[dict], tools: bool = False) -> str:
             out.append(f"- 행동: {', '.join(r['behaviors'])}\n"
                        f"- 묶음: `{r['group']}`  원본: `{json.dumps(r['sources'], ensure_ascii=False)}`")
         problems = [k for k in ('fixed_kept', 'no_duplicates', 'excluded_respected', 'mega_stones_le_2') if not c[k]]
-        if c['tool_errors'] or c['ungrounded_numbers'] or problems or c['odd_samples']:
+        extra = {k: c.get(k) for k in ('foreign_chars', 'tool_names_in_answer', 'ungrounded_names') if c.get(k)}
+        if c['tool_errors'] or c['ungrounded_numbers'] or problems or c['odd_samples'] or extra:
             out.append(f"- 자동 검사 문제: {problems} 도구 오류 {c['tool_errors']} 근거 없는 숫자 {c['ungrounded_numbers']}"
-                       f" 이상한 샘플 {c['odd_samples']}")
+                       f" 이상한 샘플 {c['odd_samples']} {extra or ''}")
         first = ', '.join(short(m) for m in r['turns'][0]['party']) or '비어 있음'
         out.append(f"<sub>화면 파티: {first}</sub>\n")
         for t in r['turns']:
