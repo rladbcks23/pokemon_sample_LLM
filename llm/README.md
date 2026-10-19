@@ -26,15 +26,15 @@ Colab 파일 탭에 올리고 전용 노트북을 순서대로 실행한다.
 copy .env.example .env          # ANTHROPIC_API_KEY 채우기
 ..\.venv\Scripts\uvicorn server.app:app --port 8001
 ```
-로컬 파인튜닝 모델(Qwen3.5-4B + LoRA)로 돌릴 때: 생성은 llama.cpp(`llama-server`, GGUF 4bit)가 한다.
+로컬 파인튜닝 모델(Qwen3.5-4B + LoRA)로 돌릴 때: 생성은 llama.cpp(`llama-server`, GGUF 8bit Q8_0)가 한다.
 1. [llama.cpp 릴리스](https://github.com/ggml-org/llama.cpp/releases)에서 `llama-<태그>-bin-win-cuda-12.4-x64.zip`과
    `cudart-llama-bin-win-cuda-12.4-x64.zip`을 `<dir>/bin`에, 같은 태그의 소스 ZIP을 `<dir>/llama.cpp-<태그>`에 푼다
 2. Colab이 저장한 어댑터 폴더를 `llm/models/qwen35-4b-coach-lora/`에 두고(git 제외) GGUF로 변환 (한 번, RAM 약 12GB):
    ```bash
    ..\.venv\Scripts\pip install -r requirements-qwen.txt torch peft accelerate <dir>\llama.cpp-<태그>\gguf-py
-   ..\.venv\Scripts\python training\scripts\export_gguf.py --llama-cpp <dir>     # → models/qwen35-4b-coach-Q4_K_M.gguf
+   ..\.venv\Scripts\python training\scripts\export_gguf.py --llama-cpp <dir>     # → models/qwen35-4b-coach-Q8_0.gguf
    ```
-3. `<dir>\bin\llama-server -m models\qwen35-4b-coach-Q4_K_M.gguf -ngl 99 -c 4096 -np 1 --port 8080`
+3. `<dir>\bin\llama-server -m models\qwen35-4b-coach-Q8_0.gguf -ngl 99 -c 4096 -np 1 --port 8080`
 4. `llm/.env`에 `LLM_PROVIDER=qwen` (llama-server 주소는 `QWEN_SERVER`, 기본 `http://127.0.0.1:8080`)
 
 llm 서버는 어댑터 폴더의 토크나이저로 학습과 같은 `compact_context` 입력을 만들어 llama-server에 보낸다.

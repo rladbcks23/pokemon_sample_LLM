@@ -1,4 +1,4 @@
-"""Colab에서 받은 LoRA 어댑터를 기본 모델에 합쳐 llama.cpp용 GGUF(4bit)로 만든다. GPU 불필요 (RAM 약 12GB).
+"""Colab에서 받은 LoRA 어댑터를 기본 모델에 합쳐 llama.cpp용 GGUF(기본 Q8_0)로 만든다. GPU 불필요 (RAM 약 12GB).
 
     .venv\\Scripts\\pip install <llama.cpp 소스>\\gguf-py
     .venv\\Scripts\\python llm/training/scripts/export_gguf.py --llama-cpp C:/Users/<나>/llama.cpp
@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--adapter', default=str(LLM / 'models/qwen35-4b-coach-lora'))
     ap.add_argument('--llama-cpp', required=True, help='bin/과 llama.cpp-<태그>/ 소스가 있는 폴더')
-    ap.add_argument('--quant', default='Q4_K_M')
+    ap.add_argument('--quant', default='Q8_0')       # 원본에 가장 가깝고 6GB GPU에 들어감 (Q4_K_M은 2.5GB·약 30% 빠름)
     ap.add_argument('--keep', action='store_true', help='중간 파일을 남김')
     a = ap.parse_args()
 

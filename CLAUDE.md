@@ -36,7 +36,7 @@
 - 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
 - 서버는 Django와 분리 (`llm/`, FastAPI + SSE, 포트 8001). 파티 빌딩의 CoachChat이 `/llm/chat`에 붙어 있다
   - provider는 `LLM_PROVIDER`로: `claude`(API 키 필요) / `qwen`(로컬 파인튜닝 모델, `llm/providers/qwen.py`). 도구는 `llm/agent/tools.py`
-  - 로컬 모델은 llama.cpp `llama-server`(GGUF Q4_K_M, 포트 8080)가 생성. 어댑터 → GGUF는 `llm/training/scripts/export_gguf.py`.
+  - 로컬 모델은 llama.cpp `llama-server`(GGUF Q8_0 약 4.5GB·VRAM 약 4.9GB, 포트 8080)가 생성. 어댑터 → GGUF는 `llm/training/scripts/export_gguf.py`.
     transformers+bitsandbytes 직접 실행은 Windows에서 초당 약 2토큰이라 쓰지 않음. 입력은 학습과 같은 `compact_context`
   - 도구 결과는 짧게 유지한다 (로컬 4B 모델의 문맥 길이·학습 길이 때문). 샘플 검색 3개, SP는 0 생략, 상성은 약점 있는 타입만
   - 파티 판단 도구 (`back/apps/api/party.py`): `check_party`(역할·밸런스·중복·메가 수), `find_partners`(같이 쓰인 포켓몬:
@@ -69,7 +69,7 @@
     - 실행 파일은 `llm/training/finetune_colab.ipynb` + `colab_bundle.zip` 한 쌍이다. 사용법은 `llm/training/README.md`
     - 보조 코드는 `scripts/`, 이전 ZIP·중간 결과는 `archive/`에 둔다. 현재 데이터·보고서는 ZIP에 포함하고 로컬 `outputs/` 복사본은 유지하지 않는다. 예전 실행 노트북과 중복 노트북 생성기는 유지하지 않는다
     - 데이터 생성·검증·묶음 제작 스크립트와 back/DB/도구는 Colab 학습·채팅에 필요하므로 유지한다
-    - 묶음 ZIP은 드라이브 `MyDrive/pokemon_coach/` 또는 Colab 파일 탭에 올린다. 재구성판 결과는 `pokemon_coach/outputs_rebuilt_20261007/`에 저장한다
+    - 묶음 ZIP은 드라이브 `MyDrive/pokemon_coach/` 또는 Colab 파일 탭에 올린다. 재구성판 결과는 `pokemon_coach/outputs_rebuilt_<RUN_NAME>/`에 저장한다 (노트북 RUN_NAME, 학습마다 바꿔 이전 어댑터를 덮어쓰지 않음)
     - 노트북 끝의 채팅방(gradio)은 `inproc_back.py`로 back을 프로세스 안에서 불러 실제 도구를 실행한다
   - Colab 데이터 재구성: `llm/training/scripts/rebuild_colab_data.py`는 현재/v1 ZIP의 동일 DB를 확인하고 v2 대화를 실제 도구로 재검증, v1 샘플 유형은 현재 도구로 재생성한다. 원본 파일을 덮어쓰거나 학습하지 않는다
     - `scripts/compact_context.py`로 중복 육성형 원문을 한 번만 제공하고 각 assistant 행동을 분리해 4096 이내로 만든다. 도구 호출 정답의 필드는 그대로, 마지막 응답만 학습한다
