@@ -157,13 +157,14 @@ def party_check(rid: str, members: list[dict], fmt: str = 'singles') -> dict:
     if len(members) >= 4 and (phys == 0 or spec == 0):
         warnings.append(('특수 딜러 없음 (물리 쪽만)' if phys else '물리 딜러 없음 (특수 쪽만)') if phys or spec else '딜러가 없음')
     profiles = [defense_profile(p['_types']) for p in profs]
-    weak = {TYPE_KO[a]: sum(x[a] > 1 for x in profiles) for a in TYPES}
-    weak = dict(sorted(((k, v) for k, v in weak.items() if v >= 2), key=lambda kv: -kv[1]))   # 2마리 이상만 (짧게)
+    # 2마리 이상 겹치는 약점 타입 → 약점인 멤버 이름 (마리 수는 목록 길이. 누가 약점인지 모델이 지어내지 않게)
+    weak = {TYPE_KO[a]: [p['name_ko'] for p, x in zip(profs, profiles) if x[a] > 1] for a in TYPES}
+    weak = dict(sorted(((k, v) for k, v in weak.items() if len(v) >= 2), key=lambda kv: -len(kv[1])))
     # 겹치는 약점마다 그 공격을 반감·무효로 받아 줄 멤버 (없으면 빈 목록)
     ko2en = {v: k for k, v in TYPE_KO.items()}
     cover = {t: [p['name_ko'] for p, x in zip(profs, profiles) if x[ko2en[t]] < 1] for t in weak}
-    if weak and max(weak.values()) >= 3:
-        warnings.append('약점 3마리 이상: ' + ', '.join(f'{k} {v}마리' for k, v in weak.items() if v >= 3))
+    if weak and max(map(len, weak.values())) >= 3:
+        warnings.append('약점 3마리 이상: ' + ', '.join(f'{k} {len(v)}마리' for k, v in weak.items() if len(v) >= 3))
     for p in profs:
         if p['_wasted']:
             warnings.append(f"{p['name_ko']}: {'·'.join(p['_wasted'])} SP를 줬는데 그쪽 공격기가 없음")
@@ -188,7 +189,7 @@ def compare_candidates(rid: str, members: list[dict], candidates: list[dict], fm
         me = after['members'][-1]
         row = {'name_ko': me['name_ko'], 'roles': me['roles'], 'sp': me['sp'],
                'covers': [t for t in bw if t not in aw or len(ac[t]) > len(bc[t])],
-               'new_weak': [f'{t} {v}마리' for t, v in aw.items() if v > bw.get(t, 0)]}
+               'new_weak': [f'{t} {len(v)}마리' for t, v in aw.items() if len(v) > len(bw.get(t, []))]}
         new_warn = [w for w in after['warnings'] if w not in base['warnings'] and not w.startswith('약점 3마리 이상')]
         if new_warn:
             row['warnings'] = new_warn

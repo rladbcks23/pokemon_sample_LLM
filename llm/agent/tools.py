@@ -39,7 +39,7 @@ TOOLS = [
           {'pokemon': STR, 'format': FORMAT}),
     _tool('get_team', '파티 상세: 멤버 육성형(sample은 propose_party에 그대로).', {'id': INT}, ('id',)),
     _tool('check_party', '파티 점검: 멤버별 역할·SP·스피드, 역할 수·물리/특수 딜러 수·메가진화 포켓몬 수, '
-                         '2마리 이상 겹치는 약점과 받아 줄 멤버, 경고. candidates(최대 3)를 주면 한 마리씩 넣어 본 비교.',
+                         '2마리 이상 겹치는 약점(타입별 약점 멤버)과 받아 줄 멤버, 경고. candidates(최대 3)를 주면 한 마리씩 넣어 본 비교.',
           {'members': {'type': 'array', 'items': SAMPLE}, 'candidates': {'type': 'array', 'items': SAMPLE},
            'format': FORMAT}, ('members',)),
     _tool('find_partners', '실제 상위 파티에서 주어진 포켓몬(ID 1~3)이 모두 든 파티 수와 같이 쓰인 포켓몬(횟수·%).',

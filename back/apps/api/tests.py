@@ -200,9 +200,10 @@ class PartyApiTests(APITestCase):
         self.assertIn('한카리아스←냉동빔 60%(얼음 ×4)', d['threats'][0]['targets'])
 
     def test_weak_cover(self):
-        """겹치는 약점마다 그 공격을 반감·무효로 받아 줄 멤버."""
+        """겹치는 약점마다 약점인 멤버 이름과, 그 공격을 반감·무효로 받아 줄 멤버."""
         d = self.check([{'pokemon': 'garchomp'}, {'pokemon': 'gyarados'}, {'pokemon': 'blissey'}])
-        self.assertEqual(d['summary']['weak_types_2plus']['얼음'], 2)
+        names = [m['name_ko'] for m in d['members']]
+        self.assertEqual(d['summary']['weak_types_2plus']['얼음'], names[:2])
         self.assertEqual(d['summary']['weak_cover']['얼음'], [])
 
     def test_doubles_support_and_tuning(self):

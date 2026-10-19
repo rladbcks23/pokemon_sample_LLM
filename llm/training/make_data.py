@@ -266,8 +266,8 @@ def decide_need(check: dict) -> tuple[str, str, str | None]:
         return '물리 딜러', f'특수 딜러 {spec}마리에 물리 딜러 {phys}마리라 물리 쪽이 적어요', None
     if phys - spec >= 2:
         return '특수 딜러', f'물리 딜러 {phys}마리에 특수 딜러 {spec}마리라 특수 쪽이 적어요', None
-    if top_weak and s['weak_types_2plus'][top_weak] >= 3:
-        n, c = s['weak_types_2plus'][top_weak], len(s['weak_cover'][top_weak])
+    if top_weak and len(s['weak_types_2plus'][top_weak]) >= 3:
+        n, c = len(s['weak_types_2plus'][top_weak]), len(s['weak_cover'][top_weak])
         return (f'{top_weak} 받아 줄 포켓몬',
                 f'{top_weak} 약점이 {n}마리인데 ' + (f'받아 줄 멤버는 {c}마리예요' if c else '받아 줄 멤버가 없어요'), top_weak)
     return '조합·상성', '역할은 이미 고르게 있어요', None
@@ -278,7 +278,7 @@ def weak_change(before: dict, after: dict) -> tuple[list[str], list[str]]:
     b, a = before['summary'], after['summary']
     bw, aw = b['weak_types_2plus'], a['weak_types_2plus']
     good = [k for k in bw if (k in aw and len(a['weak_cover'][k]) > len(b['weak_cover'][k])) or k not in aw]
-    bad = [k for k, v in aw.items() if v > bw.get(k, 0)]
+    bad = [k for k, v in aw.items() if len(v) > len(bw.get(k, []))]
     return good, bad
 
 
@@ -480,7 +480,7 @@ async def fill_one(rng, tools, fmt, party, question, src):
             return False
         after = DEX.party_check(party + [c['sample']['sample']], fmt)
         aw = after['summary']['weak_types_2plus']
-        if any(aw.get(t, 0) >= 3 for t in c['bad']):
+        if any(len(aw.get(t, [])) >= 3 for t in c['bad']):
             return False
         if base['summary']['roles'].get(c['roles'][0].split(' (')[0], 0) >= 2:
             return False
