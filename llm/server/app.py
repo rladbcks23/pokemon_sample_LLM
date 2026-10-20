@@ -84,7 +84,12 @@ async def load_local_model():
 @app.post('/llm/chat')
 async def chat(req: ChatRequest):
     try:
-        messages = build_messages([t.model_dump() for t in req.history], req.format, req.party)
+        try:
+            async with back_client() as client:
+                names = await Tools(client, req.format).party_names(req.party)
+        except httpx.HTTPError:
+            names = None                                # back이 꺼져 있으면 이름 없이 (도구 호출에서 오류로 알려 줌)
+        messages = build_messages([t.model_dump() for t in req.history], req.format, req.party, names)
     except ValueError as e:
         return StreamingResponse(iter([sse('error', {'message': str(e)}), sse('done', {})]),
                                  media_type='text/event-stream')

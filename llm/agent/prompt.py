@@ -45,8 +45,9 @@ def card_line(party: list[dict] | None) -> str:
     return '\n(띄운 추천 파티: ' + ', '.join(f"{m['pokemon']} @ {m.get('item') or '-'}" for m in party) + ')'
 
 
-def screen_context(format: str, party: list[dict | None]) -> str:
-    """사용자 메시지 앞에 붙이는 화면 상황."""
+def screen_context(format: str, party: list[dict | None], names: list[str] | None = None) -> str:
+    """사용자 메시지 앞에 붙이는 화면 상황. names: 멤버마다 한글 이름 (질문의 "깜까미"를 모델이 ID로 외워 맞히지 않게
+    줄 끝에 붙임. JSON 뒤에 두어야 compact_context의 육성형 참조 줄이기가 그대로 동작)."""
     members = [p for p in party if p]
     lines = [f"[화면] 포맷: {FORMAT_KO.get(format, format)} ({format}), 레귤레이션: M-C"]
     if members:
@@ -54,7 +55,8 @@ def screen_context(format: str, party: list[dict | None]) -> str:
         for i, m in enumerate(members, 1):
             s = {k: m.get(k) for k in ('pokemon', 'item', 'ability', 'nature', 'sp', 'moves')}
             s['sp'] = {k: v for k, v in (s['sp'] or {}).items() if v}       # 0은 생략 (짧게)
-            lines.append(f"{i}. " + json.dumps(s, ensure_ascii=False))
+            name = names[i - 1] if names and i <= len(names) and names[i - 1] else ''
+            lines.append(f"{i}. " + json.dumps(s, ensure_ascii=False) + (f" — {name} ({s['pokemon']})" if name else ''))
     else:
         lines.append('현재 파티: 비어 있음')
     return '\n'.join(lines)

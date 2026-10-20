@@ -16,15 +16,15 @@ from agent.tools import STATUS, TOOLS, ToolError, Tools
 log = logging.getLogger(__name__)
 
 
-def build_messages(history: list[dict], format: str, party: list) -> list[dict]:
-    """화면 대화 기록(텍스트만) → 모델 메시지. 마지막 사용자 메시지 앞에 화면 상황을 붙인다."""
+def build_messages(history: list[dict], format: str, party: list, names: list[str] | None = None) -> list[dict]:
+    """화면 대화 기록(텍스트만) → 모델 메시지. 마지막 사용자 메시지 앞에 화면 상황(멤버 한글 이름 포함)을 붙인다."""
     msgs = [{'role': h['role'], 'content': h['text'] + (card_line(h.get('party')) if h['role'] == 'assistant' else '')}
             for h in history if h.get('role') in ('user', 'assistant') and (h.get('text') or '').strip()]
     while msgs and msgs[0]['role'] != 'user':      # 첫 인사말(코치) 같은 앞쪽 assistant는 뺌
         msgs.pop(0)
     if not msgs or msgs[-1]['role'] != 'user':
         raise ValueError('마지막 메시지는 사용자 질문이어야 함')
-    msgs[-1] = {'role': 'user', 'content': screen_context(format, party) + '\n\n' + msgs[-1]['content']}
+    msgs[-1] = {'role': 'user', 'content': screen_context(format, party, names) + '\n\n' + msgs[-1]['content']}
     return msgs
 
 

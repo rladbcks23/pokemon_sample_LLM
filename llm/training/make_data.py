@@ -183,7 +183,8 @@ class Dialogue:
                 msgs += [{'role': 'user', 'content': p['user']},
                          {'role': 'assistant', 'content': p['final'] + card_line(p['proposed'])}]
             party = t['party'] + [None] * (6 - len(t['party']))
-            msgs.append({'role': 'user', 'content': screen_context(self.fmt, party) + '\n\n' + t['user']})
+            names = [DEX.ko('pokemon', shown_key(DEX.rid, m['pokemon'], m.get('item', ''))) for m in t['party']]
+            msgs.append({'role': 'user', 'content': screen_context(self.fmt, party, names) + '\n\n' + t['user']})
             out.append(msgs + t['steps'] + [{'role': 'assistant', 'content': t['final']}])
         return out
 

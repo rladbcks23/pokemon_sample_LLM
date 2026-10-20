@@ -169,6 +169,14 @@ class Tools:
         return bool(q) and any(q in n.lower() for p in items for n in [p['id'], p['name'], p['name_ko']]
                                + [x for m in p['megas'] for x in (m['id'], m['name_ko'])])
 
+    async def party_names(self, party: list[dict | None]) -> list[str]:
+        """화면 파티 멤버마다 한글 이름 (메가스톤을 들면 메가 폼 이름). 화면 상황에 붙여 모델이 ID를 외워 맞히지 않게."""
+        items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
+        base = {p['id']: p['name_ko'] for p in items}
+        mega = {(p['id'], m['item']): m['name_ko'] for p in items for m in p['megas']}
+        return [mega.get((m.get('pokemon'), m.get('item'))) or base.get(m.get('pokemon'), '')
+                for m in party if m]
+
     async def _mega(self, name: str) -> tuple[str, str] | None:
         """메가 폼 이름이면 (메가 전 폼 ID, 메가스톤 ID). 샘플은 메가 전 폼 + 메가스톤으로 저장돼 있음."""
         q = (name or '').strip().lower()
