@@ -64,6 +64,13 @@ STATUS = {
 }
 
 
+def readable(m: dict) -> str:
+    """API 멤버(샘플·파티 상세 같은 모양) → DB 한글 이름으로 쓴 육성형 한 줄. 모델은 이걸 그대로 옮겨 쓴다."""
+    return (f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
+            f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
+            f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x))
+
+
 class ToolError(Exception):
     """모델에게 is_error로 돌려줄 오류 (잘못된 ID 등)."""
 
@@ -189,9 +196,7 @@ class Tools:
             m = s['member']
             out.append({
                 'source': s['source_label'], 'roles': s.get('roles', []), 'sample': compact_sample(s['sample']),
-                'readable': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')} / "
-                            f"{(m['ability'] or {}).get('name_ko', '-')} / {(m['nature'] or {}).get('name_ko', '-')} / "
-                            f"SP {_sp_text(m['sp'])} / " + ', '.join(x['name_ko'] for x in m['moves'] if x),
+                'readable': readable(m),
             })
         if not out:
             return [{'result': f'"{pokemon}" ' + (f'{role} ' if role else '') + '샘플 없음'}]
@@ -210,13 +215,13 @@ class Tools:
         t = await self._get(f'teams/{int(id)}/')
         return {
             'id': t['id'], 'title': t['title'], 'source': t['source_label'],
-            # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), name: 답변에 쓰는 "이름 @ 도구" (짧게)
+            # sample: propose_party·check_party에 그대로 넣는 육성형 (ID), name: 답변에 쓰는 한글 이름 (기술 등을 모델이 번역해 지어내지 않게)
             'members': [{
                 'sample': compact_sample({
                     'pokemon': m['base'], 'item': (m['item'] or {}).get('id', ''), 'ability': m['base_ability'],
                     'nature': (m['nature'] or {}).get('id', ''), 'sp': m['sp'],
                     'moves': [x['id'] for x in m['moves'] if x]}),
-                'name': f"{m['pokemon']['name_ko']} @ {(m['item'] or {}).get('name_ko', '-')}",
+                'name': readable(m),
                 **({'brought': m['brought'], 'lead': m['lead']} if m['brought'] is not None else {}),
             } for m in t['members']],
         }
