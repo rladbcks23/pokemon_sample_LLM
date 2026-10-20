@@ -34,7 +34,7 @@ copy .env.example .env          # ANTHROPIC_API_KEY 채우기
    ..\.venv\Scripts\pip install -r requirements-qwen.txt torch peft accelerate <dir>\llama.cpp-<태그>\gguf-py
    ..\.venv\Scripts\python training\scripts\export_gguf.py --llama-cpp <dir>     # → models/qwen35-4b-coach-Q8_0.gguf
    ```
-3. `<dir>\bin\llama-server -m models\qwen35-4b-coach-Q8_0.gguf -ngl 99 -c 4096 -np 1 --port 8080`
+3. `<dir>\bin\llama-server -m models\qwen35-4b-coach-Q8_0.gguf -ngl 99 -c 8192 -np 1 --port 8080`
 4. `llm/.env`에 `LLM_PROVIDER=qwen` (llama-server 주소는 `QWEN_SERVER`, 기본 `http://127.0.0.1:8080`)
 
 llm 서버는 어댑터 폴더의 토크나이저로 학습과 같은 `compact_context` 입력을 만들어 llama-server에 보낸다.
