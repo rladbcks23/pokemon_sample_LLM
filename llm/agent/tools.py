@@ -3,6 +3,7 @@
 도구 설명·결과는 짧게 유지한다 (로컬 4B 모델의 문맥 길이·학습 길이 때문). 배우는 기술 전체 같은 긴 목록은 요청할 때만.
 """
 import json
+import re
 
 import httpx
 
@@ -33,8 +34,9 @@ TOOLS = [
           {'id': STR, 'format': FORMAT, 'include_learnset': {'type': 'boolean'}}, ('id',)),
     _tool('get_ranking', '인게임 픽률 순위 (기본 30위까지).', {'format': FORMAT, 'limit': INT}),
     _tool('search_samples', '공개 샘플 3개: 샘플별 역할(SP·기술로 판정)과 그 포켓몬 샘플의 형태 분포(shapes). '
-                            'role로 원하는 형태(막이, 특수 딜러, 서포터 등)만. sample은 propose_party에 그대로.',
-          {'pokemon': STR, 'format': FORMAT, 'role': STR}, ('pokemon',)),
+                            'role로 원하는 형태(막이, 특수 딜러, 서포터 등)만, item으로 그 도구를 든 샘플만. '
+                            'sample은 propose_party에 그대로.',
+          {'pokemon': STR, 'format': FORMAT, 'role': STR, 'item': STR}, ('pokemon',)),
     _tool('search_teams', '실제 파티 목록(OP.GG 상위·대회 팀). pokemon을 주면 그 포켓몬이 든 파티만.',
           {'pokemon': STR, 'format': FORMAT}),
     _tool('get_team', '파티 상세: 멤버 육성형(sample은 propose_party에 그대로).', {'id': INT}, ('id',)),
@@ -95,6 +97,7 @@ class Tools:
         self.client = client
         self.format = format if format in ('singles', 'doubles') else 'singles'
         self.proposed: list[dict] | None = None      # propose_party가 통과시킨 파티 (화면에 보낼 것)
+        self.subject: str | None = None              # 지금 이야기 중인 포켓몬 ID (서버가 대화 기록으로 정함)
         self._cache: dict[str, dict] = {}
 
     async def _get(self, path: str, params: dict | None = None, cache: bool = False) -> dict:
@@ -169,6 +172,28 @@ class Tools:
         return bool(q) and any(q in n.lower() for p in items for n in [p['id'], p['name'], p['name_ko']]
                                + [x for m in p['megas'] for x in (m['id'], m['name_ko'])])
 
+    async def _items(self) -> list[dict]:
+        return (await self._get('options/', {}, cache=True))['items']
+
+    async def item_id(self, text: str) -> str | None:
+        """도구 한글 이름 또는 ID → ID."""
+        q = (text or '').strip().lower().replace(' ', '')
+        return next((i['id'] for i in await self._items() if q in (i['id'], i['name_ko'].replace(' ', '').lower())), None)
+
+    async def item_in(self, question: str) -> str | None:
+        """질문에 들어 있는 도구 이름 (가장 긴 것) → ID. "X 말고"처럼 빼 달라는 말이면 None."""
+        if re.search(r'말고|빼고|대신|말구|싫', question or ''):
+            return None
+        q = (question or '').replace(' ', '')
+        hits = [i for i in await self._items() if len(i['name_ko']) >= 2 and i['name_ko'].replace(' ', '') in q]
+        return max(hits, key=lambda i: len(i['name_ko']))['id'] if hits else None
+
+    async def pokemon_in(self, question: str) -> bool:
+        """질문에 이번 레귤레이션 포켓몬(메가 폼 포함) 한글 이름이 들어 있는지."""
+        items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
+        q = (question or '').replace(' ', '')
+        return any(len(n) >= 2 and n in q for p in items for n in [p['name_ko']] + [m['name_ko'] for m in p['megas']])
+
     async def party_names(self, party: list[dict | None]) -> list[str]:
         """화면 파티 멤버마다 한글 이름 (메가스톤을 들면 메가 폼 이름). 화면 상황에 붙여 모델이 ID를 외워 맞히지 않게."""
         items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
@@ -188,15 +213,19 @@ class Tools:
         return None
 
     async def tool_search_samples(self, pokemon: str | None = None, format: str | None = None, source: str | None = None,
-                                  role: str | None = None) -> dict | list:
-        """샘플 3개 + 그 포켓몬 샘플 전체의 형태 분포. role을 주면 그 역할(예: 막이, 특수 딜러) 샘플만."""
+                                  role: str | None = None, item: str | None = None) -> dict | list:
+        """샘플 3개 + 그 포켓몬 샘플 전체의 형태 분포. role을 주면 그 역할(예: 막이, 특수 딜러) 샘플만,
+        item(한글 이름이나 ID)을 주면 그 도구를 든 샘플만 (메가 폼 이름이면 그 메가스톤)."""
         if not (pokemon or '').strip():
             raise ToolError('pokemon(포켓몬 이름)이 필요함. 후보 이름은 화면 파티나 get_ranking·find_partners 결과에서 고를 것')
         if not await self._known_name(pokemon):
             raise ToolError(f'"{pokemon}"는 이번 레귤레이션 포켓몬 목록에 없는 이름. '
                             '지어낸 이름을 쓰지 말고 화면·get_ranking·find_partners·search_pokemon 결과의 이름을 쓸 것')
         mega = await self._mega(pokemon)
-        d = await self._get('samples/', {'q': mega[0] if mega else pokemon, 'item': mega[1] if mega else None,
+        item_id = mega[1] if mega else (await self.item_id(item) if item else None)
+        if item and not item_id:
+            raise ToolError(f'"{item}"는 도구 목록에 없는 이름')
+        d = await self._get('samples/', {'q': mega[0] if mega else pokemon, 'item': item_id,
                                          'format': self._fmt(format), 'source': source, 'size': 30 if role else 3})
         rows = [s for s in d['results'] if not role or any(role in r for r in s.get('roles', []))][:3]
         out = []
@@ -207,7 +236,13 @@ class Tools:
                 'readable': readable(m),
             })
         if not out:
-            return [{'result': f'"{pokemon}" ' + (f'{role} ' if role else '') + '샘플 없음'}]
+            try:                                    # 답에 쓸 한글 이름 (못 구하면 받은 그대로)
+                items = {i['id']: i['name_ko'] for i in await self._items()}
+                ko = (await self.party_names([{'pokemon': mega[0] if mega else pokemon, 'item': item_id or ''}]))[0] or pokemon
+            except (httpx.HTTPError, KeyError, ToolError):
+                items, ko = {}, pokemon
+            what = ' '.join(x for x in (ko, items.get(item_id, item), role) if x)
+            return [{'result': f'{what} 샘플 없음', 'none': {'pokemon': ko, 'item': items.get(item_id, item), 'role': role}}]
         return {'shapes': d.get('shapes'), 'samples': out}
 
     async def tool_search_teams(self, pokemon: str | None = None, format: str | None = None,

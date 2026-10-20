@@ -55,6 +55,11 @@ class RenderTest(unittest.TestCase):
         text = answers.render('생명의구슬 말고 다른거는 안써?', [info], 'singles')
         self.assertIn('싱글 한카리아스 도구 사용률: 생명의구슬 34.3% · 구애스카프 17.9%', text)
 
+    def test_no_sample(self):
+        none = [{'result': '깜까미 울퉁불퉁멧 샘플 없음', 'none': {'pokemon': '깜까미', 'item': '울퉁불퉁멧', 'role': None}}]
+        text = answers.render('울퉁불퉁멧 형태', [('search_samples', {'pokemon': 'sableye'}, none)], 'singles')
+        self.assertTrue(text.startswith('깜까미는 울퉁불퉁멧 공개 샘플이 없어요.'))
+
     def test_unknown_flow_keeps_model_text(self):
         self.assertIsNone(answers.render('ㅁㄴㅇㄹ', [], 'singles'))
         self.assertIsNone(answers.render('승률 몇 퍼야?', [('get_ranking', {}, {'items': []})], 'singles'))
@@ -92,6 +97,77 @@ class LoopRenderTest(unittest.TestCase):
         text = ''.join(v for k, v in events if k == 'text')
         self.assertNotIn('17/37', text)
         self.assertIn('땅 3마리', text)
+
+
+class SampleTools:
+    """search_samples 인자를 기록하고, propose_party는 띄운 것으로."""
+    format = 'singles'
+
+    def __init__(self):
+        self.args, self.proposed = [], None
+
+    subject = None
+
+    async def item_in(self, question):
+        return 'rockyhelmet' if '울퉁불퉁멧' in question else None
+
+    async def item_id(self, text):
+        return 'lightclay' if text == '빛의점토' else None
+
+    async def pokemon_in(self, question):
+        return '깜까미' in question
+
+    async def run(self, name, args):
+        self.args.append((name, args))
+        if name == 'search_samples':
+            return {'shapes': {'total': 10, '물리막이': 4}, 'samples': [{
+                'source': 'OP.GG 샘플', 'roles': ['물리막이'], 'sample': {**G, 'pokemon': 'sableye', 'item': 'rockyhelmet'},
+                'readable': '깜까미 @ 울퉁불퉁멧 / 짓궂은마음'}]}
+        self.proposed = args['members']
+        return {'shown': True, 'count': 1}
+
+
+class SubjectTest(unittest.TestCase):
+    def test_subject_from_card_or_name(self):
+        from agent.loop import subject_of
+        party = [G, {**P, 'pokemon': 'sableye'}]
+        names = ['한카리아스', '깜까미']
+        h = [{'role': 'user', 'text': '깜까미 아이템 바꾸고 싶어'}, {'role': 'assistant', 'text': '…'},
+             {'role': 'user', 'text': '울퉁불퉁멧 형태'}]
+        self.assertEqual(subject_of(h, party, names), 'sableye')
+        h2 = [{'role': 'assistant', 'text': '…', 'party': [P]}, {'role': 'user', 'text': '울퉁불퉁멧 형태'}]
+        self.assertEqual(subject_of(h2, party, names), 'primarina')      # 바로 앞 카드가 우선
+        self.assertIsNone(subject_of([{'role': 'user', 'text': '파티 짜줘'}], party, names))
+
+
+class ItemFlowTest(unittest.TestCase):
+    def test_item_filled_and_sample_shown(self):
+        """모델이 item을 빼먹고 띄우지도 않아도: 질문의 도구로 거르고, 서버가 띄우고, 도구 결과로 답."""
+        tools = SampleTools()
+
+        async def go():
+            msgs = [{'role': 'user', 'content': '[화면] …\n\n울퉁불퉁멧 형태'}]
+            return [e async for e in run_agent(Rendering([('search_samples', {'pokemon': '깜까미'})]), tools, msgs)]
+        events = asyncio.run(go())
+        self.assertEqual(tools.args[0], ('search_samples', {'pokemon': '깜까미', 'item': 'rockyhelmet'}))
+        self.assertEqual(tools.args[1][0], 'propose_party')
+        self.assertTrue(any(k == 'party' for k, _ in events))
+        text = ''.join(v for k, v in events if k == 'text')
+        self.assertTrue(text.startswith('깜까미 @ 울퉁불퉁멧'))
+        self.assertNotIn('17/37', text)
+
+    def test_subject_replaces_wrong_pokemon(self):
+        """질문에 포켓몬 이름이 없으면 지어낸 이름·도구 이름 대신 지금 이야기 중인 포켓몬으로."""
+        for wrong, want in [({'pokemon': 'blinkous', 'item': 'lightclay'}, {'pokemon': 'sableye', 'item': 'lightclay'}),
+                            ({'pokemon': '빛의점토'}, {'pokemon': 'sableye', 'item': '빛의점토'})]:
+            tools = SampleTools()
+            tools.subject = 'sableye'
+
+            async def go():
+                msgs = [{'role': 'user', 'content': '[화면] …\n\n빛의점토 형태'}]
+                return [e async for e in run_agent(Rendering([('search_samples', wrong)]), tools, msgs)]
+            asyncio.run(go())
+            self.assertEqual(tools.args[0], ('search_samples', want))
 
 
 if __name__ == '__main__':

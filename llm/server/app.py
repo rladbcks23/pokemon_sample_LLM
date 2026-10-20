@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 import config
-from agent.loop import build_messages, run_agent
+from agent.loop import build_messages, run_agent, subject_of
 from agent.tools import Tools
 from providers.claude import ClaudeProvider
 
@@ -89,7 +89,9 @@ async def chat(req: ChatRequest):
                 names = await Tools(client, req.format).party_names(req.party)
         except httpx.HTTPError:
             names = None                                # back이 꺼져 있으면 이름 없이 (도구 호출에서 오류로 알려 줌)
-        messages = build_messages([t.model_dump() for t in req.history], req.format, req.party, names)
+        history = [t.model_dump() for t in req.history]
+        messages = build_messages(history, req.format, req.party, names)
+        subject = subject_of(history, req.party, names)
     except ValueError as e:
         return StreamingResponse(iter([sse('error', {'message': str(e)}), sse('done', {})]),
                                  media_type='text/event-stream')
@@ -97,6 +99,7 @@ async def chat(req: ChatRequest):
     async def stream():
         async with back_client() as client:
             tools = Tools(client, req.format)
+            tools.subject = subject                     # 모델이 포켓몬 자리에 도구 이름을 넣으면 이 포켓몬으로 (agent/loop.py)
             try:
                 async for kind, value in run_agent(get_provider(), tools, messages):
                     if kind == 'text':

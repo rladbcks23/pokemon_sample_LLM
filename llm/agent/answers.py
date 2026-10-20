@@ -175,6 +175,12 @@ def render(question: str, trace: list, fmt: str) -> str | None:
         if len(members) == 1:
             return sample_answer(trace, members[0]) or party_answer(trace, members)
         return party_answer(trace, members)
+    empty = last(trace, 'search_samples')
+    if empty and isinstance(empty[1], list) and empty[1] and 'none' in empty[1][0]:
+        n = empty[1][0]['none']                 # 마지막 검색이 비었으면 (지어내지 않고) 없다고
+        what = ' '.join(x for x in (n['item'], n['role']) if x)
+        return (f"{josa(n['pokemon'], '은', '는')} {what + ' ' if what else ''}공개 샘플이 없어요. "
+                '다른 도구나 형태를 말해 주거나, 샘플 제작에서 직접 바꿔 보세요.')
     th = last(trace, 'find_threats')
     if th and isinstance(th[1], dict):
         return threats_answer(th[1])
