@@ -278,7 +278,13 @@ class QwenFormatTest(unittest.TestCase):
 
         async def go():
             return [x async for x in p.turn('sys', [{'role': 'user', 'content': '?'}], [])]
-        empty, long = asyncio.run(go()), asyncio.run(go())
+        outs = iter(['', '\n'.join(f'- 포켓몬{i} {i}/37' for i in range(300)),
+                     '<tool_call>\n<function=get_ranking>\n</function>\n</tool_call>\n덧붙인 글',
+                     '<tool_call>\n<function=get_ranking>\n</tool_call>\n깨진 호출 뒤 글'])
+        empty, long, mixed, broken = (asyncio.run(go()) for _ in range(4))
+        self.assertEqual(mixed[0][0], 'final')                      # 도구 호출 차례의 덧붙인 글은 버림
+        self.assertEqual([b.name for b in mixed[0][1].content], ['get_ranking'])
+        self.assertIn('답을 만들지 못했어요', broken[0][1])       # 깨진 호출 뒤 글은 보여 주지 않음
         self.assertIn('답을 만들지 못했어요', empty[0][1])
         self.assertLessEqual(len(long[0][1]), MAX_ANSWER + 2)
         self.assertTrue(long[0][1].endswith('…'))

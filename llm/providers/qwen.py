@@ -43,7 +43,8 @@ def parse_calls(text: str) -> list[tuple[str, dict]]:
 # SP 표기 H2 C32 S32), 작은따옴표 안의 팀 이름만. 영문을 대문자 전체로 열어 두면 "ESPECIAL"처럼 빠져나가서 막음
 GRAMMAR = r'''
 root   ::= tool | answer
-tool   ::= "<tool_call>" .*
+tool   ::= ("<tool_call>" tbody "</tool_call>" [ \n]*)+
+tbody  ::= ([^<] | "<function=" | "</function>" | "<parameter=" | "</parameter>")*
 answer ::= (char | word | stat | quoted)*
 char   ::= [가-힣ㄱ-ㅎㅏ-ㅣ0-9 \n.,!?:;()/@%·…—–→←×~+=*#&_\[\]-]
 word   ::= "OP.GG" | "SP" | "VGCPastes"
@@ -132,6 +133,8 @@ class QwenProvider:
         calls = parse_calls(raw)
         if '<tool_call>' in reply:              # 길이 제한에 걸려 닫히지 않은 도구 호출: 원문을 답으로 보여 주지 않음
             reply = '답변이 길어져 중간에 끊겼어요. 질문을 나눠서 다시 물어봐 주세요.'
+        elif '<tool_call>' in raw:              # 도구 호출 차례에는 글 답이 없어야 함 (학습 형식). 섞인 글은 버림
+            reply = '' if calls else '답을 만들지 못했어요. 질문을 조금 바꿔서 다시 물어봐 주세요.'
         elif not reply and not calls:           # 모델이 아무것도 안 쓰고 끝냄 (문법이 빈 답을 허용하므로 기호를 찍지 않음)
             reply = '답을 만들지 못했어요. 질문을 조금 바꿔서 다시 물어봐 주세요.'
         blocks = [NS(type='text', text=reply)] if reply else []
