@@ -1,6 +1,6 @@
 """로컬 Qwen3.5-4B + LoRA provider. ClaudeProvider와 같은 모양으로 turn()을 낸다.
 
-생성은 llama.cpp 서버(llama-server, GGUF 4bit, 기본 8080)가 하고, 여기서는 학습과 같은 입력 표현
+생성은 llama.cpp 서버(llama-server, GGUF Q8_0, 기본 8080)가 하고, 여기서는 학습과 같은 입력 표현
 (training/scripts/compact_context + 어댑터 폴더의 채팅 템플릿)으로 프롬프트를 만들어 보낸다.
 Qwen 도구 호출(<tool_call><function=…>)은 Claude 형식 tool_use 블록으로 돌려준다.
 (transformers+bitsandbytes로 직접 돌리면 Windows에서 초당 2토큰 정도라 llama.cpp로 바꿈)
@@ -38,9 +38,23 @@ def parse_calls(text: str) -> list[tuple[str, dict]]:
     return calls
 
 
+# 답변 글자 제한 (llama.cpp GBNF). 4B 모델이 프랑스어·그리스어·일본어 등을 섞어서:
+# 도구 호출(<tool_call>로 시작)은 그대로, 글 답변은 한글·숫자·기호·영문 대문자(OP.GG, SP, H2 C32 S32)와
+# 작은따옴표 안의 팀 이름만. 영문 소문자 단어가 막히므로 외국어 문장이 나오지 못함
+GRAMMAR = r'''
+root   ::= tool | answer
+tool   ::= "<tool_call>" .*
+answer ::= (char | quoted)+
+char   ::= [가-힣ㄱ-ㅎㅏ-ㅣ0-9A-Z \n.,!?:;()/@%·…—–→←×~+=*#&_\[\]-]
+quoted ::= "'" [^'\n]* "'"
+'''
+
+
 def clean(text: str) -> str:
     for pat in NOISE:
         text = re.sub(pat, '', text, flags=re.S)
+    # 같은 구절(6자 이상)이 5번 넘게 연달아 나오면 한 번만 남김 (반복에 빠진 출력)
+    text = re.sub(r'(.{6,}?)\1{4,}', r'\1', text, flags=re.S)
     return text.strip()
 
 
@@ -85,7 +99,8 @@ class QwenProvider:
         t = time.time()
         r = await self.client.post('/completion', json={
             'prompt': prompt, 'n_predict': min(config.QWEN_MAX_NEW_TOKENS, room), 'temperature': 0,
-            'stop': ['<|im_end|>', '<|endoftext|>'], 'cache_prompt': True})
+            'stop': ['<|im_end|>', '<|endoftext|>'], 'cache_prompt': True,
+            **({'grammar': GRAMMAR} if config.QWEN_GRAMMAR else {})})
         r.raise_for_status()
         out = r.json()
         log.info('qwen 입력 %d토큰 → 출력 %d토큰, %.1f초', n, out.get('tokens_predicted', 0), time.time() - t)

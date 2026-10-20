@@ -248,6 +248,11 @@ class QwenFormatTest(unittest.TestCase):
             {'type': 'function', 'function': {'name': 'search_samples', 'arguments': {'pokemon': 'garchomp'}}}]})
         self.assertEqual(msgs[2], {'role': 'tool', 'content': '오류: 없음'})
 
+    def test_clean_cuts_repetition(self):
+        from providers.qwen import clean
+        self.assertEqual(clean('같이 쓰인 수: ' + '메타그로스 1마리 / ' * 30 + '끝'), '같이 쓰인 수: 메타그로스 1마리 / 끝')
+        self.assertEqual(clean('- 땅 3마리\n- 물 2마리'), '- 땅 3마리\n- 물 2마리')      # 짧은 반복·정상 목록은 그대로
+
 
 class ServerTest(unittest.TestCase):
     def test_chat_streams_sse(self):

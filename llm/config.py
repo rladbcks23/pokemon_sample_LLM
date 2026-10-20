@@ -20,6 +20,8 @@ QWEN_ADAPTER = os.getenv('QWEN_ADAPTER', str(Path(__file__).resolve().parent / '
 QWEN_SERVER = os.getenv('QWEN_SERVER', 'http://127.0.0.1:8080')   # llama-server (GGUF)
 QWEN_MAX_SEQ = int(os.getenv('QWEN_MAX_SEQ', '4096'))  # 학습 길이와 같게
 QWEN_MAX_NEW_TOKENS = int(os.getenv('QWEN_MAX_NEW_TOKENS', '1024'))
+# 답변 글자를 한글·숫자·기호·영문 대문자로 제한 (외국어가 섞여서). 0이면 끔
+QWEN_GRAMMAR = os.getenv('QWEN_GRAMMAR', '1') != '0'
 
 # 한 번 답할 때 도구 호출을 주고받는 최대 횟수 (무한 루프 방지)
 MAX_TOOL_ROUNDS = int(os.getenv('MAX_TOOL_ROUNDS', '8'))
