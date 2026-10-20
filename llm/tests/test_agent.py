@@ -265,6 +265,24 @@ class QwenFormatTest(unittest.TestCase):
         self.assertIn('끊겼어요', out[0][1])
         self.assertEqual(out[-1][1].stop_reason, 'max_tokens')
 
+    def test_empty_and_long_answers(self):
+        from itertools import count
+        from providers.qwen import MAX_ANSWER, QwenProvider
+        p = QwenProvider.__new__(QwenProvider)
+        p.ids, p._system = count(1), 'sys'
+        outs = iter(['', '\n'.join(f'- 포켓몬{i} {i}/37' for i in range(300))])
+
+        async def gen(messages):
+            return next(outs), False
+        p._generate = gen
+
+        async def go():
+            return [x async for x in p.turn('sys', [{'role': 'user', 'content': '?'}], [])]
+        empty, long = asyncio.run(go()), asyncio.run(go())
+        self.assertIn('답을 만들지 못했어요', empty[0][1])
+        self.assertLessEqual(len(long[0][1]), MAX_ANSWER + 2)
+        self.assertTrue(long[0][1].endswith('…'))
+
     def test_clean_cuts_repetition(self):
         from providers.qwen import clean
         self.assertEqual(clean('같이 쓰인 수: ' + '메타그로스 1마리 / ' * 30 + '끝'), '같이 쓰인 수: 메타그로스 1마리 / 끝')

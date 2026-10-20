@@ -44,7 +44,7 @@ def parse_calls(text: str) -> list[tuple[str, dict]]:
 GRAMMAR = r'''
 root   ::= tool | answer
 tool   ::= "<tool_call>" .*
-answer ::= (char | word | stat | quoted)+
+answer ::= (char | word | stat | quoted)*
 char   ::= [가-힣ㄱ-ㅎㅏ-ㅣ0-9 \n.,!?:;()/@%·…—–→←×~+=*#&_\[\]-]
 word   ::= "OP.GG" | "SP" | "VGCPastes"
 stat   ::= [HABCDS] [0-9]+
@@ -52,12 +52,17 @@ quoted ::= "'" [^'\n]* "'"
 '''
 
 
+MAX_ANSWER = 800
+
+
 def clean(text: str) -> str:
     for pat in NOISE:
         text = re.sub(pat, '', text, flags=re.S)
     # 같은 구절(6자 이상)이 5번 넘게 연달아 나오면 한 번만 남김 (반복에 빠진 출력)
-    text = re.sub(r'(.{6,}?)\1{4,}', r'\1', text, flags=re.S)
-    return text.strip()
+    text = re.sub(r'(.{6,}?)\1{4,}', r'\1', text, flags=re.S).strip()
+    if len(text) > MAX_ANSWER:              # 숫자만 바꿔 가며 끝없이 나열하는 출력 (정상 답은 400자 안팎)
+        text = text[:MAX_ANSWER].rsplit('\n', 1)[0].rstrip() + '\n…'
+    return text
 
 
 def to_training_format(messages: list) -> list[dict]:
@@ -124,12 +129,15 @@ class QwenProvider:
             yield 'final', NS(content=[NS(type='text', text=msg)], stop_reason='end_turn')
             return
         reply = clean(raw)
+        calls = parse_calls(raw)
         if '<tool_call>' in reply:              # 길이 제한에 걸려 닫히지 않은 도구 호출: 원문을 답으로 보여 주지 않음
             reply = '답변이 길어져 중간에 끊겼어요. 질문을 나눠서 다시 물어봐 주세요.'
+        elif not reply and not calls:           # 모델이 아무것도 안 쓰고 끝냄 (문법이 빈 답을 허용하므로 기호를 찍지 않음)
+            reply = '답을 만들지 못했어요. 질문을 조금 바꿔서 다시 물어봐 주세요.'
         blocks = [NS(type='text', text=reply)] if reply else []
         if reply:
             yield 'text', reply
-        blocks += [NS(type='tool_use', id=f'q{next(self.ids)}', name=n, input=a) for n, a in parse_calls(raw)]
+        blocks += [NS(type='tool_use', id=f'q{next(self.ids)}', name=n, input=a) for n, a in calls]
         has_calls = any(b.type == 'tool_use' for b in blocks)
         stop = 'max_tokens' if cut else 'tool_use' if has_calls else 'end_turn'
         yield 'final', NS(content=blocks, stop_reason=stop)
