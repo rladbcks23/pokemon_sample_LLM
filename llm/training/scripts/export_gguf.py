@@ -5,7 +5,7 @@
 
 llama.cpp: https://github.com/ggml-org/llama.cpp/releases 의 win-cuda 빌드(+cudart)를 <dir>/bin에,
 같은 태그의 소스(convert_hf_to_gguf.py)를 <dir>/llama.cpp-<태그>에 푼다.
-결과: llm/models/qwen35-4b-coach-<quant>.gguf (git 제외). 중간 파일(합친 모델·bf16 GGUF)은 지운다.
+결과: llm/models/<어댑터 폴더 이름에서 -lora 뺀 것>-<quant>.gguf (git 제외). 중간 파일(합친 모델·bf16 GGUF)은 지운다.
 """
 import argparse
 import json
@@ -28,8 +28,11 @@ def main():
     adapter, root = Path(a.adapter), Path(a.llama_cpp)
     convert = next(root.glob('llama.cpp-*/convert_hf_to_gguf.py'))
     quantize = next(root.glob('bin/**/llama-quantize.exe'), None) or next(root.glob('bin/**/llama-quantize'))
-    out = LLM / f'models/qwen35-4b-coach-{a.quant}.gguf'
-    merged, bf16 = LLM / 'models/_merged', LLM / 'models/_merged-bf16.gguf'
+    # 결과 이름은 어댑터 폴더 이름에서 (qwen35-4b-coach-lora-20261019 → qwen35-4b-coach-20261019-Q8_0.gguf).
+    # 다른 런의 GGUF·중간 파일을 덮어쓰거나 잘못 재사용하지 않게
+    name = adapter.name.replace('-lora', '')
+    out = LLM / f'models/{name}-{a.quant}.gguf'
+    merged, bf16 = LLM / f'models/_merged-{name}', LLM / f'models/_merged-{name}-bf16.gguf'
 
     if not merged.exists():
         import torch
