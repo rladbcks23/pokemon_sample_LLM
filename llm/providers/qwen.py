@@ -86,6 +86,8 @@ def to_training_format(messages: list) -> list[dict]:
 
 
 class QwenProvider:
+    render_answers = True       # 도구 흐름으로 답을 알 수 있으면 서버가 도구 결과로 답을 씀 (agent/answers.py)
+
     def __init__(self, adapter: str = config.QWEN_ADAPTER, server: str = config.QWEN_SERVER):
         from transformers import AutoTokenizer          # 토크나이저·채팅 템플릿만 (torch 불필요)
 
