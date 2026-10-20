@@ -39,13 +39,15 @@ def parse_calls(text: str) -> list[tuple[str, dict]]:
 
 
 # 답변 글자 제한 (llama.cpp GBNF). 4B 모델이 프랑스어·그리스어·일본어 등을 섞어서:
-# 도구 호출(<tool_call>로 시작)은 그대로, 글 답변은 한글·숫자·기호·영문 대문자(OP.GG, SP, H2 C32 S32)와
-# 작은따옴표 안의 팀 이름만. 영문 소문자 단어가 막히므로 외국어 문장이 나오지 못함
+# 도구 호출(<tool_call>로 시작)은 그대로, 글 답변은 한글·숫자·기호와 정해진 영문(OP.GG, SP, VGCPastes,
+# SP 표기 H2 C32 S32), 작은따옴표 안의 팀 이름만. 영문을 대문자 전체로 열어 두면 "ESPECIAL"처럼 빠져나가서 막음
 GRAMMAR = r'''
 root   ::= tool | answer
 tool   ::= "<tool_call>" .*
-answer ::= (char | quoted)+
-char   ::= [가-힣ㄱ-ㅎㅏ-ㅣ0-9A-Z \n.,!?:;()/@%·…—–→←×~+=*#&_\[\]-]
+answer ::= (char | word | stat | quoted)+
+char   ::= [가-힣ㄱ-ㅎㅏ-ㅣ0-9 \n.,!?:;()/@%·…—–→←×~+=*#&_\[\]-]
+word   ::= "OP.GG" | "SP" | "VGCPastes"
+stat   ::= [HABCDS] [0-9]+
 quoted ::= "'" [^'\n]* "'"
 '''
 
