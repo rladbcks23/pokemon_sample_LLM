@@ -34,9 +34,10 @@ TOOLS = [
           {'id': STR, 'format': FORMAT, 'include_learnset': {'type': 'boolean'}}, ('id',)),
     _tool('get_ranking', '인게임 픽률 순위 (기본 30위까지).', {'format': FORMAT, 'limit': INT}),
     _tool('search_samples', '공개 샘플 3개: 샘플별 역할(SP·기술로 판정)과 그 포켓몬 샘플의 형태 분포(shapes). '
-                            'role로 원하는 형태(막이, 특수 딜러, 서포터 등)만, item으로 그 도구를 든 샘플만. '
-                            'sample은 propose_party에 그대로.',
-          {'pokemon': STR, 'format': FORMAT, 'role': STR, 'item': STR}, ('pokemon',)),
+                            'role로 원하는 형태(막이, 특수 딜러, 서포터 등)만, item으로 그 도구를 든 샘플만, '
+                            'without(기술 이름들)으로 그 기술이 없는 샘플만. sample은 propose_party에 그대로.',
+          {'pokemon': STR, 'format': FORMAT, 'role': STR, 'item': STR,
+           'without': {'type': 'array', 'items': STR}}, ('pokemon',)),
     _tool('search_teams', '실제 파티 목록(OP.GG 상위·대회 팀). pokemon을 주면 그 포켓몬이 든 파티만.',
           {'pokemon': STR, 'format': FORMAT}),
     _tool('get_team', '파티 상세: 멤버 육성형(sample은 propose_party에 그대로).', {'id': INT}, ('id',)),
@@ -180,6 +181,21 @@ class Tools:
         q = (text or '').strip().lower().replace(' ', '')
         return next((i['id'] for i in await self._items() if q in (i['id'], i['name_ko'].replace(' ', '').lower())), None)
 
+    async def move_id(self, text: str) -> str | None:
+        """기술 한글 이름 또는 ID → ID."""
+        q = (text or '').strip().lower().replace(' ', '')
+        moves = (await self._get('options/', {}, cache=True)).get('moves', [])
+        return next((m['id'] for m in moves if q in (m['id'], m['name_ko'].replace(' ', '').lower())), None)
+
+    async def moves_without(self, question: str) -> list[str]:
+        """질문이 "빛의장막 리플렉터 없는 건"처럼 기술을 빼 달라는 말이면 그 기술 한글 이름들."""
+        if not re.search(r'없는|없이|빼고|말고|안 쓰는|안쓰는', question or ''):
+            return []
+        moves = (await self._get('options/', {}, cache=True)).get('moves', [])
+        q = (question or '').replace(' ', '')
+        hits = [m['name_ko'] for m in moves if len(m['name_ko']) >= 2 and m['name_ko'].replace(' ', '') in q]
+        return [h for h in hits if not any(h != o and h in o for o in hits)]      # 긴 이름 안의 짧은 이름은 빼고
+
     async def item_in(self, question: str) -> str | None:
         """질문에 들어 있는 도구 이름 (가장 긴 것) → ID. "X 말고"처럼 빼 달라는 말이면 None."""
         if re.search(r'말고|빼고|대신|말구|싫', question or ''):
@@ -213,9 +229,11 @@ class Tools:
         return None
 
     async def tool_search_samples(self, pokemon: str | None = None, format: str | None = None, source: str | None = None,
-                                  role: str | None = None, item: str | None = None) -> dict | list:
+                                  role: str | None = None, item: str | None = None,
+                                  without: list[str] | str | None = None) -> dict | list:
         """샘플 3개 + 그 포켓몬 샘플 전체의 형태 분포. role을 주면 그 역할(예: 막이, 특수 딜러) 샘플만,
-        item(한글 이름이나 ID)을 주면 그 도구를 든 샘플만 (메가 폼 이름이면 그 메가스톤)."""
+        item(한글 이름이나 ID)을 주면 그 도구를 든 샘플만 (메가 폼 이름이면 그 메가스톤),
+        without(기술 한글 이름이나 ID)을 주면 그 기술이 하나도 없는 샘플만."""
         if not (pokemon or '').strip():
             raise ToolError('pokemon(포켓몬 이름)이 필요함. 후보 이름은 화면 파티나 get_ranking·find_partners 결과에서 고를 것')
         if not await self._known_name(pokemon):
@@ -225,9 +243,12 @@ class Tools:
         item_id = mega[1] if mega else (await self.item_id(item) if item else None)
         if item and not item_id:
             raise ToolError(f'"{item}"는 도구 목록에 없는 이름')
-        d = await self._get('samples/', {'q': mega[0] if mega else pokemon, 'item': item_id,
-                                         'format': self._fmt(format), 'source': source, 'size': 30 if role else 3})
-        rows = [s for s in d['results'] if not role or any(role in r for r in s.get('roles', []))][:3]
+        without = [without] if isinstance(without, str) else list(without or [])
+        drop = {await self.move_id(x) or x for x in without}
+        d = await self._get('samples/', {'q': mega[0] if mega else pokemon, 'item': item_id, 'format': self._fmt(format),
+                                         'source': source, 'size': 30 if role or drop else 3})
+        rows = [s for s in d['results'] if (not role or any(role in r for r in s.get('roles', [])))
+                and not drop & set(s['sample'].get('moves') or [])][:3]
         out = []
         for s in rows:
             m = s['member']
@@ -241,8 +262,10 @@ class Tools:
                 ko = (await self.party_names([{'pokemon': mega[0] if mega else pokemon, 'item': item_id or ''}]))[0] or pokemon
             except (httpx.HTTPError, KeyError, ToolError):
                 items, ko = {}, pokemon
-            what = ' '.join(x for x in (ko, items.get(item_id, item), role) if x)
-            return [{'result': f'{what} 샘플 없음', 'none': {'pokemon': ko, 'item': items.get(item_id, item), 'role': role}}]
+            without_ko = '·'.join(without) + ' 없는' if without else None
+            what = ' '.join(x for x in (ko, items.get(item_id, item), role, without_ko) if x)
+            return [{'result': f'{what} 샘플 없음',
+                     'none': {'pokemon': ko, 'item': items.get(item_id, item), 'role': ' '.join(x for x in (without_ko, role) if x)}}]
         return {'shapes': d.get('shapes'), 'samples': out}
 
     async def tool_search_teams(self, pokemon: str | None = None, format: str | None = None,

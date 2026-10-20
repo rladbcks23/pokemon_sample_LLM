@@ -406,7 +406,7 @@ def team_detail(request, pk: int):
 
 @api_view(['GET'])
 def options(request):
-    """샘플 제작·파티 빌딩용 선택지: 도구, 성격, 타입(한글), 타입 상성표. GET /api/options/"""
+    """샘플 제작·파티 빌딩·코치용 선택지: 도구, 성격, 기술(한글 이름), 타입(한글), 타입 상성표. GET /api/options/"""
     rs = get_ruleset(request)
     n = names(rs.id)
     return Response({
@@ -417,6 +417,7 @@ def options(request):
         'natures': [{'id': x['id'], 'name': x['name'], 'name_ko': x['name_ko'],
                      'plus': x['plus_stat'] or None, 'minus': x['minus_stat'] or None}
                     for x in n['nature'].values()],
+        'moves': [{'id': k, 'name_ko': m['name_ko']} for k, m in n['move'].items() if m.get('name_ko')],
         'types': [{'id': t, 'name_ko': TYPE_KO[t]} for t in TYPES],
         'typechart': {a: {d: m for (a2, d), m in chart().items() if a2 == a} for a in TYPES},
     })

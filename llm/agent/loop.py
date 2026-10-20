@@ -50,8 +50,13 @@ async def ensure_shown(tools: Tools, question: str, trace: list):
     ("화면에 띄움"이 늘 사실이 되게)."""
     if any(n == 'propose_party' and isinstance(r, dict) and r.get('shown') for n, _, r in trace):
         return
-    found = next((r for n, _, r in reversed(trace) if n == 'search_samples'), None)
-    if not (isinstance(found, dict) and found.get('samples') and SAMPLE_ASK.search(question)):
+    hit = next(((a, r) for n, a, r in reversed(trace) if n == 'search_samples'), None)
+    if not hit:
+        return
+    args, found = hit
+    # 도구·기술 조건을 붙여 찾은 샘플이면 그 조건의 샘플을 달라는 뜻
+    asked = SAMPLE_ASK.search(question) or args.get('item') or args.get('without')
+    if not (isinstance(found, dict) and found.get('samples') and asked):
         return
     args = {'members': [found['samples'][0]['sample']]}
     out = await tools.run('propose_party', args)
@@ -105,6 +110,10 @@ async def run_agent(provider, tools: Tools, messages: list[dict]):
                 wrong = b.input.get('pokemon', '')
                 item = b.input.get('item') or (wrong if await tools.item_id(wrong) else None)
                 b.input = {**b.input, 'pokemon': tools.subject, **({'item': item} if item else {})}
+            if render and b.name == 'search_samples' and not b.input.get('without'):
+                without = await tools.moves_without(question)    # "빛의장막 리플렉터 없는 건"
+                if without:
+                    b.input = {**b.input, 'without': without}
             if render and b.name == 'search_samples' and not b.input.get('item'):
                 item = await tools.item_in(question)    # 질문의 "울퉁불퉁멧 형태" 같은 도구 조건을 모델이 빠뜨리면 채움
                 if item:

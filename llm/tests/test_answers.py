@@ -117,6 +117,9 @@ class SampleTools:
     async def pokemon_in(self, question):
         return '깜까미' in question
 
+    async def moves_without(self, question):
+        return ['빛의장막', '리플렉터'] if '없는' in question else []
+
     async def run(self, name, args):
         self.args.append((name, args))
         if name == 'search_samples':
@@ -155,6 +158,17 @@ class ItemFlowTest(unittest.TestCase):
         text = ''.join(v for k, v in events if k == 'text')
         self.assertTrue(text.startswith('깜까미 @ 울퉁불퉁멧'))
         self.assertNotIn('17/37', text)
+
+    def test_without_moves_filled_and_shown(self):
+        tools = SampleTools()
+        tools.subject = 'sableye'
+
+        async def go():
+            msgs = [{'role': 'user', 'content': '[화면] …\n\n빛의장막 리플렉터 없는건 없어?'}]
+            return [e async for e in run_agent(Rendering([('search_samples', {'pokemon': 'sableye'})]), tools, msgs)]
+        events = asyncio.run(go())
+        self.assertEqual(tools.args[0], ('search_samples', {'pokemon': 'sableye', 'without': ['빛의장막', '리플렉터']}))
+        self.assertTrue(any(k == 'party' for k, _ in events))      # "없어?"여도 조건을 붙여 찾았으면 띄움
 
     def test_subject_replaces_wrong_pokemon(self):
         """질문에 포켓몬 이름이 없으면 지어낸 이름·도구 이름 대신 지금 이야기 중인 포켓몬으로."""
