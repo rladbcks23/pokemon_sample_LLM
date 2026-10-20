@@ -248,6 +248,23 @@ class QwenFormatTest(unittest.TestCase):
             {'type': 'function', 'function': {'name': 'search_samples', 'arguments': {'pokemon': 'garchomp'}}}]})
         self.assertEqual(msgs[2], {'role': 'tool', 'content': '오류: 없음'})
 
+    def test_cut_tool_call_not_shown(self):
+        from itertools import count
+        from providers.qwen import QwenProvider
+        p = QwenProvider.__new__(QwenProvider)          # 토크나이저·llama-server 없이 생성 결과만 흉내
+        p.ids, p._system = count(1), 'sys'
+
+        async def cut(messages):
+            return '<tool_call>\n<function=check_party>\n<parameter=members>\n[{"pokemon": "garch', True
+        p._generate = cut
+
+        async def go():
+            return [x async for x in p.turn('sys', [{'role': 'user', 'content': '?'}], [])]
+        out = asyncio.run(go())
+        self.assertNotIn('<tool_call>', out[0][1])
+        self.assertIn('끊겼어요', out[0][1])
+        self.assertEqual(out[-1][1].stop_reason, 'max_tokens')
+
     def test_clean_cuts_repetition(self):
         from providers.qwen import clean
         self.assertEqual(clean('같이 쓰인 수: ' + '메타그로스 1마리 / ' * 30 + '끝'), '같이 쓰인 수: 메타그로스 1마리 / 끝')

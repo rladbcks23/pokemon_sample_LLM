@@ -94,8 +94,8 @@ class QwenProvider:
                                               add_generation_prompt=True, enable_thinking=False)
         n = len(self.tok(prompt, add_special_tokens=False).input_ids)
         room = config.QWEN_MAX_SEQ - n
-        if room < 80:
-            raise ValueError('대화 문맥이 가득 찼습니다. 새 대화에서 질문을 이어 주세요.')
+        if room < config.QWEN_MIN_ROOM:         # 도구 호출 하나(샘플 6마리면 약 500토큰)도 못 쓸 만큼 차면 멈춤
+            raise ValueError('대화가 길어져 더 이어 갈 수 없어요. 새 대화에서 질문을 나눠서 물어봐 주세요.')
         t = time.time()
         r = await self.client.post('/completion', json={
             'prompt': prompt, 'n_predict': min(config.QWEN_MAX_NEW_TOKENS, room), 'temperature': 0,
@@ -122,6 +122,8 @@ class QwenProvider:
             yield 'final', NS(content=[NS(type='text', text=msg)], stop_reason='end_turn')
             return
         reply = clean(raw)
+        if '<tool_call>' in reply:              # 길이 제한에 걸려 닫히지 않은 도구 호출: 원문을 답으로 보여 주지 않음
+            reply = '답변이 길어져 중간에 끊겼어요. 질문을 나눠서 다시 물어봐 주세요.'
         blocks = [NS(type='text', text=reply)] if reply else []
         if reply:
             yield 'text', reply
