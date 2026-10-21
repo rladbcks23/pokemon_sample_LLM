@@ -166,15 +166,31 @@ def weakness_answer(check: dict, weather: str | None = None, plan: str = '') -> 
     return text + warnings_line(check)
 
 
-def threats_answer(th: dict) -> str:
+def weather_threats(th: dict, weather: str | None) -> dict:
+    """날씨로 반감되는 타입(비면 불꽃)으로 찌르는 건 빼고 다시 셈."""
+    halved = WEATHER.get(weather, (None, None))[1]
+    if not halved:
+        return th
+    out = []
+    for x in th.get('threats', []):
+        targets = [t for t in x['targets'] if f'({halved} ×' not in t]
+        if len(targets) >= th['need_hits']:
+            out.append({**x, 'targets': targets, 'hits': len(targets)})
+    return {**th, 'threats': sorted(out, key=lambda x: (-x['hits'], x['rank']))}
+
+
+def threats_answer(th: dict, weather: str | None = None) -> str:
+    note = (f"\n{WEATHER[weather][0]} 파티라 {WEATHER[weather][1]} 기술로 찌르는 건 뺐어요 (날씨가 있는 동안 반감)."
+            if weather else '')
     if not th.get('threats'):
-        return f"픽률 상위 {th['checked_top']}마리 중에 {th['need_hits']}마리 이상을 약점으로 찌르는 포켓몬은 없어요."
+        return f"픽률 상위 {th['checked_top']}마리 중에 {th['need_hits']}마리 이상을 약점으로 찌르는 포켓몬은 없어요." + note
     lines = []
     for x in th['threats'][:3]:
         types = list(dict.fromkeys(re.findall(r'\((\S+) ×', ' '.join(x['targets']))))
-        lines.append(f"- {x['name_ko']} (픽률 {x['rank']}위) — {x['hits']}마리, {'·'.join(types)} 공격")
-    return (f"픽률 상위 {th['checked_top']}마리 중 자주 쓰는 기술로 우리 파티 {th['need_hits']}마리 이상을 찌르는 포켓몬이에요.\n"
-            + '\n'.join(lines) + '\n(기술 사용률 10% 이상만 셈. 특성에 의한 무효·대미지 크기는 반영 안 함)')
+        who = '·'.join(dict.fromkeys(t.split('←')[0] for t in x['targets']))
+        lines.append(f"- {x['name_ko']} (픽률 {x['rank']}위) — {'·'.join(types)} 공격으로 {who} {x['hits']}마리")
+    return (f"픽률 상위 {th['checked_top']}마리 중 자주 쓰는 기술로 우리 파티 {th['need_hits']}마리 이상을 찌르는, 조심할 포켓몬이에요.\n"
+            + '\n'.join(lines) + '\n(기술 사용률 10% 이상만 셈. 특성에 의한 무효·대미지 크기는 반영 안 함)' + note)
 
 
 def item_answer(info: dict, fmt: str) -> str | None:

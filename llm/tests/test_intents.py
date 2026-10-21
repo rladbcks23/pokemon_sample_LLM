@@ -77,6 +77,19 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(intents.party_weather([{'pokemon': 'sableye', 'moves': ['raindance', 'taunt']}]), 'rain')
         self.assertIsNone(intents.party_weather([{'pokemon': 'sableye', 'moves': ['taunt']}]))
 
+    def test_threat_words(self):
+        self.assertEqual(parse('이 파티 약점 포켓몬을 알려줘'), {'intent': 'threats'})
+        self.assertEqual(parse('아니 내가 조심해야할 포켓몬이나 파티'), {'intent': 'threats', 'teams': True})
+        self.assertEqual(parse('이 파티가 불리한 상대는?'), {'intent': 'threats'})
+
+    def test_weather_drops_halved_threats(self):
+        from agent import answers
+        th = {'checked_top': 40, 'need_hits': 3, 'threats': [
+            {'name_ko': '어흥염', 'rank': 1, 'hits': 3, 'targets': ['고릴타←플레어드라이브 80%(불꽃 ×2)',
+                                                                  '대도각참←플레어드라이브 80%(불꽃 ×2)', '깜까미←인파이트 20%(격투 ×2)']}]}
+        self.assertEqual(answers.weather_threats(th, 'rain')['threats'], [])
+        self.assertEqual(len(answers.weather_threats(th, None)['threats']), 1)
+
     def test_weather_halves_weakness(self):
         from agent import answers
         check = {'summary': {'weak_types_2plus': {'불꽃': ['고릴타', '대도각참', '메가갑주무사'], '얼음': ['고릴타', '메가망나뇽']},

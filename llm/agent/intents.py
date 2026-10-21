@@ -77,9 +77,10 @@ async def parse(question: str, history: list[dict], tools: Tools) -> dict:
         out['format'] = 'singles'
     if re.search(r'승률|대미지|데미지|선출|예측|확률', q):
         return {'intent': 'unknown', 'reason': 'cant'}
-    if re.search(r'찌르|위협|카운터|천적', q):
-        return {**out, 'intent': 'threats'}
     weather = weather_in(q)
+    if re.search(r'찌르|위협|카운터|천적|조심|무서|까다|약점 ?포켓몬|(어려운|힘든|껄끄러운) ?상대|불리한', q):
+        return {**out, 'intent': 'threats', **({'teams': True} if '파티' in q.replace('이 파티', '') else {}),
+                **({'weather': weather} if weather else {})}
     if re.search(r'약점|상성|파회|파훼', q) or weather:
         return {**out, 'intent': 'weakness', **({'weather': weather} if weather else {})}
     if re.search(r'메가.*(누구|누굴|누가)|(누구|누굴).*메가', q):
@@ -156,8 +157,16 @@ async def run(intent: dict, tools: Tools, party: list[dict], history: list[dict]
 
     if kind == 'threats':
         yield 'status', '위협 포켓몬 찾는 중'
-        th = await call('find_threats', {'members': [{'pokemon': m['pokemon'], 'item': m.get('item', '')} for m in party]})
-        yield 'text', answers.threats_answer(th)
+        # 도구(find_threats)는 모델 문맥 때문에 5마리로 자르므로, 날씨로 거른 뒤에도 남게 API 결과(최대 8)를 그대로 씀
+        th = await tools._post('threats/', {'members': [{'pokemon': m['pokemon'], 'item': m.get('item', '')} for m in party],
+                                            'format': tools.format, 'top': 40})
+        weather = intent.get('weather') or party_weather(party)
+        th = answers.weather_threats(th, weather)
+        text = answers.threats_answer(th, weather)
+        if intent.get('teams') and th.get('threats'):
+            yield 'status', '위협 포켓몬이 든 파티 찾는 중'
+            text += await threat_teams(tools, th['threats'])
+        yield 'text', text
         return
 
     if kind == 'mega':
@@ -395,6 +404,23 @@ async def counter_plan(tools: Tools, call, party: list[dict], check: dict, weath
         lines.append(f"- {names[m['pokemon']]} 대신 {r['name_ko']} ({answers.role_text(r['roles'])}): "
                      f"{t} 약점 {len(weak_ms)}→{n_after}마리" + (f" / 단점: {', '.join(more)} 약점 늘어남" if more else ''))
     return head + '\n' + '\n'.join(lines) if lines else ''
+
+
+async def threat_teams(tools: Tools, threats: list[dict]) -> str:
+    """조심할 파티: 위협 포켓몬이 든 상위 파티 중 위협 포켓몬이 많이 든 순."""
+    names = [x['name_ko'] for x in threats]
+    teams = {}
+    for name in names[:3]:
+        res = await tools.run('search_teams', {'pokemon': name})
+        for t in res.get('teams', []):
+            teams[t['id']] = t
+    rows = sorted(((t, [n for n in names if n in t['members']]) for t in teams.values()), key=lambda x: -len(x[1]))
+    rows = [(t, hit) for t, hit in rows if len(hit) >= 2][:3]
+    if not rows:
+        return (f"\n\n위협 포켓몬이 2마리 이상 같이 든 상위 파티는 찾지 못했어요. "
+                f"{answers.josa('·'.join(names[:3]), '이', '가')} 든 파티를 만나면 조심하세요.")
+    lines = [f"- {answers.team_ref(t['title'])} ({t['source']}): {'·'.join(hit)}" for t, hit in rows]
+    return '\n\n조심할 파티 (위협 포켓몬이 든 상위 파티):\n' + '\n'.join(lines)
 
 
 async def mega_answer(tools: Tools, party: list[dict]) -> str:
