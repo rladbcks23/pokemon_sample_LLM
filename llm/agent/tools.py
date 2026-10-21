@@ -223,9 +223,10 @@ class Tools:
         hits = [(p['name_ko'], p['id'], None) for p in items] + \
                [(m['name_ko'], p['id'], m['item']) for p in items for m in p['megas']]
         found = [h for h in hits if h[0] and len(h[0]) >= 2 and h[0].replace(' ', '') in q]
-        if not found:       # "대쓰여너"처럼 폼 이름(-수컷 등)을 빼고 말한 경우
-            found = [h for h in hits if '-' in (h[0] or '') and len(h[0].split('-')[0]) >= 2
-                     and h[0].split('-')[0].replace(' ', '') in q][:1]
+        if not found:       # "대쓰여너"처럼 폼 이름(-수컷 등)을 빼고 말한 경우: 이 포맷 픽률이 높은 폼
+            rank = {p['id']: p.get('rank') or 9999 for p in items}
+            found = sorted((h for h in hits if '-' in (h[0] or '') and len(h[0].split('-')[0]) >= 2
+                            and h[0].split('-')[0].replace(' ', '') in q), key=lambda h: rank.get(h[1], 9999))[:1]
         hits = found
         if not hits:
             return None
