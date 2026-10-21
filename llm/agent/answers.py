@@ -144,7 +144,7 @@ def top_weak(s: dict, weather: str | None = None) -> tuple[str, list] | None:
 
 
 def weakness_answer(check: dict, weather: str | None = None, plan: str = '') -> str:
-    """plan: 파회법 (받아 줄 후보·바꿀 멤버, intents.counter_plan). 없으면 일반 안내."""
+    """plan: 추천 수정 방안 (받아 줄 후보·바꿀 멤버, intents.counter_plan). 없으면 일반 안내."""
     s = check['summary']
     if not s['weak_types_2plus']:
         return '2마리 이상 겹치는 약점은 없어요. 약점이 멤버마다 흩어져 있어서 상성은 고른 편이에요.' + warnings_line(check)

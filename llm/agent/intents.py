@@ -329,7 +329,7 @@ async def fill_one(tools: Tools, call, party: list[dict]) -> dict | None:
 
 
 async def counter_plan(tools: Tools, call, party: list[dict], check: dict, weather: str | None) -> str:
-    """파회법: 가장 많이 겹치는 약점을 받아 주는, 화면 멤버와 같이 쓰인 포켓몬 샘플.
+    """추천 수정 방안: 가장 많이 겹치는 약점을 받아 주는, 화면 멤버와 같이 쓰인 포켓몬 샘플.
     빈자리가 있으면 넣는 후보, 6마리면 그 약점 멤버와 바꾸는 후보 (바꾼 뒤 약점 변화)."""
     top = answers.top_weak(check['summary'], weather)
     if not top:
@@ -370,7 +370,7 @@ async def counter_plan(tools: Tools, call, party: list[dict], check: dict, weath
     good = [(c, r) for c, r in zip(cands, rows) if t in r['covers']][:3]
     if not good:
         return f"\n\n같이 쓰인 포켓몬 중에는 {t} 공격을 받아 줄 후보가 없어요. 약점 멤버의 기술·도구로 버티는 쪽을 생각해 보세요."
-    head = f"\n\n파회법 — {t} 약점 {len(weak_ms)}마리 (같이 쓰인 포켓몬 중 {answers.josa(t, '을', '를')} 받아 주는 샘플):"
+    head = f"\n\n추천 수정 방안 — {t} 약점 {len(weak_ms)}마리 (같이 쓰인 포켓몬 중 {answers.josa(t, '을', '를')} 받아 주는 샘플):"
     lines = []
     if len(party) < 6:
         for c, r in good:
