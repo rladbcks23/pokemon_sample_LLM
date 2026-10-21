@@ -86,7 +86,41 @@ function loadTeam(t) {
   if (t.format) settings.format = t.format
   builder.load6(JSON.parse(JSON.stringify(t.slots)), { id: t.id, title: t.name })
 }
-function applyParty(samples) { builder.load6(samples, { title: builder.name }) }
+// 코치 추천 파티 전체로 바꾸기: 지금 파티에 추천에 없는 멤버가 있으면 한 번 묻고
+async function applyParty(samples) {
+  const lost = builder.slots.filter((x) => x && !samples.some((s) => s.pokemon === x.pokemon))
+  if (lost.length) {
+    try {
+      await ElMessageBox.confirm(`${josa(lost.map((x) => names.value[x.pokemon] || x.pokemon).join(', '), '이', '가')} 빠집니다. 추천 파티로 전부 바꿀까요?`,
+        '파티 전체 바꾸기', { confirmButtonText: '바꾸기', cancelButtonText: '취소' })
+    } catch { return }
+  }
+  builder.load6(JSON.parse(JSON.stringify(samples)), { title: builder.name })
+}
+// 받침 있으면 a, 없으면 b ("대짱이를", "한카리아스를")
+function josa(word, a, b) {
+  const c = (word || '').charCodeAt(word.length - 1) - 0xac00
+  return word + (c >= 0 && c < 11172 && c % 28 ? a : b)
+}
+// 코치 추천의 포켓몬 하나를 i번 칸에 (CoachChat이 빈칸·같은 포켓몬 칸·바꿀 멤버를 정해 줌)
+function addFromCoach(s, i) {
+  const old = builder.slots[i]
+  builder.setSlot(i, JSON.parse(JSON.stringify(s)))
+  const name = names.value[s.pokemon] || s.pokemon
+  ElMessage.success(old && old.pokemon !== s.pokemon ? `${names.value[old.pokemon] || old.pokemon} 대신 ${josa(name, '을', '를')} 넣었습니다`
+    : `${josa(name, '을', '를')} ${i + 1}번 칸에 넣었습니다`)
+}
+// 상세보기에서 넣기: 같은 포켓몬 칸이나 빈칸 (꽉 찼으면 카드의 "넣기"로 바꿀 멤버를 고르게)
+function addChatSample(s) {
+  const k = builder.slots.findIndex((x) => x?.pokemon === s.pokemon)
+  const slot = k >= 0 ? k : builder.firstEmpty()
+  if (slot < 0) {
+    ElMessage.warning('파티가 꽉 찼어요. 추천 카드의 "넣기"를 누르면 바꿀 멤버를 고를 수 있어요')
+    return
+  }
+  detailOpen.value = false
+  addFromCoach(s, slot)
+}
 // 코치 추천 카드의 포켓몬: 바로 수정으로 가지 않고 상세보기를 먼저, 수정은 상세보기의 버튼으로
 const chatSample = ref(null)
 function previewSample(s) {
@@ -151,10 +185,11 @@ function openSample(s) {
     </div>
 
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
-               :names="names" :format="settings.format" :party="builder.slots" @apply="applyParty" @open-sample="previewSample" />
+               :names="names" :format="settings.format" :party="builder.slots" @apply="applyParty" @add="addFromCoach" @open-sample="previewSample" />
 
     <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" :title="chatSample ? '파티 코치 추천' : '파티 빌딩'">
       <template #actions>
+        <button v-if="chatSample" class="btn" @click="addChatSample(chatSample)">파티에 넣기</button>
         <button v-if="chatSample" class="btn fill" @click="detailOpen = false; openSample(chatSample)">수정하러 가기</button>
       </template>
     </SampleDetailDialog>

@@ -4,7 +4,8 @@ import { useCoach } from '@/stores/coach'
 import PokemonImg from '@/components/PokemonImg.vue'
 
 // 파티 코치 채팅 (오른쪽 패널). llm 서버(SSE)에 대화와 현재 파티를 보내고 답변을 이어 붙임.
-// 답변에 추천 파티(party: [샘플…])가 오면 카드와 "모두 추가하기"로 표시
+// 답변에 추천 파티(party: [샘플…])가 오면 카드로 표시. 포켓몬마다 "넣기"(빈칸·같은 포켓몬 칸, 꽉 차면 바꿀 멤버 고르기),
+// 여러 마리면 "이 파티로 전부 바꾸기"
 const props = defineProps({
   open: Boolean,
   formatLabel: { type: String, default: '' },
@@ -13,9 +14,9 @@ const props = defineProps({
   format: { type: String, default: 'singles' },
   party: { type: Array, default: () => [] },
 })
-const emit = defineEmits(['update:open', 'apply', 'open-sample'])
+const emit = defineEmits(['update:open', 'apply', 'open-sample', 'add'])
 
-const CHIPS = ['이 파티 약점 알려줘', '메가 누구한테 써?', '선출 추천해줘']
+const CHIPS = ['이 파티 약점 알려줘', '메가 누구한테 써?', '이 파티 고칠 점 있어?']
 const coach = useCoach()      // 대화는 store에 (페이지를 나갔다 와도 유지, 답변도 계속 받음)
 // 첫 인사말은 저장하지 않고 화면에서만 (서버의 build_messages도 앞쪽 assistant는 뺌)
 const messages = computed(() => [
@@ -35,6 +36,26 @@ function ask(text) {
   if (!q || coach.busy) return
   draft.value = ''
   coach.ask(q, props.format, props.party, scroll)
+}
+
+// 추천 카드의 포켓몬 하나 넣기: 같은 포켓몬이 있으면 그 칸, 없으면 빈칸, 꽉 찼으면 누구 대신 넣을지 고르게
+const same = (a, b) => !!a && !!b && a.pokemon === b.pokemon && (a.item || '') === (b.item || '')
+  && JSON.stringify(a.moves || []) === JSON.stringify(b.moves || [])
+const inParty = (s) => props.party.some((x) => same(x, s))
+const picking = ref(null)     // { i: 메시지 번호, s: 넣을 샘플 }
+function add(i, s) {
+  const k = props.party.findIndex((x) => x?.pokemon === s.pokemon)
+  const slot = k >= 0 ? k : props.party.findIndex((x) => !x)
+  if (slot >= 0) {
+    picking.value = null
+    emit('add', s, slot)
+  } else {
+    picking.value = { i, s }
+  }
+}
+function replace(k) {
+  emit('add', picking.value.s, k)
+  picking.value = null
 }
 
 onMounted(scroll)
@@ -57,13 +78,24 @@ onMounted(scroll)
           <div v-else class="botwrap">
             <div v-if="m.text" class="bubble bot">{{ m.text }}</div>
             <div v-if="m.party" class="rec">
-              <div class="rh"><span class="mono">추천 파티 · {{ m.party.length }}마리</span><span>하나 누르면 상세보기</span></div>
+              <div class="rh"><span class="mono">{{ m.party.length > 1 ? `추천 파티 · ${m.party.length}마리` : '추천 샘플' }}</span><span>그림: 상세보기 · 넣기: 파티에 추가</span></div>
               <div class="rm">
-                <button v-for="(s, j) in m.party" :key="j" title="상세보기" @click="emit('open-sample', s)">
-                  <PokemonImg :id="s.pokemon" :size="40" /><span>{{ names[s.pokemon] || s.pokemon }}</span>
-                </button>
+                <div v-for="(s, j) in m.party" :key="j" class="mem">
+                  <button class="pk" title="상세보기" @click="emit('open-sample', s)">
+                    <PokemonImg :id="s.pokemon" :size="40" /><span>{{ names[s.pokemon] || s.pokemon }}</span>
+                  </button>
+                  <span v-if="inParty(s)" class="have">파티에 있음</span>
+                  <button v-else class="add" @click="add(i, s)">+ 넣기</button>
+                </div>
               </div>
-              <button class="apply" @click="emit('apply', m.party)">← 모두 추가하기</button>
+              <div v-if="picking && picking.i === i" class="swap">
+                <span>파티가 꽉 찼어요. {{ names[picking.s.pokemon] || picking.s.pokemon }}, 누구 대신 넣을까요?</span>
+                <div>
+                  <button v-for="(x, k) in party" :key="k" @click="replace(k)">{{ x ? names[x.pokemon] || x.pokemon : `${k + 1}번 칸` }}</button>
+                  <button class="cancel" @click="picking = null">취소</button>
+                </div>
+              </div>
+              <button v-if="m.party.length > 1" class="apply" @click="emit('apply', m.party)">← 이 파티로 전부 바꾸기</button>
             </div>
           </div>
         </div>
@@ -105,9 +137,18 @@ onMounted(scroll)
 .rec { border: 1px dashed var(--c-primary); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
 .rh { display: flex; justify-content: space-between; font-size: 11px; color: var(--c-muted); }
 .rm { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-.rm button { border: 1px solid transparent; background: none; border-radius: 6px; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; color: inherit; }
-.rm button:hover { border-color: var(--c-text); background: #f4f3ef; }
-.rm span { font-size: 10px; white-space: nowrap; }
+.mem { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.pk { width: 100%; border: 1px solid transparent; background: none; border-radius: 6px; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; color: inherit; }
+.pk:hover { border-color: var(--c-text); background: #f4f3ef; }
+.pk span { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.add { height: 22px; padding: 0 6px; border: 1px solid var(--c-primary); border-radius: 11px; background: #fff; color: var(--c-primary); font-size: 10px; white-space: nowrap; }
+.add:hover { background: var(--c-primary); color: #fbfbf9; }
+.have { height: 22px; line-height: 22px; font-size: 10px; color: var(--c-muted); white-space: nowrap; }
+.swap { border-top: 1px solid var(--c-line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.swap div { display: flex; flex-wrap: wrap; gap: 6px; }
+.swap button { height: 26px; padding: 0 10px; border: 1px solid var(--c-line-strong); border-radius: 13px; background: #fff; font-size: 12px; }
+.swap button:hover { border-color: var(--c-text); }
+.swap .cancel { color: var(--c-muted); }
 .apply { height: 34px; border: 0; border-radius: 6px; background: var(--c-primary); color: #fbfbf9; font-size: 13px; font-weight: 600; }
 .foot { padding: 14px 20px 20px; border-top: 1px solid var(--c-line); display: flex; flex-direction: column; gap: 10px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
