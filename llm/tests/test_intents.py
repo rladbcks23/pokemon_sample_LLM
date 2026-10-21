@@ -70,6 +70,22 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(parse('나머지 채워줘'), {'intent': 'fill', 'count': 'all'})
         self.assertEqual(parse('한 마리 더 추천해줘'), {'intent': 'fill', 'count': 1})
 
+    def test_weather(self):
+        self.assertEqual(parse('비파티인데'), {'intent': 'weakness', 'weather': 'rain'})
+        self.assertEqual(parse('비를 뿌리면 불꽃이 반감이잖아'), {'intent': 'weakness', 'weather': 'rain'})
+        self.assertEqual(parse('쾌청 파티야'), {'intent': 'weakness', 'weather': 'sun'})
+        self.assertEqual(intents.party_weather([{'pokemon': 'sableye', 'moves': ['raindance', 'taunt']}]), 'rain')
+        self.assertIsNone(intents.party_weather([{'pokemon': 'sableye', 'moves': ['taunt']}]))
+
+    def test_weather_halves_weakness(self):
+        from agent import answers
+        check = {'summary': {'weak_types_2plus': {'불꽃': ['고릴타', '대도각참', '메가갑주무사'], '얼음': ['고릴타', '메가망나뇽']},
+                             'weak_cover': {'불꽃': ['메가망나뇽'], '얼음': ['대도각참']}}, 'warnings': []}
+        self.assertEqual(answers.top_weak(check['summary'], 'rain')[0], '얼음')
+        text = answers.weakness_answer(check, 'rain')
+        self.assertIn('불꽃 기술 대미지가 반감', text)
+        self.assertNotIn('불꽃 약점이 3마리로 가장 많아요', text)
+
     def test_party_and_format(self):
         self.assertEqual(parse('더블 파티 하나 짜줘'), {'format': 'doubles', 'intent': 'party'})
         self.assertEqual(parse('한카리아스랑 어울리는 파티 짜줘'), {'intent': 'party', 'pokemon': 'garchomp'})

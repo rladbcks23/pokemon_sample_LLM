@@ -134,15 +134,35 @@ def party_answer(trace, members, compare: bool = True, lead: str | None = None) 
     return f"{lead}\n{lines}{extra}{tail}"
 
 
-def weakness_answer(check: dict) -> str:
+WEATHER = {'rain': ('비', '불꽃'), 'sun': ('쾌청', '물')}      # 날씨 → (이름, 대미지가 반감되는 타입)
+
+
+def top_weak(s: dict, weather: str | None = None) -> tuple[str, list] | None:
+    """가장 많이 겹치는 약점 (날씨로 반감되는 타입은 빼고)."""
+    halved = WEATHER.get(weather, (None, None))[1]
+    return next(((t, ms) for t, ms in weak_sorted(s) if t != halved), None)
+
+
+def weakness_answer(check: dict, weather: str | None = None, plan: str = '') -> str:
+    """plan: 파회법 (받아 줄 후보·바꿀 멤버, intents.counter_plan). 없으면 일반 안내."""
     s = check['summary']
     if not s['weak_types_2plus']:
         return '2마리 이상 겹치는 약점은 없어요. 약점이 멤버마다 흩어져 있어서 상성은 고른 편이에요.' + warnings_line(check)
-    top, ms = weak_sorted(s)[0]
     text = '2마리 이상 겹치는 약점이에요.\n' + weak_lines(s)
-    if len(ms) >= 3:
-        text += (f"\n\n{top} 약점이 {len(ms)}마리로 가장 많아요. {top} 공격을 받아 줄 포켓몬을 넣거나 "
-                 f"{'·'.join(ms)} 중 한 마리를 바꾸는 걸 추천해요.")
+    if weather:
+        name, halved = WEATHER[weather]
+        if halved in s['weak_types_2plus']:
+            text += (f"\n\n{name} 파티라 날씨가 있는 동안은 {halved} 기술 대미지가 반감돼서 {halved} 약점 부담이 줄어요. "
+                     f"다만 날씨가 끝나거나 상대가 날씨를 바꾸면 그대로 약점이에요.")
+            if not plan and all(len(v) < 3 and s['weak_cover'].get(k) for k, v in s['weak_types_2plus'].items() if k != halved):
+                text += ' 나머지 약점은 2마리씩이고 받아 줄 멤버가 있어서 크게 걱정할 정도는 아니에요.'
+    top = top_weak(s, weather)
+    if top and len(top[1]) >= 3 or plan:
+        t, ms = top or (None, [])
+        if t and not plan:
+            text += (f"\n\n{t} 약점이 {len(ms)}마리로 가장 많아요. {t} 공격을 받아 줄 포켓몬을 넣거나 "
+                     f"{'·'.join(ms)} 중 한 마리를 바꾸는 걸 추천해요.")
+        text += plan
     return text + warnings_line(check)
 
 

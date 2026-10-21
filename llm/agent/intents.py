@@ -52,6 +52,21 @@ async def is_stone(tools: Tools, pokemon: str, item: str) -> bool:
     return any(m['item'] == item for p in items if p['id'] == pokemon for m in p['megas'])
 
 
+WEATHER_WORDS = {'rain': re.compile(r'비 ?파티|비를|비가|비 ?오|비바라기|잔비|우천'),
+                 'sun': re.compile(r'쾌청|햇살|해 ?파티|가뭄|맑은 ?날')}
+WEATHER_SETTERS = {'rain': {'raindance', 'drizzle'}, 'sun': {'sunnyday', 'drought'}}
+
+
+def weather_in(q: str) -> str | None:
+    return next((w for w, r in WEATHER_WORDS.items() if r.search(q)), None)
+
+
+def party_weather(party: list[dict]) -> str | None:
+    """화면 파티에 날씨를 까는 기술·특성이 있으면 그 날씨 (두 가지면 None)."""
+    found = {w for m in party for w, ids in WEATHER_SETTERS.items() if ids & {m.get('ability'), *(m.get('moves') or [])}}
+    return found.pop() if len(found) == 1 else None
+
+
 async def parse(question: str, history: list[dict], tools: Tools) -> dict:
     """question: 지금 질문, history: 앞 대화 (지금 질문 제외, [{role, text, party?}])."""
     q = question.strip()
@@ -64,8 +79,9 @@ async def parse(question: str, history: list[dict], tools: Tools) -> dict:
         return {'intent': 'unknown', 'reason': 'cant'}
     if re.search(r'찌르|위협|카운터|천적', q):
         return {**out, 'intent': 'threats'}
-    if re.search(r'약점|상성', q):
-        return {**out, 'intent': 'weakness'}
+    weather = weather_in(q)
+    if re.search(r'약점|상성|파회|파훼', q) or weather:
+        return {**out, 'intent': 'weakness', **({'weather': weather} if weather else {})}
     if re.search(r'메가.*(누구|누굴|누가)|(누구|누굴).*메가', q):
         return {**out, 'intent': 'mega'}
     if re.search(r'채워|나머지|빈 ?자리|한 ?마리 더|마지막 한|부족한|남은 자리', q):
@@ -131,7 +147,11 @@ async def run(intent: dict, tools: Tools, party: list[dict], history: list[dict]
 
     if kind == 'weakness':
         yield 'status', '파티 점검 중'
-        yield 'text', answers.weakness_answer(await call('check_party', {'members': party}))
+        check = await call('check_party', {'members': party})
+        weather = intent.get('weather') or party_weather(party)
+        yield 'status', '받아 줄 포켓몬 찾는 중'
+        plan = await counter_plan(tools, call, party, check, weather)
+        yield 'text', answers.weakness_answer(check, weather, plan)
         return
 
     if kind == 'threats':
@@ -306,6 +326,75 @@ async def fill_one(tools: Tools, call, party: list[dict]) -> dict | None:
     rows = cmp.get('candidates', [])
     best = max(range(len(cands)), key=lambda i: (len(rows[i]['covers']) - len(rows[i]['new_weak']), -i) if i < len(rows) else (-9, -i))
     return cands[best]
+
+
+async def counter_plan(tools: Tools, call, party: list[dict], check: dict, weather: str | None) -> str:
+    """파회법: 가장 많이 겹치는 약점을 받아 주는, 화면 멤버와 같이 쓰인 포켓몬 샘플.
+    빈자리가 있으면 넣는 후보, 6마리면 그 약점 멤버와 바꾸는 후보 (바꾼 뒤 약점 변화)."""
+    top = answers.top_weak(check['summary'], weather)
+    if not top:
+        return ''
+    t, weak_ms = top
+    if len(weak_ms) < 3 and check['summary']['weak_cover'].get(t):
+        return ''                               # 2마리 겹침이고 받아 줄 멤버가 있으면 굳이 바꾸지 않음
+    have = {m['pokemon'] for m in party}
+    items = {m.get('item') for m in party if m.get('item')}
+    count = {}
+    for m in party:
+        try:
+            res = await call('find_partners', {'pokemon': [m['pokemon']]})
+        except ToolError:
+            continue
+        for p in res.get('partners', []):
+            count[p['name_ko']] = count.get(p['name_ko'], 0) + p['count']
+    cands = []
+    for name in sorted(count, key=lambda n: -count[n])[:10]:
+        found = await tools.find_pokemon(name)
+        if not found or found['id'] in have:
+            continue
+        res = await call('search_samples', {'pokemon': found['id']})
+        s = next((r['sample'] for r in (res.get('samples', []) if isinstance(res, dict) else [])
+                  if r['sample']['item'] not in items), None)
+        if s:
+            cands.append(s)
+        if len(cands) == 6:
+            break
+    if not cands:
+        return f"\n\n같이 쓰인 포켓몬 데이터가 부족해서 {t} 약점을 받아 줄 후보는 찾지 못했어요."
+    names = {m['pokemon']: m['name_ko'] for m in check['members']}
+    # 후보 비교(candidates)는 5마리 이하 파티만 되고 한 번에 3마리라, 6마리면 약점 멤버 하나를 뺀 파티에 넣어 봄
+    base = party if len(party) < 6 else [m for m in party if names.get(m['pokemon']) != weak_ms[0]]
+    rows = []
+    for i in range(0, len(cands), 3):
+        rows += (await call('check_party', {'members': base, 'candidates': cands[i:i + 3]})).get('candidates', [])
+    good = [(c, r) for c, r in zip(cands, rows) if t in r['covers']][:3]
+    if not good:
+        return f"\n\n같이 쓰인 포켓몬 중에는 {t} 공격을 받아 줄 후보가 없어요. 약점 멤버의 기술·도구로 버티는 쪽을 생각해 보세요."
+    head = f"\n\n파회법 — {t} 약점 {len(weak_ms)}마리 (같이 쓰인 포켓몬 중 {answers.josa(t, '을', '를')} 받아 주는 샘플):"
+    lines = []
+    if len(party) < 6:
+        for c, r in good:
+            cons = f" / 단점: {', '.join(w.split(' ')[0] for w in r['new_weak'])} 약점 늘어남" if r['new_weak'] else ''
+            lines.append(f"- {r['name_ko']} 넣기 ({answers.role_text(r['roles'])}): {', '.join(r['covers'])} 받아 줌{cons}")
+        return head + '\n' + '\n'.join(lines)
+    before = check['summary']['weak_types_2plus']
+    for c, r in good:
+        best = None
+        for i, m in enumerate(party):
+            if names.get(m['pokemon']) not in weak_ms:
+                continue
+            after = (await call('check_party', {'members': party[:i] + party[i + 1:] + [c]}))['summary']['weak_types_2plus']
+            score = sum(map(len, after.values()))
+            if best is None or score < best[0]:
+                best = (score, m, after)
+        if not best:
+            continue
+        _, m, after = best
+        n_after = len(after.get(t, []))
+        more = [k for k, v in after.items() if len(v) > len(before.get(k, []))]
+        lines.append(f"- {names[m['pokemon']]} 대신 {r['name_ko']} ({answers.role_text(r['roles'])}): "
+                     f"{t} 약점 {len(weak_ms)}→{n_after}마리" + (f" / 단점: {', '.join(more)} 약점 늘어남" if more else ''))
+    return head + '\n' + '\n'.join(lines) if lines else ''
 
 
 async def mega_answer(tools: Tools, party: list[dict]) -> str:
