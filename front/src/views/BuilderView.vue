@@ -155,7 +155,7 @@ function openSample(s) {
 
     <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" :title="chatSample ? '파티 코치 추천' : '파티 빌딩'">
       <template #actions>
-        <button v-if="chatSample" class="btn fill" @click="detailOpen = false; openSample(chatSample)">샘플 제작에서 수정</button>
+        <button v-if="chatSample" class="btn fill" @click="detailOpen = false; openSample(chatSample)">수정하러 가기</button>
       </template>
     </SampleDetailDialog>
     <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()" :format="settings.format"
