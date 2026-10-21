@@ -70,14 +70,58 @@ def party_weather(party: list[dict]) -> str | None:
     return found.pop() if len(found) == 1 else None
 
 
-async def parse(question: str, history: list[dict], tools: Tools) -> dict:
-    """question: 지금 질문, history: 앞 대화 (지금 질문 제외, [{role, text, party?}])."""
+def format_of(q: str) -> dict:
+    return {'format': 'doubles'} if '더블' in q else {'format': 'singles'} if '싱글' in q else {}
+
+
+def sample_intent(out: dict, q: str, target: dict, item, without: list, role) -> dict:
+    # 도구를 정하면 메가스톤을 들 수 없으므로 일반 폼으로
+    return {**out, 'intent': 'sample', 'pokemon': target['id'], 'stone': None if item else target.get('stone'),
+            **({'item': item} if item else {}), **({'without': [w for w in without if w]} if without else {}),
+            **({'role': role} if role else {}), **({'other': True} if re.search(r'다른|또|말고', q) else {})}
+
+
+async def parse(question: str, history: list[dict], tools: Tools, classify=None, party_size: int = 6) -> dict:
+    """question: 지금 질문, history: 앞 대화 (지금 질문 제외, [{role, text, party?}]).
+    classify: 규칙이 못 알아들은(unclear·off_topic) 질문을 로컬 모델로 다시 분류 (agent.classify.classify). 없으면 규칙만."""
+    intent = await parse_rules(question, history, tools)
+    if classify and intent.get('reason') in ('unclear', 'off_topic'):
+        label = await classify(question, history, party_size)
+        if label and label not in ('unclear', 'off_topic'):
+            return {**await from_label(label, question.strip(), history, tools), 'by': 'model'}
+    return intent
+
+
+async def from_label(label: str, q: str, history: list[dict], tools: Tools) -> dict:
+    """모델이 고른 의도 이름 → 의도 JSON (이름·도구·기술은 규칙과 같게 DB에서 찾음)."""
+    out = format_of(q)
+    if label in ('cant', 'who'):
+        return {'intent': 'unknown', 'reason': label}
+    weather = weather_in(q)
+    if label in ('weakness', 'threats'):
+        return {**out, 'intent': label, **({'weather': weather} if weather else {}),
+                **({'teams': True} if label == 'threats' and '파티' in q.replace('이 파티', '') else {})}
+    if label in ('mega', 'improve'):
+        return {**out, 'intent': label}
+    if label == 'fill':
+        return {**out, 'intent': 'fill', 'count': 1 if re.search(r'한 ?마리|하나|마지막|한 ?자리', q) else 'all'}
+    named = await tools.find_pokemon(q)
+    if label == 'party':
+        return {**out, 'intent': 'party', **({'pokemon': named['id']} if named else {})}
+    target = named or await previous_pokemon(tools, history)
+    if not target:
+        return {'intent': 'unknown', 'reason': 'who'}
+    if label == 'item_usage':
+        return {**out, 'intent': 'item_usage', 'pokemon': target['id']}
+    item = await tools.item_in(q)
+    without = [await tools.move_id(m) for m in await tools.moves_without(q)]
+    return sample_intent(out, q, target, item, without, next((v for k, v in ROLES if k in q), None))
+
+
+async def parse_rules(question: str, history: list[dict], tools: Tools) -> dict:
+    """키워드 규칙."""
     q = question.strip()
-    out = {}
-    if '더블' in q:
-        out['format'] = 'doubles'
-    elif '싱글' in q:
-        out['format'] = 'singles'
+    out = format_of(q)
     if re.search(r'승률|대미지|데미지|선출|예측|확률', q):
         return {'intent': 'unknown', 'reason': 'cant'}
     weather = weather_in(q)
@@ -115,10 +159,7 @@ async def parse(question: str, history: list[dict], tools: Tools) -> dict:
             if pointed or item or without:
                 return {'intent': 'unknown', 'reason': 'who'}
         else:
-            # 도구를 정하면 메가스톤을 들 수 없으므로 일반 폼으로
-            return {**out, 'intent': 'sample', 'pokemon': target['id'], 'stone': None if item else target.get('stone'),
-                    **({'item': item} if item else {}), **({'without': [w for w in without if w]} if without else {}),
-                    **({'role': role} if role else {}), **({'other': True} if re.search(r'다른|또|말고', q) else {})}
+            return sample_intent(out, q, target, item, without, role)
     if named:
         return {**out, 'intent': 'sample', 'pokemon': named['id'], 'stone': named.get('stone')}
     return {'intent': 'unknown', 'reason': 'unclear' if DOMAIN.search(q) or not re.search(r'[가-힣]{2,}', q) else 'off_topic'}
@@ -446,7 +487,7 @@ async def swap_lines(call, party, check, names, t, weak_ms, good) -> list[str]:
         n_after = len(after.get(t, []))
         more = [k for k, v in after.items() if len(v) > len(before.get(k, []))]
         lines.append(f"- {names[m['pokemon']]} 대신 {r['name_ko']} ({answers.role_text(r['roles'])}): "
-                     (f"{t} 약점 {len(weak_ms)}→{n_after}마리" if n_after else f"{t} 약점 겹침 없어짐") + (f" / 단점: {', '.join(more)} 약점 늘어남" if more else ''))
+                     + (f"{t} 약점 {len(weak_ms)}→{n_after}마리" if n_after else f"{t} 약점 겹침 없어짐") + (f" / 단점: {', '.join(more)} 약점 늘어남" if more else ''))
     return lines
 
 

@@ -87,6 +87,23 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(parse('현재 파티에서 수정할만한거 있어?'), {'intent': 'improve'})
         self.assertEqual(parse('현재파티에서 수정이 필요한 포켓몬이 있어?'), {'intent': 'improve'})
 
+    def test_model_only_when_rules_miss(self):
+        calls = []
+
+        async def classify(q, history, party_size):
+            calls.append(q)
+            return {'남은 두 자리 뭐 넣지': 'fill', '걔한테 뭐 들려': 'item_usage', '배고프다': 'off_topic'}.get(q, 'sample')
+
+        def run(q, history=()):
+            return asyncio.run(intents.parse(q, list(history), FakeTools(), classify=classify))
+
+        self.assertEqual(run('이 파티 약점 알려줘'), {'intent': 'weakness'})     # 규칙이 알아들으면 모델 안 부름
+        self.assertEqual(calls, [])
+        self.assertEqual(run('남은 두 자리 뭐 넣지'), {'intent': 'fill', 'count': 'all', 'by': 'model'})
+        prev = [{'role': 'user', 'text': '깜까미 샘플'}]
+        self.assertEqual(run('걔한테 뭐 들려', prev), {'intent': 'item_usage', 'pokemon': 'sableye', 'by': 'model'})
+        self.assertEqual(run('배고프다'), {'intent': 'unknown', 'reason': 'off_topic'})
+
     def test_weather_drops_halved_threats(self):
         from agent import answers
         th = {'checked_top': 40, 'need_hits': 3, 'threats': [

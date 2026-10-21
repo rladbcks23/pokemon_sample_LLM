@@ -24,7 +24,8 @@ QWEN_MIN_ROOM = int(os.getenv('QWEN_MIN_ROOM', '400'))      # 남은 문맥이 �
 # 답변 글자를 한글·숫자·기호·영문 대문자로 제한 (외국어가 섞여서). 0이면 끔
 QWEN_GRAMMAR = os.getenv('QWEN_GRAMMAR', '1') != '0'
 
-# 코치 방식 (llm/DESIGN.md): intent = 질문 → 의도 JSON → 서버가 DB로 답 (지금은 규칙으로 의도 추출, 모델 불필요)
+# 코치 방식 (llm/DESIGN.md): intent = 질문 → 의도 JSON → 서버가 DB로 답 (규칙으로 의도 추출, 규칙이 모르면
+#                            llama-server(QWEN_SERVER)로 의도만 다시 분류: agent/classify.py. 꺼져 있으면 규칙만)
 #                            agent  = 모델이 도구를 여러 번 부르며 답 (in-context, Claude용)
 COACH_MODE = os.getenv('COACH_MODE', 'intent' if LLM_PROVIDER == 'qwen' else 'agent')
 

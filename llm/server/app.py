@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 import config
-from agent import intents
+from agent import classify, intents
 from agent.loop import build_messages, run_agent, subject_of
 from agent.tools import Tools
 from providers.claude import ClaudeProvider
@@ -84,7 +84,7 @@ async def load_local_model():
 
 async def intent_events(tools: Tools, history: list[dict], party: list[dict]):
     question, previous = history[-1]['text'], history[:-1]
-    intent = await intents.parse(question, previous, tools)
+    intent = await intents.parse(question, previous, tools, classify=classify.classify, party_size=len(party))
     log.info('의도 %s', intent)
     if intent.get('format') in ('singles', 'doubles'):
         tools.format = intent['format']                 # "더블 파티"처럼 질문에 포맷이 있으면 그걸로
