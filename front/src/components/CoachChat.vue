@@ -57,9 +57,9 @@ onMounted(scroll)
           <div v-else class="botwrap">
             <div v-if="m.text" class="bubble bot">{{ m.text }}</div>
             <div v-if="m.party" class="rec">
-              <div class="rh"><span class="mono">추천 파티 · {{ m.party.length }}마리</span><span>하나 누르면 샘플 제작으로 →</span></div>
+              <div class="rh"><span class="mono">추천 파티 · {{ m.party.length }}마리</span><span>하나 누르면 상세보기</span></div>
               <div class="rm">
-                <button v-for="(s, j) in m.party" :key="j" title="샘플 제작에서 열기" @click="emit('open-sample', s)">
+                <button v-for="(s, j) in m.party" :key="j" title="상세보기" @click="emit('open-sample', s)">
                   <PokemonImg :id="s.pokemon" :size="40" /><span>{{ names[s.pokemon] || s.pokemon }}</span>
                 </button>
               </div>

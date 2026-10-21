@@ -87,6 +87,18 @@ function loadTeam(t) {
   builder.load6(JSON.parse(JSON.stringify(t.slots)), { id: t.id, title: t.name })
 }
 function applyParty(samples) { builder.load6(samples, { title: builder.name }) }
+// 코치 추천 카드의 포켓몬: 바로 수정으로 가지 않고 상세보기를 먼저, 수정은 상세보기의 버튼으로
+const chatSample = ref(null)
+function previewSample(s) {
+  chatSample.value = s
+  detailSample.value = s
+  detailOpen.value = true
+}
+function showSlotDetail(s) {
+  chatSample.value = null
+  detailSample.value = s
+  detailOpen.value = true
+}
 function openSample(s) {
   const i = builder.slots.findIndex((x) => x?.pokemon === s.pokemon)
   const slot = i >= 0 ? i : Math.max(0, builder.firstEmpty())
@@ -120,7 +132,7 @@ function openSample(s) {
         <template v-for="(s, i) in builder.slots" :key="i">
           <MemberCard v-if="s && members[i]" :member="members[i]" size="sm">
             <template #actions>
-              <button class="sbtn" title="샘플 상세보기" @click="detailSample = s; detailOpen = true">상세</button>
+              <button class="sbtn" title="샘플 상세보기" @click="showSlotDetail(s)">상세</button>
               <button class="sbtn" title="샘플 제작에서 수정" @click="edit(i)">수정</button>
               <button class="sbtn del" title="슬롯에서 삭제" @click="builder.clearSlot(i)">삭제</button>
             </template>
@@ -139,9 +151,13 @@ function openSample(s) {
     </div>
 
     <CoachChat v-model:open="chatOpen" :format-label="settings.formatLabel()" :ruleset-label="settings.rulesetLabel"
-               :names="names" :format="settings.format" :party="builder.slots" @apply="applyParty" @open-sample="openSample" />
+               :names="names" :format="settings.format" :party="builder.slots" @apply="applyParty" @open-sample="previewSample" />
 
-    <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" title="파티 빌딩" />
+    <SampleDetailDialog v-model:open="detailOpen" :sample="detailSample" :title="chatSample ? '파티 코치 추천' : '파티 빌딩'">
+      <template #actions>
+        <button v-if="chatSample" class="btn fill" @click="detailOpen = false; openSample(chatSample)">샘플 제작에서 수정</button>
+      </template>
+    </SampleDetailDialog>
     <PokemonPicker v-model:open="pickerOpen" :slot="pickerSlot" :list="pickList" :format-label="settings.formatLabel()" :format="settings.format"
                    :in-party="builder.slots.filter(Boolean).map((s) => s.pokemon)" :samples="mySamples"
                    @pick="onPick" @pick-sample="onPickSample" />
