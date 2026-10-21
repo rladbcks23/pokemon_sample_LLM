@@ -108,7 +108,7 @@ def sample_answer(trace, sample) -> str | None:
     return text + '\n공개 샘플이라는 근거는 있지만, 다른 육성형보다 강하다고 단정할 수는 없어요.'
 
 
-def party_answer(trace, members) -> str:
+def party_answer(trace, members, compare: bool = True, lead: str | None = None) -> str:
     names = names_from(trace)
     check = full_check(trace, members)
     sp = {m['pokemon']: m['sp'] for m in (check or {}).get('members', [])}
@@ -118,11 +118,11 @@ def party_answer(trace, members) -> str:
     lines = '\n'.join(f"- {names.get(key(m)) or ko.get(m['pokemon']) or m['pokemon']} "
                       f"({sp.get(m['pokemon']) or sp_text(m.get('sp'))})" for m in members)
     team = last(trace, 'get_team')
-    lead = (f"{team_ref(team[1].get('title'))}를 바탕으로 짰어요 (화면에 띄움)." if team
-            else '추천 파티를 화면에 띄웠어요.')
+    lead = lead or (f"{team_ref(team[1].get('title'))}를 바탕으로 짰어요 (화면에 띄움)." if team
+                    else '추천 파티를 화면에 띄웠어요.')
     cmp = last(trace, 'check_party', lambda a, r: isinstance(r, dict) and 'candidates' in r)
     extra = ''
-    if cmp and not team:
+    if cmp and not team and compare:
         rows = []
         for c in cmp[1]['candidates']:
             pros = f"장점: {', '.join(c['covers'])} 받아 줌" if c['covers'] else ''

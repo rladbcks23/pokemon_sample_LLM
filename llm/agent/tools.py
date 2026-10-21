@@ -204,6 +204,18 @@ class Tools:
         hits = [i for i in await self._items() if len(i['name_ko']) >= 2 and i['name_ko'].replace(' ', '') in q]
         return max(hits, key=lambda i: len(i['name_ko']))['id'] if hits else None
 
+    async def find_pokemon(self, text: str) -> dict | None:
+        """글 속 포켓몬 한글 이름(가장 긴 것) → {'id': 메가 전 폼 ID, 'stone': 메가스톤 ID 또는 None, 'name_ko': 이름}."""
+        items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
+        q = (text or '').replace(' ', '')
+        hits = [(p['name_ko'], p['id'], None) for p in items] + \
+               [(m['name_ko'], p['id'], m['item']) for p in items for m in p['megas']]
+        hits = [h for h in hits if h[0] and len(h[0]) >= 2 and h[0].replace(' ', '') in q]
+        if not hits:
+            return None
+        name, pid, stone = max(hits, key=lambda h: len(h[0]))
+        return {'id': pid, 'stone': stone, 'name_ko': name}
+
     async def pokemon_in(self, question: str) -> bool:
         """질문에 이번 레귤레이션 포켓몬(메가 폼 포함) 한글 이름이 들어 있는지."""
         items = (await self._get('pokemon/', {'format': self.format}, cache=True))['items']
