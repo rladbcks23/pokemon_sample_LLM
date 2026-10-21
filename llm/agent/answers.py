@@ -166,6 +166,20 @@ def weakness_answer(check: dict, weather: str | None = None, plan: str = '') -> 
     return text + warnings_line(check)
 
 
+def improve_answer(check: dict, weather: str | None, plan: str) -> str:
+    """지금 파티에서 고칠 점: 경고(딜러 쏠림·SP 낭비 등) + 겹치는 약점 + 추천 수정 방안."""
+    s = check['summary']
+    halved = WEATHER.get(weather, (None, None))[1]
+    points = [w for w in check.get('warnings', []) if not w.startswith('약점 3마리 이상')]
+    for t, ms in weak_sorted(s):
+        rain = f" ({WEATHER[weather][0]}로 반감)" if t == halved else ''
+        cover = f"받아 줄 멤버: {'·'.join(s['weak_cover'][t])}" if s['weak_cover'].get(t) else '받아 줄 멤버 없음'
+        points.append(f"{t} 약점 {len(ms)}마리{rain}: {'·'.join(ms)} / {cover}")
+    if not points:
+        return '크게 고칠 점은 없어요. 2마리 이상 겹치는 약점이 없고 점검 경고도 없어요.'
+    return '지금 파티에서 손볼 만한 점이에요.\n' + '\n'.join(f'- {p}' for p in points) + plan
+
+
 def weather_threats(th: dict, weather: str | None) -> dict:
     """날씨로 반감되는 타입(비면 불꽃)으로 찌르는 건 빼고 다시 셈."""
     halved = WEATHER.get(weather, (None, None))[1]

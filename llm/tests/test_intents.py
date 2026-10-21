@@ -82,6 +82,11 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(parse('아니 내가 조심해야할 포켓몬이나 파티'), {'intent': 'threats', 'teams': True})
         self.assertEqual(parse('이 파티가 불리한 상대는?'), {'intent': 'threats'})
 
+    def test_improve(self):
+        self.assertEqual(parse('현재파티에서 빼고 넣을만한 포켓몬이 있나'), {'intent': 'improve'})
+        self.assertEqual(parse('현재 파티에서 수정할만한거 있어?'), {'intent': 'improve'})
+        self.assertEqual(parse('현재파티에서 수정이 필요한 포켓몬이 있어?'), {'intent': 'improve'})
+
     def test_weather_drops_halved_threats(self):
         from agent import answers
         th = {'checked_top': 40, 'need_hits': 3, 'threats': [
