@@ -417,7 +417,8 @@ def options(request):
         'natures': [{'id': x['id'], 'name': x['name'], 'name_ko': x['name_ko'],
                      'plus': x['plus_stat'] or None, 'minus': x['minus_stat'] or None}
                     for x in n['nature'].values()],
-        'moves': [{'id': k, 'name_ko': m['name_ko']} for k, m in n['move'].items() if m.get('name_ko')],
+        'moves': [{'id': k, 'name_ko': m['name_ko'], 'category': m.get('category')} for k, m in n['move'].items()
+                  if m.get('name_ko')],
         'types': [{'id': t, 'name_ko': TYPE_KO[t]} for t in TYPES],
         'typechart': {a: {d: m for (a2, d), m in chart().items() if a2 == a} for a in TYPES},
     })

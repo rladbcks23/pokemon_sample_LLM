@@ -104,6 +104,19 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(run('걔한테 뭐 들려', prev), {'intent': 'item_usage', 'pokemon': 'sableye', 'by': 'model'})
         self.assertEqual(run('배고프다'), {'intent': 'unknown', 'reason': 'off_topic'})
 
+    def test_review(self):
+        prev = [{'role': 'user', 'text': '포푸니크 샘플'},
+                {'role': 'assistant', 'text': '…', 'party': [{'pokemon': 'sneasler', 'item': 'choicescarf'}]}]
+        self.assertEqual(parse('얘 구애스카프인데 방어 쓰는거 맞아?', prev), {'intent': 'review', 'pokemon': 'sneasler'})
+        self.assertEqual(parse('깜까미 기술 이거 괜찮아?'), {'intent': 'review', 'pokemon': 'sableye'})
+
+    def test_model_label_without_target(self):
+        async def classify(q, history, party_size):
+            return 'sample'
+
+        out = asyncio.run(intents.parse('야이 개새야', [], FakeTools(), classify=classify))
+        self.assertEqual((out['intent'], out['reason']), ('unknown', 'unclear'))
+
     def test_weather_drops_halved_threats(self):
         from agent import answers
         th = {'checked_top': 40, 'need_hits': 3, 'threats': [

@@ -187,6 +187,18 @@ class Tools:
         moves = (await self._get('options/', {}, cache=True)).get('moves', [])
         return next((m['id'] for m in moves if q in (m['id'], m['name_ko'].replace(' ', '').lower())), None)
 
+    async def set_issues(self, sample: dict) -> list[str]:
+        """육성형에서 도구와 기술이 서로 안 맞는 점 (공개 샘플에도 가끔 있음: 구애스카프 + 방어 등)."""
+        moves = {m['id']: m for m in (await self._get('options/', {}, cache=True)).get('moves', [])}
+        status = [moves[x]['name_ko'] for x in sample.get('moves') or [] if moves.get(x, {}).get('category') == 'Status']
+        item = sample.get('item') or ''
+        name = next((i['name_ko'] for i in await self._items() if i['id'] == item), item)
+        if status and item == 'assaultvest':
+            return [f"{name}를 들면 변화기를 쓸 수 없는데 {'·'.join(status)}가 있어요"]
+        if status and item in ('choicescarf', 'choiceband', 'choicespecs'):
+            return [f"{name}는 처음 고른 기술만 계속 써야 해서 {'·'.join(status)} 같은 변화기와 잘 안 맞아요"]
+        return []
+
     async def moves_without(self, question: str) -> list[str]:
         """질문이 "빛의장막 리플렉터 없는 건"처럼 기술을 빼 달라는 말이면 그 기술 한글 이름들."""
         if not re.search(r'없는|없이|빼고|말고|안 쓰는|안쓰는', question or ''):
@@ -210,7 +222,11 @@ class Tools:
         q = (text or '').replace(' ', '')
         hits = [(p['name_ko'], p['id'], None) for p in items] + \
                [(m['name_ko'], p['id'], m['item']) for p in items for m in p['megas']]
-        hits = [h for h in hits if h[0] and len(h[0]) >= 2 and h[0].replace(' ', '') in q]
+        found = [h for h in hits if h[0] and len(h[0]) >= 2 and h[0].replace(' ', '') in q]
+        if not found:       # "대쓰여너"처럼 폼 이름(-수컷 등)을 빼고 말한 경우
+            found = [h for h in hits if '-' in (h[0] or '') and len(h[0].split('-')[0]) >= 2
+                     and h[0].split('-')[0].replace(' ', '') in q][:1]
+        hits = found
         if not hits:
             return None
         name, pid, stone = max(hits, key=lambda h: len(h[0]))

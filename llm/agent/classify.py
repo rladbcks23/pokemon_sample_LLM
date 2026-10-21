@@ -14,7 +14,7 @@ import config
 log = logging.getLogger('coach')
 
 LABELS = ['sample', 'party', 'fill', 'weakness', 'threats', 'mega', 'improve', 'item_usage',
-          'cant', 'off_topic', 'unclear', 'who']
+          'review', 'cant', 'off_topic', 'unclear', 'who']
 
 SYSTEM = """너는 포켓몬 챔피언스 파티 빌더의 질문 분류기다. 사용자의 마지막 질문을 아래 의도 중 하나로 분류해 JSON만 낸다.
 - sample: 특정 포켓몬의 샘플·육성·기술·SP·성격·형태를 보여 달라 (도구·기술 조건 포함, "걔/얘"가 앞 대화 포켓몬이면 여기)
@@ -25,6 +25,7 @@ SYSTEM = """너는 포켓몬 챔피언스 파티 빌더의 질문 분류기다. 
 - mega: 메가진화를 누구에게 쓸지, 메가스톤 개수
 - improve: 화면 파티에서 뺄 멤버·바꿀 멤버·고칠 점·개선
 - item_usage: 특정 포켓몬에게 어떤 도구(아이템)를 들릴지, 도구 사용률
+- review: 특정 포켓몬의 지금 육성형(도구·기술·SP)이 맞는지, 이상하지 않은지 점검
 - cant: 포켓몬 이야기지만 할 수 없는 것 (승률, 대미지 계산, 선출, 배틀 중 행동 예측)
 - off_topic: 포켓몬 파티 빌딩과 상관없는 말
 - unclear: 무슨 말인지 알 수 없음 (의미 없는 글자, 너무 짧음)
@@ -41,6 +42,7 @@ FEW_SHOT = [
     ('', '메가 누구한테 써?', 'mega'),
     ('', '이 파티 고칠 점 있어?', 'improve'),
     ('', '깜까미 아이템 다른 거 주고 싶은데', 'item_usage'),
+    ('사용자: 깜까미 샘플\n코치: 깜까미 @ 축축한바위 추천 (화면에 띄움).', '얘 기술 이렇게 쓰는 게 정상이야?', 'review'),
     ('', '이 파티 승률 몇 퍼야?', 'cant'),
     ('', '오늘 점심 뭐 먹지', 'off_topic'),
     ('', 'ㅁㄴㅇㄹ', 'unclear'),

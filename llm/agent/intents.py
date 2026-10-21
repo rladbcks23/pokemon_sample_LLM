@@ -55,6 +55,8 @@ async def is_stone(tools: Tools, pokemon: str, item: str) -> bool:
 # 지금 파티 고치기: "빼고 넣을 만한", "수정할 만한 거", "바꿀 멤버" 등
 IMPROVE = re.compile(r'빼고 ?넣|뺄 ?만한|바꿀 ?만한|바꿔야|바꾸면 좋|교체|수정(할|이 ?필요|하면|해야)|고칠|손볼|손 ?봐|개선|보완|'
                      r'더 좋게|(뭘|누굴|누구를|어떤 ?걸) ?바꿀')
+# 지금 육성형 점검: "구애스카프인데 방어 맞아?", "이 기술 배치 괜찮아?"
+REVIEW = re.compile(r'맞아|맞나|맞는 ?거|괜찮아|괜찮나|이상해|이상한|말이 ?돼|정상이|문제 ?없')
 WEATHER_WORDS = {'rain': re.compile(r'비 ?파티|비를|비가|비 ?오|비바라기|잔비|우천'),
                  'sun': re.compile(r'쾌청|햇살|해 ?파티|가뭄|맑은 ?날')}
 WEATHER_SETTERS = {'rain': {'raindance', 'drizzle'}, 'sun': {'sunnyday', 'drought'}}
@@ -87,6 +89,8 @@ async def parse(question: str, history: list[dict], tools: Tools, classify=None,
     intent = await parse_rules(question, history, tools)
     if classify and intent.get('reason') in ('unclear', 'off_topic'):
         label = await classify(question, history, party_size)
+        if label == 'who' and not POINTER.search(question):
+            label = None                        # 욕설 등을 '누구?'로 고르는 경우가 있어서
         if label and label not in ('unclear', 'off_topic'):
             return {**await from_label(label, question.strip(), history, tools), 'by': 'model'}
     return intent
@@ -109,10 +113,10 @@ async def from_label(label: str, q: str, history: list[dict], tools: Tools) -> d
     if label == 'party':
         return {**out, 'intent': 'party', **({'pokemon': named['id']} if named else {})}
     target = named or await previous_pokemon(tools, history)
-    if not target:
-        return {'intent': 'unknown', 'reason': 'who'}
-    if label == 'item_usage':
-        return {**out, 'intent': 'item_usage', 'pokemon': target['id']}
+    if not target:          # "걔"라고 했으면 누구냐고 묻고, 그것도 아니면 못 알아들은 것
+        return {'intent': 'unknown', 'reason': 'who' if POINTER.search(q) else 'unclear'}
+    if label in ('item_usage', 'review'):
+        return {**out, 'intent': label, 'pokemon': target['id']}
     item = await tools.item_in(q)
     without = [await tools.move_id(m) for m in await tools.moves_without(q)]
     return sample_intent(out, q, target, item, without, next((v for k, v in ROLES if k in q), None))
@@ -145,6 +149,8 @@ async def parse_rules(question: str, history: list[dict], tools: Tools) -> dict:
     without = [await tools.move_id(m) for m in await tools.moves_without(q)]
     role = next((v for k, v in ROLES if k in q), None)
 
+    if REVIEW.search(q) and (named or pointed) and target:     # "얘 구애스카프인데 방어 맞아?"
+        return {**out, 'intent': 'review', 'pokemon': target['id']}
     if re.search(r'파티', q) and re.search(r'짜|만들|추천|하나|구성', q) and not named:
         return {**out, 'intent': 'party'}
     if re.search(r'파티', q) and re.search(r'짜|만들|추천', q) and named:
@@ -229,6 +235,11 @@ async def run(intent: dict, tools: Tools, party: list[dict], history: list[dict]
         yield 'text', await mega_answer(tools, party)
         return
 
+    if kind == 'review':
+        yield 'status', '육성형 점검 중'
+        yield 'text', await review_answer(tools, call, intent['pokemon'], party, history or [])
+        return
+
     if kind == 'item_usage':
         yield 'status', '포켓몬 정보 확인 중'
         info = await call('get_pokemon', {'id': intent['pokemon']})
@@ -300,6 +311,7 @@ async def sample(tools: Tools, call, show, intent: dict, trace: list, seen: list
         return
     fresh = [r['sample'] for r in (res.get('samples') or [])
              if not any(same(r['sample'], x) for x in seen)] if isinstance(res, dict) else []
+    fresh = [x for x in fresh if not await tools.set_issues(x)] or fresh     # 구애스카프+방어 같은 건 뒤로 (그것뿐이면 그대로)
     if isinstance(res, dict) and res.get('samples') and not fresh:
         yield 'text', '조건에 맞는 공개 샘플은 앞에서 보여 드린 것뿐이에요. 도구·기술·역할 같은 조건을 바꿔서 말해 주세요.'
         return
@@ -378,8 +390,11 @@ async def fill_one(tools: Tools, call, party: list[dict]) -> dict | None:
         if not found or found['id'] in have:
             continue
         res = await call('search_samples', {'pokemon': found['id']})
-        s = next((r['sample'] for r in (res.get('samples', []) if isinstance(res, dict) else [])
-                  if r['sample']['item'] not in items), None)
+        s = None
+        for r in (res.get('samples', []) if isinstance(res, dict) else []):
+            if r['sample']['item'] not in items and not await tools.set_issues(r['sample']):
+                s = r['sample']
+                break
         if s:
             cands.append(s)
         if len(cands) == 3:
@@ -451,8 +466,11 @@ async def partner_samples(tools: Tools, call, party: list[dict]) -> list[dict]:
         if not found or found['id'] in have:
             continue
         res = await call('search_samples', {'pokemon': found['id']})
-        s = next((r['sample'] for r in (res.get('samples', []) if isinstance(res, dict) else [])
-                  if r['sample']['item'] not in items), None)
+        s = None
+        for r in (res.get('samples', []) if isinstance(res, dict) else []):
+            if r['sample']['item'] not in items and not await tools.set_issues(r['sample']):
+                s = r['sample']
+                break
         if s:
             cands.append(s)
         if len(cands) == 6:
@@ -506,6 +524,28 @@ async def threat_teams(tools: Tools, threats: list[dict]) -> str:
                 f"{answers.josa('·'.join(names[:3]), '이', '가')} 든 파티를 만나면 조심하세요.")
     lines = [f"- {answers.team_ref(t['title'])} ({t['source']}): {'·'.join(hit)}" for t, hit in rows]
     return '\n\n조심할 파티 (위협 포켓몬이 든 상위 파티):\n' + '\n'.join(lines)
+
+
+async def review_answer(tools: Tools, call, pokemon: str, party: list[dict], history: list[dict]) -> str:
+    """화면 또는 앞에서 띄운 그 포켓몬 육성형의 도구·기술·SP 점검."""
+    sets = [m for m in party if m.get('pokemon') == pokemon] + \
+           [m for h in reversed(history) for m in h.get('party') or [] if m.get('pokemon') == pokemon]
+    name = (await tools.party_names([{'pokemon': pokemon}]))[0] or pokemon
+    if not sets:
+        return f"화면이나 앞에서 띄운 {name} 육성형이 없어요. 샘플을 띄우거나 화면에 넣은 뒤 다시 물어봐 주세요."
+    s = sets[0]
+    check = await call('check_party', {'members': [s]})
+    me = check['members'][0]
+    moves = {m['id']: m['name_ko'] for m in (await tools._get('options/', {}, cache=True)).get('moves', [])}
+    item = next((i['name_ko'] for i in await tools._items() if i['id'] == s.get('item')), s.get('item') or '-')
+    head = f"{me['name_ko']} @ {item} ({me['sp']}) — {', '.join(moves.get(x, x) for x in s.get('moves') or [] if x)}"
+    v = await tools._validate(s)
+    problems = await tools.set_issues(s) + [c['message'] for c in v.get('checks', []) if c['level'] in ('error', 'warn')] \
+        + [w.split(': ', 1)[-1] for w in check.get('warnings', [])]
+    if not problems:
+        return f"{head}\n도구·기술·SP에 안 맞는 점은 없어요. SP·기술 기준 역할은 {answers.josa(answers.role_text(me['roles']), '이에요', '예요')}."
+    return (f"{head}\n걸리는 점:\n" + '\n'.join(f'- {p}' for p in problems)
+            + f"\n다른 공개 샘플을 보려면 '{name} 다른 형태'라고 말해 주세요.")
 
 
 async def mega_answer(tools: Tools, party: list[dict]) -> str:
