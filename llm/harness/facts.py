@@ -144,6 +144,7 @@ class Facts:
             mv = self.n['move'].get(x) or {}
             move_rows.append({'name_ko': self.ko('move', x), 'type': TYPE_KO.get(mv.get('type'), ''),
                               'category': CATEGORY_KO.get(mv.get('category'), ''), 'power': mv.get('power') or None,
+                              'accuracy': self.accuracy(x),
                               'usage_pct': use.get('move', {}).get(x, '10위 밖'), **cov.get(x, {}),
                               'desc': self.move_desc.get(x, '')})
         p = self.n['pokemon'][shown]
@@ -170,6 +171,7 @@ class Facts:
             'usage_note': f'usage_pct = 이 포켓몬({info["name_ko"]})을 쓰는 사람 중 그 기술·도구·특성을 쓰는 비율 (OP.GG, 10위까지만). '
                           f'only_this_hits_top{TOP_PICKS} = 픽률 상위 {TOP_PICKS} 중 이 샘플의 다른 공격기로는 ×2를 못 찌르고 이 기술로만 찌르는 포켓몬',
             'roles': info['roles'], 'speed': info['speed'], **({'speed_note': info['speed_note']} if 'speed_note' in info else {}),
+            **({'speed_with_scarf': info['speed'] * 3 // 2} if m['item'] == 'choicescarf' else {}),
             'shapes': {'total': total, **dict(sorted(shapes.items(), key=lambda kv: -kv[1])),
                        'this': mine, 'this_pct': pct, 'rare': pct < RARE_SHAPE_PCT},
             'others': self._others(fmt, m, same),
@@ -188,7 +190,7 @@ class Facts:
             if om['nature'] != m['nature']:
                 diff['nature'] = self.ko('nature', om['nature'])
             only_me = [self.ko('move', x) for x in m['moves'] if x not in om['moves']]
-            only_o = [self.ko('move', x) for x in om['moves'] if x not in m['moves']]
+            only_o = [self.move_brief(fmt, om['pokemon'], x) for x in om['moves'] if x not in m['moves']]
             if only_me or only_o:
                 diff['moves'] = {'this_only': only_me, 'other_only': only_o}
             diff['role'] = member_profile(self.rid, om, fmt)['roles'][0]
@@ -200,6 +202,18 @@ class Facts:
                 seen.add(k)
                 out.append(d)
         return out[:5]
+
+    def accuracy(self, key: str):
+        acc = (self.n['move'].get(key) or {}).get('accuracy')
+        return acc if acc else '반드시 맞음'
+
+    def move_brief(self, fmt: str, pokemon: str, key: str) -> dict:
+        """다른 샘플이 대신 쓰는 기술: 이 샘플의 기술과 비교할 수 있게 위력·명중·사용률·효과."""
+        mv = self.n['move'].get(key) or {}
+        return {'name_ko': self.ko('move', key), 'type': TYPE_KO.get(mv.get('type'), ''),
+                'category': CATEGORY_KO.get(mv.get('category'), ''), 'power': mv.get('power') or None,
+                'accuracy': self.accuracy(key), 'usage_pct': self.usage(fmt, pokemon).get('move', {}).get(key, '10위 밖'),
+                'desc': self.move_desc.get(key, '')}
 
     def _desc(self, kind: str, key: str) -> str:
         if kind == 'move':
