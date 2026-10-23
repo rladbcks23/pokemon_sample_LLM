@@ -26,6 +26,8 @@ STAT_KO = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'
 CATEGORY_KO = {'Physical': '물리', 'Special': '특수', 'Status': '변화'}
 RARE_SHAPE_PCT = 10         # 형태 분포에서 이 비율 미만이면 드문 형태
 TOP_PICKS = 30              # 커버리지 계산: 이 픽률 순위 안의 포켓몬
+# 명중 판정이 없는 기술 대상 (자기·우리 편·필드)
+NO_ACCURACY_TARGETS = {'self', 'allySide', 'adjacentAlly', 'allies', 'adjacentAllyOrSelf', 'allyTeam', 'all', 'foeSide'}
 
 
 class Facts:
@@ -35,6 +37,7 @@ class Facts:
         self.n = names(self.rid)
         # names()의 기술에는 설명이 없어서 따로 (나무위키 한글 설명)
         self.move_desc = dict(Move.objects.filter(ruleset=self.rs).values_list('showdown_id', 'short_desc'))
+        self.move_target = dict(Move.objects.filter(ruleset=self.rs).values_list('showdown_id', 'target'))
         self._usage, self._top = {}, {}
 
     # ------------------------------------------------------------ 사용률·상성
@@ -169,6 +172,8 @@ class Facts:
                         'desc': self._desc('ability', m['ability'])},
             'nature': info['nature'], 'sp': info['sp'], 'moves': move_rows,
             'usage_note': f'usage_pct = 이 포켓몬({info["name_ko"]})을 쓰는 사람 중 그 기술·도구·특성을 쓰는 비율 (OP.GG, 10위까지만). '
+                          'accuracy = 명중률 (100도 회피가 오르거나 명중이 떨어지면 빗나갈 수 있음), "필중" = 회피·명중 랭크와 상관없이 맞음, '
+                          '없음(null) = 명중 판정이 없는 기술(자기·필드 대상). '
                           f'only_this_hits_top{TOP_PICKS} = 픽률 상위 {TOP_PICKS} 중 이 샘플의 다른 공격기로는 ×2를 못 찌르고 이 기술로만 찌르는 포켓몬',
             'roles': info['roles'], 'speed': info['speed'], **({'speed_note': info['speed_note']} if 'speed_note' in info else {}),
             **({'speed_with_scarf': info['speed'] * 3 // 2} if m['item'] == 'choicescarf' else {}),
@@ -204,8 +209,12 @@ class Facts:
         return out[:5]
 
     def accuracy(self, key: str):
+        """명중률. 필중(회피·명중 랭크와 상관없이 맞음)과 명중 100(랭크가 바뀌면 빗나갈 수 있음)은 다르다.
+        DB에 명중이 없으면: 상대를 노리는 기술은 필중, 자기·우리 편·필드 대상은 명중 판정이 없음(None)."""
         acc = (self.n['move'].get(key) or {}).get('accuracy')
-        return acc if acc else '반드시 맞음'
+        if acc:
+            return acc
+        return None if self.move_target.get(key) in NO_ACCURACY_TARGETS else '필중'
 
     def move_brief(self, fmt: str, pokemon: str, key: str) -> dict:
         """다른 샘플이 대신 쓰는 기술: 이 샘플의 기술과 비교할 수 있게 위력·명중·사용률·효과."""
