@@ -7,10 +7,10 @@ import json
 import re
 from difflib import SequenceMatcher
 
-RUBRIC_VERSION = 'v3'
+RUBRIC_VERSION = 'v4'
 PASS_TOTAL = 80
 REWRITE_BELOW = 70          # 이보다 낮으면 고쳐 쓰기 대신 새로 쓰기
-MAX_NA = 2                  # N/A가 이보다 많으면 사람 검수
+MAX_NA = 2                  # N/A가 이보다 많으면 보류
 
 # 항목: (이름, 만점, 최소점수)
 ITEMS = {

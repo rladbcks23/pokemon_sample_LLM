@@ -175,13 +175,13 @@ class LoopTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_stuck_writer_stops(self):
-        """고쳐도 늘 줄인 설명만 내는 작성자 → 맴돌기 감지로 멈추고 사람 검수 (예전에는 무한 반복)."""
+        """고쳐도 늘 줄인 설명만 내는 작성자 → 맴돌기 감지로 멈추고 보류 (예전에는 무한 반복)."""
         def writer(prev, feedback):
             return self.LONG if prev is None else self.SHORT
         h, store = self.make(writer)
         row = h.run_one('sample', 'S-1', 't', PACKET, None, store)
         h.live.log.close()
-        self.assertEqual(row['status'], 'needs_review')
+        self.assertEqual(row['status'], 'held')
         self.assertLessEqual(h.calls['judge'], 6)
         self.assertEqual(row['text'], self.LONG)            # 가장 좋았던 설명을 저장
         fb = '\n'.join(sum(h.calls['feedback'], []))

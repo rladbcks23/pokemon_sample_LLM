@@ -25,8 +25,8 @@ LLM = Path(__file__).resolve().parents[1]
 OUT = LLM.parent / 'data/descriptions'
 LOGS = LLM / 'harness/logs'
 UNKNOWN = re.compile(r'모르겠|알 수 없|못 찾았|알기 어려')
-CHOICES = 6                     # 샘플: 도구·SP·기술 4개 / 파티: 멤버 6마리. 절반 넘게 "모름"이면 사람 검수
-STALL = 3                       # 같은 감점(규칙 묶음)이 이만큼 연속이면 맴도는 것이니 멈추고 사람 검수 (구독 사용량 보호)
+CHOICES = 6                     # 샘플: 도구·SP·기술 4개 / 파티: 멤버 6마리. 절반 넘게 "모름"이면 보류
+STALL = 3                       # 같은 감점(규칙 묶음)이 이만큼 연속이면 맴도는 것이니 멈추고 보류 (구독 사용량 보호)
 REASON_RULES = {'J1-a', 'J1-d', 'J3-b', 'J3-c', 'S1-c'}     # 반복되면 "모르겠다"로 빠져나갈 수 있는 규칙 (이유를 대는 것)
 
 JUDGE_SCHEMA = {
@@ -125,9 +125,14 @@ class Store:
                     r = json.loads(line)
                     self.rows[r['key']] = r
 
-    def done(self, key: str, h: str) -> bool:
+    def done(self, key: str, h: str, retry_held: bool = False) -> bool:
+        """건너뛸지: 통과한 것은 근거 묶음이 그대로면, 보류한 것은 근거 묶음·기준 버전이 그대로면 (매번 다시 부르지 않게)."""
         r = self.rows.get(key)
-        return bool(r and r['packet_hash'] == h and r['status'] == 'passed')
+        if not r or r['packet_hash'] != h:
+            return False
+        if r['status'] == 'passed':
+            return True
+        return r['status'] == 'held' and r.get('rubric_version') == rubric.RUBRIC_VERSION and not retry_held
 
     def others(self, key: str, group: str | None) -> list[str]:
         return [r['text'] for k, r in self.rows.items() if k != key and r['status'] == 'passed'
@@ -218,7 +223,7 @@ class Harness:
         while True:
             rnd += 1
             if self.a.max_rounds and rnd > self.a.max_rounds:
-                return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
+                return self.finish(kind, key, title, packet, group, store, best, history, 'held',
                                    f'--max-rounds {self.a.max_rounds} 도달')
             try:
                 text = self.write(ch, kind, packet, None if mode == 'write' else prev, feedback,
@@ -262,10 +267,10 @@ class Harness:
             if sc['pass']:
                 return self.finish(kind, key, title, packet, group, store, history[-1], history, 'passed')
             if sc['too_many_na']:
-                return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
+                return self.finish(kind, key, title, packet, group, store, best, history, 'held',
                                    f'N/A {len(sc["na"])}개: 근거 묶음이 부족해요')
             if len(unknown) > CHOICES // 2:
-                return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
+                return self.finish(kind, key, title, packet, group, store, best, history, 'held',
                                    f'"모르겠다"가 {len(unknown)}개: 근거 묶음이 부족해요')
 
             # 연속 실패: 매 라운드 규칙 ID로 센다 (심사자가 fix 문구를 매번 다르게 써서 문구로는 못 잡음)
@@ -275,7 +280,7 @@ class Harness:
             same = same + 1 if sig == last_sig else 1
             last_sig = sig
             if same >= STALL:
-                return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
+                return self.finish(kind, key, title, packet, group, store, best, history, 'held',
                                    f'같은 감점({", ".join(sig)})이 {same}번 연속이라 멈췄어요')
 
             # 점수가 떨어졌으면 가장 좋았던 설명으로 되돌린다. 같은 설명으로는 2번까지만 (그 뒤로는 지금 설명에서 계속)
@@ -356,7 +361,7 @@ class Harness:
             store.save(row)
         total = row['score']['total'] if row['score'] else None
         msg = {'passed': f'통과한 설명을 저장했어요 ({len(history)}회).',
-               'needs_review': f'사람 검수로 넘겨요: {reason}',
+               'held': f'보류할게요 (서비스에 안 쓰고, 근거 묶음이나 기준이 바뀌면 다시 시도): {reason}',
                'error': f'중단했어요: {reason}'}[status]
         self.live.say(key, 'harness', msg, {'color': 'ok' if status == 'passed' else 'bad', 'title': '최종 설명',
                                             'list': [{'text': row['text']}] if row['text'] else []})
@@ -385,7 +390,7 @@ class Harness:
                        format=self.a.format or '')
         done = 0
         for key, title, packet, group in self.items(kind):
-            if store.done(key, packet_hash(packet)) and not self.a.redo:
+            if store.done(key, packet_hash(packet), self.a.retry_held) and not self.a.redo:
                 continue
             self.run_one(kind, key, title, packet, group, store)
             done += 1
@@ -411,7 +416,8 @@ def main():
     ap.add_argument('--writer-effort', help='claude: low~max / codex: low·medium·high')
     ap.add_argument('--judge-effort', default='medium', help='기본 medium (codex 기본값은 한 번에 2~5분·사용량 많음)')
     ap.add_argument('--max-rounds', type=int, default=0, help='안전장치 (0 = 제한 없음, 기본)')
-    ap.add_argument('--redo', action='store_true', help='이미 통과한 것도 다시')
+    ap.add_argument('--redo', action='store_true', help='이미 통과·보류한 것도 다시')
+    ap.add_argument('--retry-held', action='store_true', help='보류한 것만 다시 (기본은 근거 묶음이나 기준이 바뀔 때만)')
     ap.add_argument('--port', type=int, default=8002, help='실시간 보기 포트 (0 = 끔)')
     ap.add_argument('--keep-open', action='store_true', help='끝난 뒤에도 실시간 보기 페이지를 열어 둠 (Ctrl+C로 종료)')
     a = ap.parse_args()
