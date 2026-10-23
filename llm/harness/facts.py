@@ -142,12 +142,15 @@ class Facts:
         info = self.brief(fmt, m)
         use = self.usage(fmt, m['pokemon'])
         cov = self.coverage(fmt, m['moves'], shown)
+        p0 = self.n['pokemon'][shown]
         move_rows = []
         for x in m['moves']:
             mv = self.n['move'].get(x) or {}
             move_rows.append({'name_ko': self.ko('move', x), 'type': TYPE_KO.get(mv.get('type'), ''),
                               'category': CATEGORY_KO.get(mv.get('category'), ''), 'power': mv.get('power') or None,
                               'accuracy': self.accuracy(x),
+                              **({'stab': True} if mv.get('category') != 'Status'
+                                 and mv.get('type') in (p0['type1'], p0['type2']) else {}),
                               'usage_pct': use.get('move', {}).get(x, '10위 밖'), **cov.get(x, {}),
                               'desc': self.move_desc.get(x, '')})
         p = self.n['pokemon'][shown]
