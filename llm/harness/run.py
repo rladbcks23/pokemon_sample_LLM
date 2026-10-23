@@ -89,7 +89,7 @@ JUDGE_SYSTEM = """너는 포켓몬 챔피언스(Reg M-C) {what} 설명의 심사
 - 근거 묶음이 부족해 그 항목을 쓸 수 없으면 na에 항목과 사유 (J1·J2·J3은 na 불가)
 - 문제가 없으면 deductions는 빈 배열
 - 파일을 읽거나 명령을 실행하지 않는다. 필요한 것은 모두 아래 글에 있다
-- 길이 기준: {length} (J6-d는 이 설명이 {soft}자를 넘으면). 이 설명은 {chars}자
+- 길이({length})는 1차 자동 검사에서 이미 통과했다. 길이로는 감점하지 않는다 (이 설명은 {chars}자)
 
 감점표
 {rubric}
@@ -104,7 +104,7 @@ def writer_system(kind: str, packet: dict) -> str:
         what='샘플(육성형)' if kind == 'sample' else '파티',
         fmt_rule=('더블 설명이다. 판을 까는 역할은 "서포터"라고 부르고 "기점잡이"라고 하지 않는다' if doubles else
                   '싱글 설명이다. 판을 까는 역할은 "기점잡이". 더블 전용 운용(속이기 견제·날따름 등)을 주된 역할로 쓰지 않는다'),
-        length=f'{lo}~{hi}자, 문장 {slo}~{shi}개 (상한의 80%를 넘지 않게 짧게)',
+        length=f'{lo}~{hi}자, 문장 {slo}~{shi}개',
         structure=STRUCTURE[kind])
 
 
@@ -180,7 +180,7 @@ class Harness:
     def judge(self, ch, kind, packet, text: str) -> tuple[list[dict], dict]:
         lo, hi, slo, shi = rubric.LENGTH[kind]
         system = JUDGE_SYSTEM.format(what='샘플' if kind == 'sample' else '파티', rubric=rubric.rubric_text(kind),
-                                     length=f'{lo}~{hi}자, 문장 {slo}~{shi}개', soft=int(hi * 0.8), chars=len(text))
+                                     length=f'{lo}~{hi}자, 문장 {slo}~{shi}개', chars=len(text))
         prompt = packet_text(packet) + f'\n\n[설명]\n{text}'
         for attempt in range(2):
             raw = self.call(ch, 'judge', system, prompt, '심사' if not attempt else '다시 심사', JUDGE_SCHEMA)
@@ -312,8 +312,6 @@ class Harness:
                 feedback += [f'[남겨 두기] 지난번에 줄이다가 이 내용이 빠져서 감점됐어요: {fix} ({r} -{rubric.rule_points(r, kind)}점)' +
                              (' → 계속 반복되는 지적이에요. 이 내용은 절대 빼지 마세요' if streak.get(r, 0) >= 2 else '')
                              for r, fix in keep.items() if r not in {d['rule'] for d in ded_t}]
-            if any(d['rule'] == 'J6-d' for d in ded_t):
-                feedback.append('길이 초과(J6-d)는 -2점뿐이에요. 줄일 때 기술 이유·언제 꺼내는지 같은 내용은 빼지 말고 꾸밈말을 줄이세요')
             for k in sc_t['below_min']:
                 feedback.insert(0, f'{k} {rubric.ITEMS[kind][k][0]}이(가) 최소점수 미달이에요 '
                                    f'({sc_t["items"][k]}/{rubric.ITEMS[kind][k][1]}, 최소 {rubric.ITEMS[kind][k][2]})')

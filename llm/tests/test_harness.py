@@ -159,7 +159,7 @@ class LoopTest(unittest.TestCase):
         def judge(ch, kind, packet, text):
             h.calls['judge'] += 1
             if text == self.LONG:       # 내용은 다 있는데 명령조·길이
-                return [{'rule': 'J6-a', 'quote': '', 'fix': '권유로'}, {'rule': 'J6-d', 'quote': '', 'fix': '줄이기'}], {}
+                return [{'rule': 'J6-a', 'quote': '', 'fix': '권유로'}, {'rule': 'J6-c', 'quote': '', 'fix': '군더더기'}], {}
             return [{'rule': 'J3-b', 'quote': '', 'fix': f'역린 이유 {h.calls["judge"]}'},     # fix 문구가 매번 다름
                     {'rule': 'J5-a', 'quote': '', 'fix': '언제'}, {'rule': 'J5-b', 'quote': '', 'fix': '먼저'}], {}
 
