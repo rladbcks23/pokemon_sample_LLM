@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설명 하네스</title>
+<style>
+  :root {
+    --bg: #313338; --side: #2b2d31; --side2: #1e1f22; --hover: #2e3035; --text: #dbdee1; --muted: #949ba4;
+    --line: #3f4147; --embed: #2b2d31; --code: #1e1f22;
+    --harness: #5865f2; --writer: #d97757; --judge: #10a37f;
+    --ok: #23a55a; --warn: #f0b232; --bad: #f23f43;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 "Pretendard", "Malgun Gothic", system-ui, sans-serif; height: 100vh; display: flex; overflow: hidden; }
+  aside { width: 260px; background: var(--side); display: flex; flex-direction: column; flex-shrink: 0; }
+  aside header { padding: 14px 16px; font-weight: 700; border-bottom: 1px solid var(--side2); }
+  aside header small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  #stats { padding: 8px 16px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--side2); }
+  #channels { overflow-y: auto; flex: 1; padding: 8px; }
+  .ch { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 14px; }
+  .ch:hover { background: var(--hover); color: var(--text); }
+  .ch.active { background: #404249; color: #fff; }
+  .ch .hash { font-size: 18px; opacity: .7; }
+  .ch .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ch .score { font-size: 11px; padding: 1px 6px; border-radius: 8px; background: var(--side2); }
+  .ch.unread .name { color: #fff; font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.running { background: var(--warn); animation: pulse 1s infinite; }
+  .dot.passed { background: var(--ok); } .dot.needs_review, .dot.error { background: var(--bad); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  main > header { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--side2); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  main > header b { font-size: 16px; }
+  main > header label { margin-left: auto; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  #log { flex: 1; overflow-y: auto; padding: 16px 0 24px; }
+  .msg { display: flex; gap: 14px; padding: 4px 16px; margin-top: 14px; }
+  .msg:hover { background: #2e3035; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 15px; }
+  .body { min-width: 0; flex: 1; }
+  .who { font-weight: 600; } .who .tag { font-size: 10px; background: var(--harness); color: #fff; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: 2px; }
+  .who time, .who .model { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
+  .text { white-space: pre-wrap; word-break: break-word; }
+  .typing::after { content: "▍"; animation: pulse .8s infinite; color: var(--muted); }
+  .think { color: var(--muted); font-size: 13px; font-style: italic; border-left: 3px solid var(--line); padding-left: 8px; margin: 4px 0; white-space: pre-wrap; max-height: 160px; overflow-y: auto; }
+  details { margin-top: 4px; } summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  pre { background: var(--code); padding: 8px 10px; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; margin: 4px 0; }
+  .embed { background: var(--embed); border-left: 4px solid var(--harness); border-radius: 4px; padding: 8px 12px 10px; margin-top: 6px; max-width: 640px; }
+  .embed.ok { border-color: var(--ok); } .embed.warn { border-color: var(--warn); } .embed.bad { border-color: var(--bad); }
+  .embed h4 { margin: 0 0 6px; font-size: 14px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px 12px; font-size: 13px; }
+  .fields div b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .low { color: var(--bad); font-weight: 700; }
+  .embed ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  .embed li { margin: 2px 0; } .embed li code { background: var(--code); padding: 0 4px; border-radius: 3px; }
+  .error { color: var(--bad); font-size: 13px; }
+  .empty { color: var(--muted); text-align: center; margin-top: 30vh; }
+  @media (max-width: 700px) { aside { width: 120px; } aside header small, #stats { display: none; } }
+</style>
+</head>
+<body>
+<aside>
+  <header>설명 하네스<small id="run">연결 중…</small></header>
+  <div id="stats"></div>
+  <div id="channels"></div>
+</aside>
+<main>
+  <header><span class="hash">#</span><b id="title">채널을 기다리는 중</b>
+    <label><input type="checkbox" id="follow" checked> 새 채널 따라가기</label></header>
+  <div id="log"><div class="empty">하네스가 시작하면 여기에 대화가 나와요.</div></div>
+</main>
+<script>
+const AUTHORS = {
+  harness: { name: '하네스 봇', short: 'H', color: 'var(--harness)', bot: true },
+  writer: { name: '작성자', short: 'W', color: 'var(--writer)' },
+  judge: { name: '심사자', short: 'J', color: 'var(--judge)' },
+};
+const PROVIDER = { claude: 'Claude', codex: 'GPT' };
+const channels = new Map();     // key → {title, kind, status, total, rounds, items: [rendered nodes data]}
+const msgs = new Map();         // msg id → {node, text, think}
+let current = null, runInfo = {}, done = false;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hhmm = (ts) => new Date(ts * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+function authorName(a) {
+  const base = AUTHORS[a] || { name: a };
+  const p = a === 'writer' ? runInfo.writer : a === 'judge' ? runInfo.judge : null;
+  return p ? `${base.name} ${PROVIDER[p] || p}` : base.name;
+}
+
+function channelOf(key) {
+  if (!channels.has(key)) channels.set(key, { title: key, nodes: [], status: 'running', unread: false });
+  return channels.get(key);
+}
+
+function renderSide() {
+  const box = $('channels');
+  box.innerHTML = '';
+  let done = 0, ok = 0, review = 0;
+  for (const [key, c] of [...channels].reverse()) {
+    if (c.status === 'passed') { done++; ok++; } else if (c.status === 'needs_review') { done++; review++; }
+    const el = document.createElement('div');
+    el.className = 'ch' + (key === current ? ' active' : '') + (c.unread ? ' unread' : '');
+    el.innerHTML = `<span class="dot ${c.status}"></span><span class="name">${esc(c.title)}</span>` +
+      (c.total != null ? `<span class="score">${c.total}</span>` : '');
+    el.onclick = () => { $('follow').checked = false; show(key); };
+    box.appendChild(el);
+  }
+  $('stats').textContent = `채널 ${channels.size} · 통과 ${ok} · 검수 ${review}`;
+}
+
+function show(key) {
+  current = key;
+  const c = channelOf(key);
+  c.unread = false;
+  $('title').textContent = c.title;
+  const log = $('log');
+  log.innerHTML = '';
+  c.nodes.forEach((n) => log.appendChild(n));
+  log.scrollTop = log.scrollHeight;
+  renderSide();
+}
+
+function addNode(key, node) {
+  const c = channelOf(key);
+  c.nodes.push(node);
+  if (key === current) {
+    const log = $('log');
+    const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+    log.appendChild(node);
+    if (atBottom) log.scrollTop = log.scrollHeight;
+  } else c.unread = true;
+}
+
+function msgNode(author, ts, extra = '') {
+  const a = AUTHORS[author] || { short: '?', color: '#777' };
+  const node = document.createElement('div');
+  node.className = 'msg';
+  node.innerHTML = `<div class="avatar" style="background:${a.color}">${a.short}</div><div class="body">
+    <div class="who" style="color:${a.color}">${esc(authorName(author))}${a.bot ? '<span class="tag">BOT</span>' : ''}${extra}<time>${hhmm(ts)}</time></div></div>`;
+  return node;
+}
+
+function embedHtml(e) {
+  if (!e) return '';
+  let h = `<div class="embed ${e.color || ''}">`;
+  if (e.title) h += `<h4>${esc(e.title)}</h4>`;
+  if (e.fields) h += '<div class="fields">' + e.fields.map((f) => `<div class="${f.low ? 'low' : ''}"><b>${esc(f.name)}</b>${esc(f.value)}</div>`).join('') + '</div>';
+  if (e.list && e.list.length) h += '<ul>' + e.list.map((x) => `<li>${x.code ? `<code>${esc(x.code)}</code> ` : ''}${esc(x.text)}</li>`).join('') + '</ul>';
+  if (e.json) h += `<details><summary>${esc(e.json_label || '원본 보기')}</summary><pre>${esc(JSON.stringify(e.json, null, 2))}</pre></details>`;
+  return h + '</div>';
+}
+
+function onEvent(ev) {
+  const t = ev.type;
+  if (t === 'run_start') {
+    runInfo = ev;
+    $('run').textContent = `작성 ${PROVIDER[ev.writer]} · 심사 ${PROVIDER[ev.judge]} · ${ev.kind} ${ev.format || ''}`;
+    return;
+  }
+  if (t === 'run_end') { $('run').textContent += ` · ${ev.text}`; done = true; return; }
+  if (t === 'channel') {
+    const c = channelOf(ev.channel);
+    c.title = ev.title;
+    const node = msgNode('harness', ev.ts);
+    node.querySelector('.body').insertAdjacentHTML('beforeend',
+      `<div class="text">새 ${ev.kind === 'party' ? '파티' : '샘플'}: ${esc(ev.title)}</div>` +
+      embedHtml({ title: '근거 묶음', json: ev.packet, json_label: '근거 묶음 펼치기' }));
+    addNode(ev.channel, node);
+    if ($('follow').checked) show(ev.channel); else renderSide();
+    return;
+  }
+  if (t === 'msg') {
+    const node = msgNode(ev.author, ev.ts);
+    node.querySelector('.body').insertAdjacentHTML('beforeend', `<div class="text">${esc(ev.text)}</div>` + embedHtml(ev.embed));
+    addNode(ev.channel, node);
+    renderSide();
+    return;
+  }
+  if (t === 'msg_start') {
+    const node = msgNode(ev.author, ev.ts, `<span class="model">${esc(ev.model || '')}${ev.label ? ' · ' + esc(ev.label) : ''}</span>`);
+    const body = node.querySelector('.body');
+    body.insertAdjacentHTML('beforeend', '<div class="think" hidden></div><div class="text typing"></div>');
+    msgs.set(ev.msg, { node, author: ev.author, text: body.querySelector('.text'), think: body.querySelector('.think') });
+    addNode(ev.channel, node);
+    return;
+  }
+  if (t === 'delta') {
+    const m = msgs.get(ev.msg);
+    if (!m) return;
+    const el = ev.kind === 'thinking' ? m.think : m.text;
+    el.hidden = false;
+    el.textContent += ev.text;
+    if (ev.kind === 'thinking') el.scrollTop = el.scrollHeight;
+    if (ev.channel === current) { const log = $('log'); if (log.scrollHeight - log.scrollTop - log.clientHeight < 200) log.scrollTop = log.scrollHeight; }
+    return;
+  }
+  if (t === 'msg_end') {
+    const m = msgs.get(ev.msg);
+    if (!m) return;
+    m.text.classList.remove('typing');
+    if (ev.text) m.text.textContent = ev.text;
+    if (m.author === 'judge' && ev.text) {          // 심사 JSON은 접고 요약만 (점수는 하네스 봇이 보여 줌)
+      try {
+        const j = JSON.parse(ev.text.slice(ev.text.indexOf('{'), ev.text.lastIndexOf('}') + 1));
+        const nd = (j.deductions || []).length, nn = (j.na || []).length;
+        m.text.textContent = nd ? `감점 ${nd}개를 골랐어요${nn ? `, N/A ${nn}개` : ''}.` : `감점할 곳이 없어요${nn ? ` (N/A ${nn}개)` : ''}.`;
+        m.text.insertAdjacentHTML('afterend', `<details><summary>심사 원본 보기</summary><pre>${esc(JSON.stringify(j, null, 2))}</pre></details>`);
+      } catch (e) { /* JSON이 아니면 그대로 */ }
+    }
+    if (ev.error) m.text.insertAdjacentHTML('afterend', `<div class="error">오류: ${esc(ev.error)}</div>`);
+    if (!m.think.textContent) m.think.remove();
+    return;
+  }
+  if (t === 'status') {
+    const c = channelOf(ev.channel);
+    Object.assign(c, { status: ev.status, total: ev.total, rounds: ev.rounds });
+    renderSide();
+  }
+}
+
+const es = new EventSource('/events');
+es.onmessage = (e) => onEvent(JSON.parse(e.data));
+es.onerror = () => { if (!done) $('run').textContent = '연결 끊김 (하네스가 끝났거나 다시 연결 중)'; };
+</script>
+</body>
+</html>

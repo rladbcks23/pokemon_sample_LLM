@@ -36,6 +36,7 @@
 - 사실(종족값·기술·사용률 등)은 외우지 않고 back API를 도구로 조회
 - **구조 변경 결정 (2026-10-20, `llm/DESIGN.md`)**: in-context 방식(모델이 도구 결과를 읽고 답을 씀)에서 DB 기반 방식으로. 로컬 4B 모델은 질문을 의도+조건 JSON으로 바꾸기만 하고,
   DB 조회·화면 띄우기·답 문장은 서버가 한다. 파티·샘플 설명은 나중에 AI 하네스로 미리 써서 DB에 저장.
+  하네스는 `llm/harness/` (구독 CLI `claude -p`·`codex exec`로 작성·심사, 기준 `llm/DESCRIPTION_RUBRIC.md`, 실시간 보기 localhost:8002)
   도구를 여러 번 부르며 긴 결과를 읽는 지금 방식(in-context)은 4B에 너무 어려워서 바꿈
 - 서버는 Django와 분리 (`llm/`, FastAPI + SSE, 포트 8001). 파티 빌딩의 CoachChat이 `/llm/chat`에 붙어 있다
   - provider는 `LLM_PROVIDER`로: `claude`(API 키 필요) / `qwen`(로컬 파인튜닝 모델, `llm/providers/qwen.py`). 도구는 `llm/agent/tools.py`
