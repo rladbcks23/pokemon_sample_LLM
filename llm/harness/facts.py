@@ -15,14 +15,17 @@ from inproc_back import _dj  # noqa: E402  (Django 설정도 여기서)
 
 from apps.api.common import format_key, names  # noqa: E402
 from apps.api.party import _base, member_profile, party_check  # noqa: E402
-from apps.api.views import SET_SOURCES, SOURCE_LABEL, norm_nature, shown_key  # noqa: E402
-from apps.dex.models import Ruleset  # noqa: E402
-from apps.dex.typechart import TYPE_KO  # noqa: E402
+from apps.api.views import SET_SOURCES, SOURCE_LABEL, latest_usage, norm_nature, rank_board, shown_key  # noqa: E402
+from apps.dex.models import Move, Ruleset  # noqa: E402
+from apps.dex.typechart import TYPE_KO, TYPES, defense_profile  # noqa: E402
 from apps.meta.models import SP_STATS, PokemonSet, Team  # noqa: E402
+
+from harness.rubric import grounding_text, packet_hash  # noqa: E402,F401  (예전 import 경로 유지)
 
 STAT_KO = {'hp': 'H', 'atk': 'A', 'def': 'B', 'spa': 'C', 'spd': 'D', 'spe': 'S'}
 CATEGORY_KO = {'Physical': '물리', 'Special': '특수', 'Status': '변화'}
 RARE_SHAPE_PCT = 10         # 형태 분포에서 이 비율 미만이면 드문 형태
+TOP_PICKS = 30              # 커버리지 계산: 이 픽률 순위 안의 포켓몬
 
 
 class Facts:
@@ -30,6 +33,49 @@ class Facts:
         self.rs = Ruleset.objects.order_by('-start_date').first()
         self.rid = self.rs.id
         self.n = names(self.rid)
+        # names()의 기술에는 설명이 없어서 따로 (나무위키 한글 설명)
+        self.move_desc = dict(Move.objects.filter(ruleset=self.rs).values_list('showdown_id', 'short_desc'))
+        self._usage, self._top = {}, {}
+
+    # ------------------------------------------------------------ 사용률·상성
+
+    def usage(self, fmt: str, key: str) -> dict:
+        """그 포켓몬의 최신 사용률 상세 {kind: {id: pct}} (항목마다 10위까지만 있음)."""
+        if fmt not in self._usage:
+            qs, _ = latest_usage(self.rs, fmt)
+            self._usage[fmt] = {u.pokemon_key: u for u in qs.prefetch_related('details')}
+        u = self._usage[fmt].get(key)
+        out = {}
+        for d in (u.details.all() if u else []):
+            out.setdefault(d.kind, {})[d.target_key] = d.pct
+        return out
+
+    def top_picks(self, fmt: str) -> list[tuple[str, list[str]]]:
+        """픽률 상위 포켓몬 (한글 이름, 영문 타입)."""
+        if fmt not in self._top:
+            rows = sorted(rank_board(self.rs, fmt)['rows'].items(), key=lambda x: x[1]['rank'])[:TOP_PICKS]
+            self._top[fmt] = [(self.ko('pokemon', k), [t for t in (p['type1'], p['type2']) if t])
+                              for k, _ in rows if (p := self.n['pokemon'].get(k))]
+        return self._top[fmt]
+
+    @staticmethod
+    def weak_to(types: list[str]) -> list[str]:
+        prof = defense_profile(types)
+        return [f'{TYPE_KO[t]}{" ×4" if prof[t] >= 4 else ""}' for t in TYPES if prof[t] >= 2]
+
+    def coverage(self, fmt: str, moves: list[str], self_key: str) -> dict:
+        """공격기마다 효과가 굉장한 타입과, 픽률 상위 중 이 기술로만 ×2 이상 찌르는 포켓몬."""
+        attacks = [x for x in moves if (self.n['move'].get(x) or {}).get('category') in ('Physical', 'Special')]
+        me = self.ko('pokemon', self_key)
+        hit = {x: {name for name, types in self.top_picks(fmt) if name != me
+                   and defense_profile(types)[self.n['move'][x]['type']] >= 2} for x in attacks}
+        out = {}
+        for x in attacks:
+            t = self.n['move'][x]['type']
+            only = sorted(hit[x] - set().union(*(hit[y] for y in attacks if y != x)))
+            out[x] = {'super_effective_on': [TYPE_KO[d] for d in TYPES if defense_profile([d])[t] >= 2],
+                      f'only_this_hits_top{TOP_PICKS}': only[:6]}
+        return out
 
     # ------------------------------------------------------------ 공통
 
@@ -91,12 +137,16 @@ class Facts:
         shown = shown_key(self.rid, m['pokemon'], m['item'])
         base = _base(self.rid, shown)
         info = self.brief(fmt, m)
+        use = self.usage(fmt, m['pokemon'])
+        cov = self.coverage(fmt, m['moves'], shown)
         move_rows = []
         for x in m['moves']:
             mv = self.n['move'].get(x) or {}
             move_rows.append({'name_ko': self.ko('move', x), 'type': TYPE_KO.get(mv.get('type'), ''),
                               'category': CATEGORY_KO.get(mv.get('category'), ''), 'power': mv.get('power') or None,
-                              'desc': self._desc('move', x)})
+                              'usage_pct': use.get('move', {}).get(x, '10위 밖'), **cov.get(x, {}),
+                              'desc': self.move_desc.get(x, '')})
+        p = self.n['pokemon'][shown]
         same = [o for o in PokemonSet.objects.filter(ruleset=self.rs, format_key=s.format_key, pokemon_key=s.pokemon_key)
                 if self.sample_key(fmt, self.as_sample(o)) != self.sample_key(fmt, m)]
         shapes = {}
@@ -110,10 +160,15 @@ class Facts:
             'kind': 'sample', 'format': '싱글' if fmt == 'singles' else '더블',
             'source': SET_SOURCES.get(s.source, s.source), 'name': s.name or None,
             'pokemon': {**{k: info[k] for k in ('name_ko', 'types')}, **({'mega_from': info['mega_from']} if 'mega_from' in info else {}),
-                        'base_stats': {STAT_KO[k]: v for k, v in base.items()}},
-            'item': {'name_ko': info['item'], 'desc': self._desc('item', m['item'])},
-            'ability': {'name_ko': info['ability'], 'desc': self._desc('ability', m['ability'])},
+                        'base_stats': {STAT_KO[k]: v for k, v in base.items()},
+                        'weak_to': self.weak_to([t for t in (p['type1'], p['type2']) if t])},
+            'item': {'name_ko': info['item'], 'usage_pct': use.get('item', {}).get(m['item'], '10위 밖'),
+                     'desc': self._desc('item', m['item'])},
+            'ability': {'name_ko': info['ability'], 'usage_pct': use.get('ability', {}).get(m['ability'], '10위 밖'),
+                        'desc': self._desc('ability', m['ability'])},
             'nature': info['nature'], 'sp': info['sp'], 'moves': move_rows,
+            'usage_note': f'usage_pct = 이 포켓몬({info["name_ko"]})을 쓰는 사람 중 그 기술·도구·특성을 쓰는 비율 (OP.GG, 10위까지만). '
+                          f'only_this_hits_top{TOP_PICKS} = 픽률 상위 {TOP_PICKS} 중 이 샘플의 다른 공격기로는 ×2를 못 찌르고 이 기술로만 찌르는 포켓몬',
             'roles': info['roles'], 'speed': info['speed'], **({'speed_note': info['speed_note']} if 'speed_note' in info else {}),
             'shapes': {'total': total, **dict(sorted(shapes.items(), key=lambda kv: -kv[1])),
                        'this': mine, 'this_pct': pct, 'rare': pct < RARE_SHAPE_PCT},
@@ -147,6 +202,8 @@ class Facts:
         return out[:5]
 
     def _desc(self, kind: str, key: str) -> str:
+        if kind == 'move':
+            return self.move_desc.get(key, '')
         return (self.n[kind].get(key) or {}).get('short_desc') or ''
 
     # ------------------------------------------------------------ 파티
@@ -178,18 +235,3 @@ class Facts:
             'threats': [{'name_ko': x['name_ko'], 'rank': x['rank'], 'targets': x['targets']} for x in threats],
             'mega_stones': sum(1 for m in ms if shown_key(self.rid, m['pokemon'], m['item']) != m['pokemon']),
         }
-
-
-def packet_hash(packet: dict) -> str:
-    return hashlib.sha1(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
-
-
-def grounding_text(packet: dict) -> str:
-    """숫자·이름 근거 검사용 글: 기술·도구 설명(desc)은 뺀다 (설명에 다른 기술 이름·숫자가 나와서)."""
-    def strip(x):
-        if isinstance(x, dict):
-            return {k: strip(v) for k, v in x.items() if k != 'desc'}
-        if isinstance(x, list):
-            return [strip(v) for v in x]
-        return x
-    return json.dumps(strip(packet), ensure_ascii=False)

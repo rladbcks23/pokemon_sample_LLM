@@ -8,7 +8,9 @@
 
 - 작성·심사는 **구독 CLI**로 부른다: `claude -p`(Claude 구독), `codex exec`(ChatGPT 구독). 종량제 API 키 환경 변수는 자식 프로세스에서 지운다
   - 먼저 로그인: `claude` 실행 후 로그인, `codex login` (`codex login status`가 "Logged in using ChatGPT"인지 확인)
-- 고쳐 쓰기 횟수 제한 없음. 같은 지적이 2번 연속이면 "근거로 이유를 대거나 모르겠다고 쓰기"를 지시한다
+- 고쳐 쓰기 횟수 제한 없음. 같은 규칙 지적이 2번 연속이면 "근거로 이유를 대거나 모르겠다고 쓰기"(이유 규칙) / "다른 문장을 줄여서라도 넣기"(내용 규칙)를 지시한다
+- 점수가 떨어지면 가장 좋았던 설명으로 되돌리되 같은 설명으로는 2번까지, 줄이다가 빠진 내용은 "[남겨 두기]"로 알려 준다
+- **같은 감점 묶음이 3번 연속이면 멈추고 사람 검수** (가장 좋았던 설명 저장). 2026-10-23 긴 설명↔줄인 설명을 21바퀴 돌며 codex 사용량을 크게 쓴 일 때문
 - 결과: `data/descriptions/sample.jsonl`, `party.jsonl` (키마다 마지막 줄이 유효). 근거 묶음이 그대로인 통과 설명은 다음 실행에서 건너뛴다
 - 실행 기록: `llm/harness/logs/*.jsonl` (git 제외)
 
@@ -29,7 +31,7 @@ cd llm
 | `--limit N` | 이번에 처리할 개수 (0 = 전부) |
 | `--writer`, `--judge` | `claude` / `codex` (기본 작성 claude, 심사 codex) |
 | `--writer-model`, `--judge-model` | 예: `opus`, `sonnet` / `gpt-5.5` (생략하면 CLI 기본 모델) |
-| `--writer-effort`, `--judge-effort` | 생각 깊이. 심사(codex) 한 번이 기본 설정으로 2~5분 걸리니 빠르게 돌리려면 `--judge-effort medium` |
+| `--writer-effort`, `--judge-effort` | 생각 깊이. 심사는 기본 `medium` (codex 기본값은 한 번에 2~5분, 사용량이 많음) |
 | `--max-rounds N` | 안전장치 (기본 0 = 제한 없음) |
 | `--redo` | 이미 통과한 것도 다시 |
 | `--port 8002` | 실시간 보기 포트 (0 = 끔) |

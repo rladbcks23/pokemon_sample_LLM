@@ -16,14 +16,18 @@ from datetime import datetime
 from pathlib import Path
 
 from harness import rubric
-from harness.facts import LLM, Facts, grounding_text, packet_hash
 from harness.live import Live
 from harness.llm_cli import CliError, ask, parse_json
+from harness.rubric import grounding_text, packet_hash
+
+LLM = Path(__file__).resolve().parents[1]
 
 OUT = LLM.parent / 'data/descriptions'
 LOGS = LLM / 'harness/logs'
 UNKNOWN = re.compile(r'모르겠|알 수 없|못 찾았|알기 어려')
 CHOICES = 6                     # 샘플: 도구·SP·기술 4개 / 파티: 멤버 6마리. 절반 넘게 "모름"이면 사람 검수
+STALL = 3                       # 같은 감점(규칙 묶음)이 이만큼 연속이면 맴도는 것이니 멈추고 사람 검수 (구독 사용량 보호)
+REASON_RULES = {'J1-a', 'J1-d', 'J3-b', 'J3-c', 'S1-c'}     # 반복되면 "모르겠다"로 빠져나갈 수 있는 규칙 (이유를 대는 것)
 
 JUDGE_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['deductions', 'na'],
@@ -50,7 +54,12 @@ WRITER_SYSTEM = """너는 포켓몬 챔피언스(Reg M-C) 파티 빌더 앱의 {
 - 말투: 짧은 "~요" 체. 마크다운·글머리표·이모지 없이 문장만
 - 길이: {length}
 - 구성: {structure}
-- 근거 묶음으로 이유를 댈 수 없는 선택은 이유를 지어내지 말고 정중하게 모르겠다고 쓴다
+- 기술·도구 선택 이유는 근거 묶음에서 이 순서로 찾는다
+  ① usage_pct: 이 포켓몬에게 흔히 쓰는 기술·도구인지 (10위 밖이면 드문 선택)
+  ② desc: 부가 효과 (스피드 랭크 다운, 상태이상 확률, 선공 등)
+  ③ super_effective_on과 자신의 weak_to: 자기 약점 타입을 찌르는 견제기인지
+  ④ only_this_hits_top30: 픽률 상위 중 이 기술로만 효과가 굉장한 포켓몬 (견제 대상 이름)
+- 위를 다 봐도 이유를 댈 수 없는 선택만 지어내지 말고 정중하게 모르겠다고 쓴다
   (예: "스톤에지를 넣은 이유는 공개된 자료로는 모르겠어요.")
 
 설명 글만 출력한다 (따옴표·제목·머리말 없이)."""
@@ -69,6 +78,7 @@ JUDGE_SYSTEM = """너는 포켓몬 챔피언스(Reg M-C) {what} 설명의 심사
 - quote: 설명에서 글자 그대로 옮긴 문구. 빠진 내용을 지적하는 규칙이면 ""
 - fix: 고칠 방향 한 줄. 설명을 직접 다시 쓰지 않는다
 - "이유를 모르겠다"고 쓴 선택은 J3-b로 감점하지 않는다. 근거 묶음에 이유가 정말 없는지 보고, 있으면 J3-d
+  (usage_pct가 높음, desc의 부가 효과, super_effective_on이 자신의 weak_to를 찌름, only_this_hits_top30에 견제 대상이 있음 — 이 중 하나라도 있으면 이유가 있는 것)
 - 근거 묶음이 부족해 그 항목을 쓸 수 없으면 na에 항목과 사유 (J1·J2·J3은 na 불가)
 - 문제가 없으면 deductions는 빈 배열
 - 파일을 읽거나 명령을 실행하지 않는다. 필요한 것은 모두 아래 글에 있다
@@ -126,6 +136,7 @@ class Harness:
     def __init__(self, args, live: Live):
         self.a = args
         self.live = live
+        from harness.facts import Facts     # Django를 여기서 불러옴 (테스트는 DB 없이)
         self.facts = Facts()
         n = self.facts.n
         self.vocab = {k: sorted({r['name_ko'] for r in n[k].values() if r.get('name_ko')} - VOCAB_STOP)
@@ -190,7 +201,10 @@ class Harness:
         grounding = grounding_text(packet)
         others = store.others(key, group)
         prev, feedback, best = None, [], None
-        streak = {}                # (규칙 또는 A항목, 문구) → 연속 실패 수
+        streak = {}                # 자동 검사 (A항목, 문구) / 심사 규칙 ID → 연속 실패 수
+        reverts = {}               # 되돌린 설명의 라운드 → 되돌린 횟수
+        keep = {}                  # 되돌릴 때 알려 줄 "빼면 감점되는 내용" (규칙 → fix)
+        last_sig, same = None, 0   # 직전 감점 묶음, 연속 횟수
         history = []
         rnd = 0
         mode = 'write'
@@ -247,30 +261,52 @@ class Harness:
                 return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
                                    f'"모르겠다"가 {len(unknown)}개: 근거 묶음이 부족해요')
 
-            # 점수가 떨어졌으면 가장 좋았던 설명으로 되돌리고, 그 설명의 지적을 다른 순서(뒤에서부터)로 고친다
+            # 연속 실패: 매 라운드 규칙 ID로 센다 (심사자가 fix 문구를 매번 다르게 써서 문구로는 못 잡음)
+            streak = {r: streak.get(r, 0) + 1 for r in {d['rule'] for d in ded}}
+            # 맴돌기: 같은 감점 묶음이 STALL번 연속이면 더 고쳐도 같은 결과라 멈춘다 (가장 좋았던 설명을 저장)
+            sig = tuple(sorted(d['rule'] for d in ded))
+            same = same + 1 if sig == last_sig else 1
+            last_sig = sig
+            if same >= STALL:
+                return self.finish(kind, key, title, packet, group, store, best, history, 'needs_review',
+                                   f'같은 감점({", ".join(sig)})이 {same}번 연속이라 멈췄어요')
+
+            # 점수가 떨어졌으면 가장 좋았던 설명으로 되돌린다. 같은 설명으로는 2번까지만 (그 뒤로는 지금 설명에서 계속)
+            # 되돌릴 때는 실패한 시도에서 새로 생긴 감점(줄이다가 뺀 내용)을 "남겨 두기"로 알려 줘서 같은 실수를 막는다
             target = history[-1]
-            if best is not target and best['score']['total'] > sc['total']:
+            if best is not target and best['score']['total'] > sc['total'] and reverts.get(best['round'], 0) < 2:
+                reverts[best['round']] = reverts.get(best['round'], 0) + 1
                 target = best
                 prev = best['text']
+                best_rules = {d['rule'] for d in best['deductions']}
+                for d in ded:
+                    if d['rule'] not in best_rules:
+                        keep[d['rule']] = d['fix']
                 self.live.say(ch, 'harness', f'점수가 {best["score"]["total"]} → {sc["total"]}로 떨어져서 '
-                                             f'{best["score"]["total"]}점짜리 설명으로 되돌렸어요. 다른 지적부터 고칠게요.')
+                                             f'{best["score"]["total"]}점짜리 설명으로 되돌렸어요 '
+                                             f'({reverts[best["round"]]}/2). 줄이다가 빠진 내용은 남겨 두라고 할게요.')
+            elif best is not target and best['score']['total'] > sc['total']:
+                self.live.say(ch, 'harness', '같은 설명으로 2번 되돌렸는데도 안 돼서, 이번 설명에서 계속 고칠게요.')
             sc_t, ded_t = target['score'], target['deductions']
-            # 고쳐 쓰기 준비: 최소점수 미달 항목 먼저, 감점 큰 순서
+            # 고쳐 쓰기 준비: 최소점수 미달 항목 먼저, 감점 큰 순서 (감점 크기를 같이 알려 줘서 길이와 내용 중 무엇이 급한지 알게)
             ded_sorted = sorted(ded_t, key=lambda d: (d['rule'].split('-')[0] not in sc_t['below_min'],
                                                       -rubric.rule_points(d['rule'], kind)))
-            if target is not history[-1]:
-                ded_sorted.reverse()
             feedback = []
-            # 연속 실패: 지난 라운드에도 같은 지적이 있었으면 +1, 이번에 없는 지적은 지움 (빈 quote는 fix로 구분)
-            if target is history[-1]:
-                streak = {k: streak.get(k, 0) + 1 for k in {(d['rule'], d['quote'] or d['fix']) for d in ded_t}}
             for d in ded_sorted:
-                k = (d['rule'], d['quote'] or d['fix'])
-                line = f'[{d["rule"]} {rubric.RULES[d["rule"]][0]}] ' + (f'"{d["quote"]}" → ' if d['quote'] else '') + d['fix']
-                if streak.get(k, 0) >= 2:
-                    line += (' → 2번 연속 같은 지적이에요. 근거 묶음으로 이유를 대거나, 댈 수 없으면 '
-                             '"…한 이유는 공개된 자료로는 모르겠어요"처럼 모르겠다고 쓰세요')
+                r = d['rule']
+                line = (f'[{r} -{rubric.rule_points(r, kind)}점 {rubric.RULES[r][0]}] ' +
+                        (f'"{d["quote"]}" → ' if d['quote'] else '') + d['fix'])
+                if streak.get(r, 0) >= 2:
+                    line += (' → 계속 반복되는 지적이에요. 근거 묶음으로 이유를 대거나, 정말 댈 수 없으면 '
+                             '"…한 이유는 공개된 자료로는 모르겠어요"처럼 모르겠다고 쓰세요' if r in REASON_RULES else
+                             ' → 계속 반복되는 지적이에요. 다른 문장을 줄여서라도 이 내용을 한 구절 꼭 넣으세요')
                 feedback.append(line)
+            if target is best and keep:
+                feedback += [f'[남겨 두기] 지난번에 줄이다가 이 내용이 빠져서 감점됐어요: {fix} ({r} -{rubric.rule_points(r, kind)}점)' +
+                             (' → 계속 반복되는 지적이에요. 이 내용은 절대 빼지 마세요' if streak.get(r, 0) >= 2 else '')
+                             for r, fix in keep.items() if r not in {d['rule'] for d in ded_t}]
+            if any(d['rule'] == 'J6-d' for d in ded_t):
+                feedback.append('길이 초과(J6-d)는 -2점뿐이에요. 줄일 때 기술 이유·언제 꺼내는지 같은 내용은 빼지 말고 꾸밈말을 줄이세요')
             for k in sc_t['below_min']:
                 feedback.insert(0, f'{k} {rubric.ITEMS[kind][k][0]}이(가) 최소점수 미달이에요 '
                                    f'({sc_t["items"][k]}/{rubric.ITEMS[kind][k][1]}, 최소 {rubric.ITEMS[kind][k][2]})')
@@ -368,7 +404,7 @@ def main():
     ap.add_argument('--writer-model', help='예: opus, sonnet / gpt-5.5')
     ap.add_argument('--judge-model')
     ap.add_argument('--writer-effort', help='claude: low~max / codex: low·medium·high')
-    ap.add_argument('--judge-effort')
+    ap.add_argument('--judge-effort', default='medium', help='기본 medium (codex 기본값은 한 번에 2~5분·사용량 많음)')
     ap.add_argument('--max-rounds', type=int, default=0, help='안전장치 (0 = 제한 없음, 기본)')
     ap.add_argument('--redo', action='store_true', help='이미 통과한 것도 다시')
     ap.add_argument('--port', type=int, default=8002, help='실시간 보기 포트 (0 = 끔)')

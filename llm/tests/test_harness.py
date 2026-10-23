@@ -135,5 +135,74 @@ class LiveTest(unittest.TestCase):
             live.log.close()
 
 
+class LoopTest(unittest.TestCase):
+    """2026-10-23 실제로 21바퀴 돈 순환을 가짜 모델로 재현: 긴 설명(93점) ↔ 줄인 설명(89점)."""
+
+    LONG = GOOD + ' 먼저 때려야 할 상대 앞에 꺼내 지진부터 써요.'
+    SHORT = GOOD
+
+    def make(self, writer):
+        from types import SimpleNamespace
+
+        from harness import run
+        h = run.Harness.__new__(run.Harness)
+        h.a = SimpleNamespace(max_rounds=0, writer='claude', judge='codex', writer_model=None, judge_model=None)
+        h.live = Live(Path(self.tmp.name) / 'log.jsonl', port=None, quiet=True)
+        h.vocab = VOCAB
+        h.calls = {'write': 0, 'judge': 0, 'feedback': []}
+
+        def write(ch, kind, packet, prev, feedback, label):
+            h.calls['write'] += 1
+            h.calls['feedback'].append(feedback)
+            return writer(prev, feedback)
+
+        def judge(ch, kind, packet, text):
+            h.calls['judge'] += 1
+            if text == self.LONG:       # 내용은 다 있는데 명령조·길이
+                return [{'rule': 'J6-a', 'quote': '', 'fix': '권유로'}, {'rule': 'J6-d', 'quote': '', 'fix': '줄이기'}], {}
+            return [{'rule': 'J3-b', 'quote': '', 'fix': f'역린 이유 {h.calls["judge"]}'},     # fix 문구가 매번 다름
+                    {'rule': 'J5-a', 'quote': '', 'fix': '언제'}, {'rule': 'J5-b', 'quote': '', 'fix': '먼저'}], {}
+
+        h.write, h.judge = write, judge
+        store = run.Store.__new__(run.Store)
+        store.rows, store.path = {}, Path(self.tmp.name) / 'out.jsonl'
+        return h, store
+
+    def setUp(self):
+        self.tmp = TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_stuck_writer_stops(self):
+        """고쳐도 늘 줄인 설명만 내는 작성자 → 맴돌기 감지로 멈추고 사람 검수 (예전에는 무한 반복)."""
+        def writer(prev, feedback):
+            return self.LONG if prev is None else self.SHORT
+        h, store = self.make(writer)
+        row = h.run_one('sample', 'S-1', 't', PACKET, None, store)
+        h.live.log.close()
+        self.assertEqual(row['status'], 'needs_review')
+        self.assertLessEqual(h.calls['judge'], 6)
+        self.assertEqual(row['text'], self.LONG)            # 가장 좋았던 설명을 저장
+        fb = '\n'.join(sum(h.calls['feedback'], []))
+        self.assertIn('[남겨 두기]', fb)                    # 줄이다가 뺀 내용을 알려 줌
+        self.assertIn('계속 반복되는 지적', fb)               # 문구가 달라도 같은 규칙이면 반복으로 셈
+
+    def test_writer_that_listens_passes(self):
+        """[남겨 두기]를 받으면 내용을 지키며 고치는 작성자 → 통과."""
+        fixed = self.LONG.replace('교체하는 게 좋아요', '교체가 나아요')
+
+        def writer(prev, feedback):
+            if prev is None:
+                return self.LONG
+            return fixed if any('[남겨 두기]' in x for x in feedback) else self.SHORT
+        h, store = self.make(writer)
+        orig = h.judge
+        h.judge = lambda ch, kind, packet, text: ([], {}) if text == fixed else orig(ch, kind, packet, text)
+        row = h.run_one('sample', 'S-1', 't', PACKET, None, store)
+        h.live.log.close()
+        self.assertEqual(row['status'], 'passed')
+
+
 if __name__ == '__main__':
     unittest.main()

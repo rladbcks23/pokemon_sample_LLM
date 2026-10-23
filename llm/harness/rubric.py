@@ -2,6 +2,8 @@
 
 DB 없이 돈다 (테스트용). 이름 목록은 호출하는 쪽이 넘긴다.
 """
+import hashlib
+import json
 import re
 from difflib import SequenceMatcher
 
@@ -41,7 +43,7 @@ RULES = {
     'J5-a': ('언제 꺼내는지 없음', 4, False),
     'J5-b': ('무엇을 먼저 하는지 없음', 3, False),
     'J5-c': ('어떤 샘플·파티에도 맞는 일반론만', 3, False),
-    'J6-a': ('반말·명령조, 불평·비꼬기', 5, False),
+    'J6-a': ('반말·명령조("써라", "넣어"), 불평·비꼬기. "~해 주세요"·"~하는 게 좋아요" 같은 권유는 아님', 5, False),
     'J6-b': ('"~요" 체가 아님', 3, False),
     'J6-c': ('같은 말 반복, 군더더기 문장', 2, False),
     'J6-d': ('길이 상한의 80% 초과', 2, False),
@@ -123,7 +125,7 @@ MARKDOWN = re.compile(r'\*\*|^\s*#|^\s*[-*•]\s|\|', re.M)
 BANNED = ['최강', '무조건', '필수', '완벽', '절대', '카운터 없', '승률이 높', '승률']
 TOOL_NAMES = ['check_party', 'find_partners', 'find_threats', 'search_samples', 'member_profile', 'party_check']
 ROLE_WORDS = ['물리막이', '특수막이', '막이', '딜러', '기점잡이', '서포터']
-LENGTH = {'sample': (60, 220, 2, 4), 'party': (120, 400, 3, 6)}
+LENGTH = {'sample': (80, 280, 2, 5), 'party': (150, 450, 3, 7)}
 COUNT_UNIT = re.compile(r'^(마리|개|턴|번|가지)')
 
 
@@ -215,3 +217,20 @@ def auto_check(kind: str, text: str, packet: dict, grounding: str, vocab: dict, 
         if re.search(r'메가.{0,6}(2마리|두 마리|둘).{0,8}(같이|동시)', text):
             fail('A11', '메가 2마리 동시 선출을 권함')
     return fails
+
+
+# ---------------------------------------------------------------- 근거 묶음 도우미 (DB 없이)
+
+def packet_hash(packet: dict) -> str:
+    return hashlib.sha1(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def grounding_text(packet: dict) -> str:
+    """숫자·이름 근거 검사용 글: 기술·도구 설명(desc)은 뺀다 (설명에 다른 기술 이름·숫자가 나와서)."""
+    def strip(x):
+        if isinstance(x, dict):
+            return {k: strip(v) for k, v in x.items() if k != 'desc'}
+        if isinstance(x, list):
+            return [strip(v) for v in x]
+        return x
+    return json.dumps(strip(packet), ensure_ascii=False)
